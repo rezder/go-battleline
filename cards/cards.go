@@ -1,6 +1,5 @@
 // The cards of the game
-
-package
+package cards
 
 import (
 	"errors"
