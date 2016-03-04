@@ -1,8 +1,15 @@
 // The cards of the game
 
-package battleline
+package
+
+import (
+	"errors"
+)
 
 const (
+	T  = 60
+	TC = 10
+
 	T_Troop  = 1
 	T_Morale = 2
 	T_Env    = 3
@@ -15,21 +22,45 @@ const (
 	C_Blue   = 5
 	C_Orange = 6
 
-	TC_Alexander = 0
-	TC_Darius    = 1
-	TC_8         = 2
-	TC_123       = 3
-	TC_Fog       = 4
-	TC_Mud       = 5
-	TC_Scout     = 6
-	TC_Redeploy  = 7
-	TC_Deserter  = 8
-	TC_Traitor   = 9
+	TC_Alexander = T + 10 - iota
+	TC_Darius
+	TC_8
+	TC_123
+	TC_Fog
+	TC_Mud
+	TC_Scout
+	TC_Redeploy
+	TC_Deserter
+	TC_Traitor
 )
 
 var (
-	troops  [60]Troop
-	tactics [10]Tactic
+	Cards   [TC + T + 1]Card // zero index is nil
+	F_Wedge = Formation{
+		Name:    "Wedge",
+		Describ: "3(4) troops connected and same color. Like 2,1,3 or 3,2,1.",
+		Value:   5,
+	}
+	F_Phalanx = Formation{
+		Name:    "Phalanx",
+		Describ: "3(4) troops same value. Like 10,10,10",
+		Value:   4,
+	}
+	F_BattalionOrder = Formation{
+		Name:    "Battalion Order",
+		Describ: "3(4) troops same color",
+		Value:   3,
+	}
+	F_SkirmishLine = Formation{
+		Name:    "Skirmish Line",
+		Describ: "3(4) troops connected. Like 2,1,3 or 3,1,2",
+		Value:   2,
+	}
+	F_Host = Formation{
+		Name:    "Host",
+		Describ: "Any troops",
+		Value:   1,
+	}
 )
 
 func init() {
@@ -40,71 +71,74 @@ func init() {
 		"Hypaspist",
 		"Phalangist",
 		"Hoplites",
-		"Javalineers",
+		"Javelineers",
 		"Peltasts",
 		"Skirmishers",
 	}
 
 	for i := 1; i < 7; i++ {
-		for j := 1; i < 11; j++ {
-			troop := troops[(i-1)*10+j-1]
+		for j := 1; j < 11; j++ {
+			var troop *Troop = new(Troop)
 			troop.name = names[10-j]
 			troop.describ = names[10-j]
 			troop.color = i
 			troop.value = j
+			Cards[(i-1)*10+j] = troop //zero is nil
 		}
 	}
 
-	tactic := tactics[0]
-	tactic.name = "Leader Alexander"
-	tactic.describ = "Any troop value. Only one leader can be played by a player. Value and color is defined before when the flag is resolved and not when played."
-	tactic.ttype = TC_Alexander
+	Cards[TC_Alexander] = Tactic{
+		name:    "Leader Alexander",
+		describ: "Any troop value. Only one leader can be played by a player. Value and color is defined before when the flag is resolved and not when played.",
+		ttype:   T_Morale,
+	}
+	Cards[TC_Darius] = Tactic{
+		name:    "Leader Darius",
+		describ: Cards[TC_Alexander].Describ(),
+		ttype:   T_Morale,
+	}
 
-	tactic = tactics[1]
-	tactic.ttype = TC_Darius
-	tactic.name = "Leader Darius"
-	tactic.describ = tactics[0].describ
+	Cards[TC_8] = Tactic{
+		name:    "Companion Cavalry",
+		describ: "Any color value 8. Color is defined when flag is resolved",
+		ttype:   T_Morale,
+	}
+	Cards[TC_123] = Tactic{
+		name:    "Shield Bearers",
+		describ: "Any color value 1, 2 or 3. Color is defined when flag is resolve",
+		ttype:   T_Morale,
+	}
+	Cards[TC_Fog] = Tactic{
+		name:    "Fog",
+		describ: "Disables formation Flag is won by sum of values",
+		ttype:   T_Env,
+	}
 
-	tactic = tactics[2]
-	tactic.name = "Companion Cavalry"
-	tactic.describ = "Any color value 8. Color is defined when flag is resolved"
-	tactic.ttype = TC_8
-
-	tactic = tactics[3]
-	tactic.name = "Shield Bearers"
-	tactic.describ = "Any color value 1, 2 or 3. Color is defined when flag is resolve"
-	tactic.ttype = TC_123
-
-	tactic = tactics[4]
-	tactic.name = "Fog"
-	tactic.describ = "Disables formation Flag is won by sum of values"
-	tactic.ttype = TC_Fog
-
-	tactic = tactics[5]
-	tactic.name = "Mud"
-	tactic.describ = "Formation is extended to 4 cards"
-	tactic.ttype = TC_Mud
-
-	tactic = tactics[6]
-	tactic.name = "Scout"
-	tactic.describ = "Draw 3 cards any decks and return 3 cards any decks player control the order"
-	tactic.ttype = TC_Scout
-
-	tactic = tactics[7]
-	tactic.name = "Redeploy"
-	tactic.describ = "Move any of his troop or tactic card from any flag that is not claimed. Troop may be removed from game"
-	tactic.ttype = TC_Redeploy
-
-	tactic = tactics[8]
-	tactic.name = "Deserter"
-	tactic.describ = "Remove any opponent troop or tactic card from unclaimed flags"
-	tactic.ttype = TC_Deserter
-
-	tactic = tactics[9]
-	tactic.name = "Traitor"
-	tactic.describ = "Take a troop from an opponents unclaimed flags and play it. You must have a slot to play the flag on"
-	tactic.ttype = TC_Traitor
-
+	Cards[TC_Mud] = Tactic{
+		name:    "Mud",
+		describ: "Formation is extended to 4 cards",
+		ttype:   T_Env,
+	}
+	Cards[TC_Scout] = Tactic{
+		name:    "Scout",
+		describ: "Draw 3 cards any decks and return 3 cards any decks player control the order",
+		ttype:   T_Guile,
+	}
+	Cards[TC_Redeploy] = Tactic{
+		name:    "Redeploy",
+		describ: "Move any of his troop or tactic card from any flag that is not claimed. Troop may be removed from game",
+		ttype:   T_Guile,
+	}
+	Cards[TC_Deserter] = Tactic{
+		name:    "Deserter",
+		describ: "Remove any opponent troop or tactic card from unclaimed flags",
+		ttype:   T_Guile,
+	}
+	Cards[TC_Traitor] = Tactic{
+		name:    "Traitor",
+		describ: "Take a troop from an opponents unclaimed flags and play it. You must have a slot to play the flag on",
+		ttype:   T_Guile,
+	}
 }
 
 type Card interface {
@@ -150,15 +184,35 @@ func (t Tactic) Describ() string {
 	return t.describ
 }
 func (t Tactic) Type() int {
-	switch t.ttype {
-	case TC_Alexander, TC_Darius, TC_8, TC_123:
-		return T_Morale
-	case TC_Fog, TC_Mud:
-		return T_Env
-	case TC_Scout, TC_Redeploy, TC_Deserter, TC_Traitor:
-		return T_Guile
+	return t.ttype
+}
+
+type Formation struct {
+	Name, Describ string
+	Value         int
+}
+
+func DrCard(ix int) (c *Card, err error) {
+	if ix > 0 && ix < T+TC+1 {
+		return &Cards[ix], err
+	} else {
+		return nil, errors.New("Card do not exist")
 	}
 }
-func (t Tactic) TacticType() int {
-	return t.ttype
+
+func DrTroop(ix int) (c *Troop, err error) {
+	troop, ok := Cards[ix].(Troop)
+	if ok {
+		return &troop, err
+	} else {
+		return nil, errors.New("Troop do not exist")
+	}
+}
+func DrTactic(ix int) (c *Tactic, err error) {
+	tactic, ok := Cards[ix].(Tactic)
+	if ok {
+		return &tactic, err
+	} else {
+		return nil, errors.New("Card do not exist")
+	}
 }
