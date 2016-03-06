@@ -191,9 +191,9 @@ type Formation struct {
 	Value         int
 }
 
-func DrCard(ix int) (c *Card, err error) {
+func DrCard(ix int) (c Card, err error) {
 	if ix > 0 && ix < T+TC+1 {
-		return &Cards[ix], err
+		return Cards[ix], err
 	} else {
 		return nil, errors.New("Card do not exist")
 	}
