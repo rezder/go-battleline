@@ -21,16 +21,16 @@ const (
 	C_Blue   = 5
 	C_Orange = 6
 
-	TC_Alexander = T + 10 - iota
-	TC_Darius
-	TC_8
-	TC_123
-	TC_Fog
-	TC_Mud
-	TC_Scout
-	TC_Redeploy
-	TC_Deserter
-	TC_Traitor
+	TC_Alexander = 70
+	TC_Darius    = 69
+	TC_8         = 68
+	TC_123       = 67
+	TC_Fog       = 66
+	TC_Mud       = 65
+	TC_Scout     = 64
+	TC_Redeploy  = 63
+	TC_Deserter  = 62
+	TC_Traitor   = 61
 )
 
 var (
@@ -82,7 +82,7 @@ func init() {
 			troop.describ = names[10-j]
 			troop.color = i
 			troop.value = j
-			Cards[(i-1)*10+j] = troop //zero is nil
+			Cards[(i-1)*10+j] = *troop //zero is nil
 		}
 	}
 
