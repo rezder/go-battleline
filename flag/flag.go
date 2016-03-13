@@ -1,3 +1,4 @@
+//The battleline flag.
 package flag
 
 import (
@@ -13,6 +14,7 @@ const (
 	vmLeader = 10
 )
 
+//Player the structer for player details of the flag.
 type Player struct {
 	won       bool
 	env       [2]int
@@ -21,42 +23,55 @@ type Player struct {
 	strenght  int
 }
 
+//Flag the structer of the flag.
 type Flag struct {
 	players [2]Player
 }
 
+// Remove removes a card from the flag.
+// mudix0 contains a card if removal of the mud card result in an excess card for player 0/1
 func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err error) {
+	player := &flag.players[playerix]        // updated
+	opp := &flag.players[opponent(playerix)] // updated
 	mudix1 = -1
 	mudix0 = -1
 	card, err := cards.DrCard(cardix)
 	if err == nil {
 		errMessage := fmt.Sprintf("Player %v do not have card %v", playerix, card.Name())
+		var delix int
 		switch tcard := card.(type) {
 		case cards.Tactic:
 			if tcard.Type() == cards.T_Env {
-				delix := remove_clear(flag.players[playerix].env[:], cardix)
+				delix, err = remove_clear(player.env[:], cardix, errMessage)
 				if delix != -1 {
-					if cardix == cards.TC_Mud && played(flag.players[1].troops[:]) == 4 || played(flag.players[0].troops[:]) == 4 {
-						if played(flag.players[0].troops[:]) == 4 {
-							mudix0 = flag.remove_Mud(0)
-							remove_clear(flag.players[0].troops[:], mudix0)
+					if cardix == cards.TC_Mud {
+						if played(player.troops[:]) == 4 {
+							mudix0 = remove_Mud(player, opp)
+							remove_clear(player.troops[:], mudix0, errMessage)
 						}
-						if played(flag.players[1].troops[:]) == 4 {
-							mudix1 = flag.remove_Mud(1)
-							remove_clear(flag.players[1].troops[:], mudix1)
+						if played(opp.troops[:]) == 4 {
+							mudix1 = remove_Mud(opp, player)
+							remove_clear(opp.troops[:], mudix1, errMessage)
 						}
 					}
-					flag.updateFormations()
-				} else {
-					err = errors.New(errMessage)
+					sort.Sort(sort.Reverse(sort.IntSlice(player.env[:])))
+					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+					opp.formation, opp.strenght = eval(opp.troops[:], opp.env[:], player.env[:])
 				}
 			} else if tcard.Type() == cards.T_Morale {
-				flag.remove_Troop(cardix, playerix, errMessage)
+				delix, err = remove_clear(player.troops[:], cardix, errMessage)
+				if delix != -1 {
+					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+				}
 			} else {
 				err = errors.New(fmt.Sprintf("Illegal tactic card: %v", card.Name()))
 			}
 		case cards.Troop:
-			flag.remove_Troop(cardix, playerix, errMessage)
+			delix, err = remove_clear(player.troops[:], cardix, errMessage)
+			if delix != -1 {
+				player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+			}
+
 		default:
 			panic("No supprted type")
 		}
@@ -66,17 +81,17 @@ func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err 
 	return mudix0, mudix1, err
 }
 
-// remove_Mud find the excess card that gives the highest formation
+// remove_Mud finds the excess card that gives the highest formation
 // and strenght when it is removed.
-func (flag *Flag) remove_Mud(playerix int) (mudix int) {
+func remove_Mud(player *Player, opp *Player) (mudix int) {
 	var maxf *cards.Formation = &cards.F_Host
 	var maxs int = 1
 	var troops []int
-	for i, v := range flag.players[playerix].troops {
+	for i, v := range player.troops {
 		troops = make([]int, 4)
-		copy(troops, flag.players[playerix].troops[:])
+		copy(troops, player.troops[:])
 		troops[i] = 0
-		formation, strength := eval(troops, flag.players[playerix].env[:], flag.players[opponent(playerix)].env[:])
+		formation, strength := eval(troops, player.env[:], opp.env[:])
 		if formation.Value > maxf.Value {
 			maxf = formation
 			maxs = strength
@@ -88,7 +103,10 @@ func (flag *Flag) remove_Mud(playerix int) (mudix int) {
 	}
 	return mudix
 }
-func remove_clear(cards []int, cardix int) (ix int) {
+
+// remove_clear zero a card index.
+// ix the index in list if the card was found if not -1.
+func remove_clear(cards []int, cardix int, errM string) (ix int, err error) {
 	ix = -1
 	for i, v := range cards {
 		if v == cardix {
@@ -97,17 +115,13 @@ func remove_clear(cards []int, cardix int) (ix int) {
 			break
 		}
 	}
-	return ix
-}
-func (flag *Flag) remove_Troop(cardix int, playerix int, errM string) (err error) {
-	place := remove_clear(flag.players[playerix].troops[:], cardix)
-	if place != -1 {
-		flag.updateFormation(playerix)
-	} else {
-		err = errors.New("errM")
+	if ix == -1 {
+		err = errors.New(errM)
 	}
-	return err
+	return ix, err
 }
+
+// opponent calculate the opponent player index.
 func opponent(playerix int) int {
 	if playerix == 0 {
 		return 1
@@ -115,35 +129,49 @@ func opponent(playerix int) int {
 		return 0
 	}
 }
+
+//Set a card.
 func (flag *Flag) Set(cardix int, playerix int) (err error) {
+	player := &flag.players[playerix]        // updated
+	opp := &flag.players[opponent(playerix)] // updated
 	card, err := cards.DrCard(cardix)
 	if err == nil {
+		errMessage := fmt.Sprintf("Player %v do not have space for card %v", playerix, card.Name())
+		var place int
 		switch tcard := card.(type) {
 		case cards.Tactic:
 			if tcard.Type() == cards.T_Env {
-				place := set_Card(cardix, flag.players[playerix].env[:])
+				place, err = set_Card(cardix, player.env[:], errMessage)
 				if place != -1 {
-					flag.updateFormations()
-				} else {
-					err = errors.New("No available slots")
+					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+					opp.formation, opp.strenght = eval(opp.troops[:], opp.env[:], player.env[:])
 				}
 			} else if tcard.Type() == cards.T_Morale {
-				flag.set_Troop(cardix, playerix)
+				place, err = set_Card(cardix, player.troops[:], errMessage)
+				if place != -1 {
+					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+				}
 			} else {
 				err = errors.New("Illegal tactic card: " + card.Name())
 			}
 		case cards.Troop:
-			flag.set_Troop(cardix, playerix)
+			place, err = set_Card(cardix, player.troops[:], errMessage)
+			if place != -1 {
+				player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+			}
 		default:
 			fmt.Printf("card type %v", tcard)
-			panic("No supprted type")
+			panic("No supported type")
 		}
 	} else {
 		panic("Card do not exist")
 	}
 	return err
 }
-func set_Card(cardix int, v []int) (place int) {
+
+// set_Card set a card in a list of cards.
+// #v set a card at the first available spot.
+func set_Card(cardix int, v []int, errM string) (place int, err error) {
 	place = -1
 	for i, c := range v {
 		if c == 0 {
@@ -152,21 +180,14 @@ func set_Card(cardix int, v []int) (place int) {
 			break
 		}
 	}
-	return place
-}
-func (flag *Flag) set_Troop(cardix int, playerix int) (err error) {
-	place := set_Card(cardix, flag.players[playerix].troops[:])
-	if place != -1 {
-		flag.updateFormation(playerix)
-	} else {
-		err = errors.New("No available slots")
+	if place == -1 {
+		err = errors.New(errM)
 	}
-	return err
+	return place, err
 }
-func (flag *Flag) updateFormations() {
-	flag.updateFormation(0)
-	flag.updateFormation(1)
-}
+
+// played calculate the played cards of a players troops.
+// DO not assume sort.
 func played(troops []int) (no int) {
 	no = 0
 	for _, troop := range troops {
@@ -176,15 +197,11 @@ func played(troops []int) (no int) {
 	}
 	return no
 }
-func (flag *Flag) updateFormation(playerix int) {
-	player := &flag.players[playerix]
-	troops := player.troops[:]
-	envs := player.env[:]
-	formation, strenght := eval(troops, envs, flag.players[opponent(playerix)].env[:])
-	player.formation = formation
-	player.strenght = strenght
 
-}
+// sortInt sort the players' troop card.
+// They are sorted according to the troop value or in case of a tactic they
+// card index.
+// #a sorted
 func sortInt(a []int) {
 	for i := 0; i < len(a); i++ {
 		j := i
@@ -195,6 +212,7 @@ func sortInt(a []int) {
 	}
 }
 
+// sortInt_Value calculate the sort value of a card in the players troop.
 func sortInt_Value(ix int) int {
 	troop, _ := cards.DrTroop(ix)
 	if troop != nil {
@@ -204,16 +222,17 @@ func sortInt_Value(ix int) int {
 	}
 }
 
-//eval evaluate a formation.
-//Warning only the first two slices is sorted, so they should be the one from the changed formation.
+// eval evaluate a formation.
+// #troops is sorted.
 func eval(troops []int, env1s []int, env2s []int) (formation *cards.Formation, strenght int) {
 	mud, fog := evalEnv(env1s, env2s)
 	playedCards := played(troops)
 	formation, strenght = evalSim(mud, fog, troops, playedCards)
 	return formation, strenght
 }
+
+// evalEnv evaluate the environment tactic cards.
 func evalEnv(env1s []int, env2s []int) (mud bool, fog bool) {
-	sort.Sort(sort.Reverse(sort.IntSlice(env1s)))
 	envs := make([]int, 4)
 	envs = append(envs, env1s...)
 	envs = append(envs, env2s...)
@@ -226,6 +245,12 @@ func evalEnv(env1s []int, env2s []int) (mud bool, fog bool) {
 	}
 	return mud, fog
 }
+
+// evalSim evaluate a formation.
+// This function is the part of evaluation that are used for simulation.
+// So all calculation, that is possible to do, before a simulation must be done
+// before this function is called.
+// #troops is sorted.
 func evalSim(mud bool, fog bool, troops []int, played int) (formation *cards.Formation, strenght int) {
 	sortInt(troops)
 	if mud && played == 4 {
@@ -252,6 +277,8 @@ func evalSim(mud bool, fog bool, troops []int, played int) (formation *cards.For
 	}
 	return formation, strenght
 }
+
+// evalStrenght evalue the strenght of a formation.
 func evalStrenght(form []int, v123 int, vLeader int) (st int) {
 	for _, cardix := range form {
 		troop, _ := cards.DrTroop(cardix)
@@ -270,13 +297,13 @@ func evalStrenght(form []int, v123 int, vLeader int) (st int) {
 	return st
 }
 
-//evalFormation evaluate the formation for a full formation 3 or 4 and no fog.
-//Plan split the problem in case of tactic cards.
-//Case 1: No tactic card
-//Case 2: One tactic card
-//Case 3: Two tactic cards
-//Case 4: Three tactic cards
-//3 or 4 cards should not make a difference
+// evalFormation evaluate the formation for a full formation 3 or 4 and no fog.
+// Plan split the problem in case of tactic cards.
+// Case 1: No tactic card.
+// Case 2: One tactic card.
+// Case 3: Two tactic cards.
+// Case 4: Three tactic cards.
+// 3 or 4 cards should not make a difference.
 func evalFormation(troopixs []int) (formation *cards.Formation, v123 int, vLeader int) {
 	var tac1, tac2, tac3 int
 	troops := make([]*cards.Troop, 0, 4)
@@ -320,6 +347,11 @@ func evalFormation(troopixs []int) (formation *cards.Formation, v123 int, vLeade
 
 	return formation, v123, vLeader
 }
+
+// evalFormation_T1 evalue a formation with one joker.
+// troops must be sorted biggest first.
+// v123 is the value that the 123 joker takes in the formation.
+// vLeader is the value that leader joker takes."
 func evalFormation_T1(troops []*cards.Troop, tac int) (formation *cards.Formation, v123 int, vLeader int) {
 	value := evalFormation_Value(troops)
 	color := evalFormation_Color(troops)
@@ -329,7 +361,7 @@ func evalFormation_T1(troops []*cards.Troop, tac int) (formation *cards.Formatio
 		if color {
 			if line {
 				formation = &cards.F_Wedge
-				vLeader = evalFormation_T1_Leader(troops, skipValue)
+				vLeader = evalFormation_T1_LineLeader(troops, skipValue)
 			} else if value {
 				formation = &cards.F_Phalanx
 				vLeader = troops[0].Value()
@@ -344,7 +376,7 @@ func evalFormation_T1(troops []*cards.Troop, tac int) (formation *cards.Formatio
 				vLeader = troops[0].Value()
 			} else if line {
 				formation = &cards.F_SkirmishLine
-				vLeader = evalFormation_T1_Leader(troops, skipValue)
+				vLeader = evalFormation_T1_LineLeader(troops, skipValue)
 			} else {
 				formation = &cards.F_Host
 				vLeader = 10
@@ -381,7 +413,7 @@ func evalFormation_T1(troops []*cards.Troop, tac int) (formation *cards.Formatio
 		if color {
 			if line123 {
 				formation = &cards.F_Wedge
-				v123 = evalFormation_T1_V123(troops, skipValue)
+				v123 = evalFormation_T1_Line123(troops, skipValue)
 			} else if value && troops[0].Value() < 4 {
 				formation = &cards.F_Phalanx
 				v123 = troops[0].Value()
@@ -395,7 +427,7 @@ func evalFormation_T1(troops []*cards.Troop, tac int) (formation *cards.Formatio
 				v123 = troops[0].Value()
 			} else if line123 {
 				formation = &cards.F_SkirmishLine
-				v123 = evalFormation_T1_V123(troops, skipValue)
+				v123 = evalFormation_T1_Line123(troops, skipValue)
 			} else {
 				formation = &cards.F_Host
 				v123 = 3
@@ -435,7 +467,10 @@ func evalFormation_T1_123Line(troops []*cards.Troop, skipValue int) (line bool) 
 
 	return line
 }
-func evalFormation_T1_V123(troops []*cards.Troop, skipValue int) (v123 int) {
+
+// evalFormation_T1_Line123 evaluate the 123 joker strenght value of a line formation.
+// troops must be sorted bigest first.
+func evalFormation_T1_Line123(troops []*cards.Troop, skipValue int) (v123 int) {
 	if skipValue == 0 {
 		switch troops[0].Value() {
 		case 5:
@@ -454,7 +489,10 @@ func evalFormation_T1_V123(troops []*cards.Troop, skipValue int) (v123 int) {
 	}
 	return v123
 }
-func evalFormation_T1_Leader(troops []*cards.Troop, skipValue int) (leader int) {
+
+// evalFormation_T1_LineLeader evaluate the leader joker strenght value in a line formation.
+// troops must be sorted bigest first.
+func evalFormation_T1_LineLeader(troops []*cards.Troop, skipValue int) (leader int) {
 	if skipValue == 0 {
 		if troops[0].Value() != 10 {
 			leader = troops[0].Value() + 1
@@ -466,6 +504,11 @@ func evalFormation_T1_Leader(troops []*cards.Troop, skipValue int) (leader int) 
 	}
 	return leader
 }
+
+// evalFormation_T2 evaluate a formation with two jokers.
+// troops must be sorted biggest first.
+// v123 is the value that the 123 joker takes in the formation.
+// vLeader is the value that leader joker takes."
 func evalFormation_T2(troops []*cards.Troop, tac1 int, tac2 int) (formation *cards.Formation, v123 int, vLeader int) {
 	switch {
 	case (tac1 == cards.TC_Alexander || tac1 == cards.TC_Darius) && tac2 == cards.TC_8:
@@ -629,6 +672,11 @@ func evalFormation_T2(troops []*cards.Troop, tac1 int, tac2 int) (formation *car
 	}
 	return formation, v123, vLeader
 }
+
+// evalFormation_T0 evaluate a formation with zero jokers.
+// troops must be sorted.
+// v123 is the value that the 123 joker takes in the formation.
+// vLeader is the value that leader joker takes."
 func evalFormation_T0(troops []*cards.Troop) (formation *cards.Formation, v123 int, vLeader int) {
 	v123 = 0    //always zero
 	vLeader = 0 //always zero
@@ -680,6 +728,8 @@ func evalFormation_Value(troops []*cards.Troop) (value bool) {
 	}
 	return value
 }
+
+// evalFormation_Line evalute a line assums the cards are sorted bigest first.
 func evalFormation_Line(troops []*cards.Troop) (line bool) {
 	line = true
 	for i, v := range troops {
@@ -713,7 +763,7 @@ func evalFormation_T1_Line(troops []*cards.Troop) (line bool, skipValue int) {
 	return line, skipValue
 }
 
-// ClaimFlag Claims a flag if possible.
+// ClaimFlag claims a flag if possible.
 // Its only possible to claim a flag if player have a formation, if
 // both players have a formation it is easy, or if player have the highest formation.
 // The main task is calculate the highest possible formation.
@@ -735,15 +785,16 @@ func evalFormation_T1_Line(troops []*cards.Troop) (line bool, skipValue int) {
 // a value slice of cards map. Then a switch with drop through on the combination and each combination
 // function use the sorted cards
 func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int) {
-	opPlayer := flag.players[opponent(playerix)]
-	mud, fog := evalEnv(flag.players[playerix].env[:], opPlayer.env[:])
-	if !opPlayer.won || !flag.players[playerix].won {
-		if flag.players[playerix].strenght != 0 { // Formation
+	opPlayer := &flag.players[opponent(playerix)]
+	player := &flag.players[playerix] // updated
+	mud, fog := evalEnv(player.env[:], opPlayer.env[:])
+	if !opPlayer.won || !player.won {
+		if player.strenght != 0 { // Formation
 			if opPlayer.strenght != 0 {
-				if flag.players[playerix].formation.Value > opPlayer.formation.Value {
+				if player.formation.Value > opPlayer.formation.Value {
 					ok = true
-				} else if flag.players[playerix].formation.Value == opPlayer.formation.Value &&
-					flag.players[playerix].strenght > opPlayer.strenght {
+				} else if player.formation.Value == opPlayer.formation.Value &&
+					player.strenght > opPlayer.strenght {
 					ok = true
 				} else {
 					ok = false
@@ -758,14 +809,12 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 						opTroops = append(opTroops, opTroop)
 					}
 				}
-				formation := flag.players[playerix].formation
-				strenght := flag.players[playerix].strenght
 				if len(opTroops) > 1 {
 					color := evalFormation_Color(opTroops)
 					value := evalFormation_Value(opTroops)
 					line, _ := evalFormation_T1_Line(opTroops) // could be better but for now ok. must be sorted
 					wedge := line && color
-					switch formation {
+					switch player.formation {
 					case &cards.F_Wedge:
 						if !wedge {
 							ok = true
@@ -778,7 +827,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							if mud {
 								m = 4
 							}
-							if value && opTroops[0].Value()*m < flag.players[playerix].strenght {
+							if value && opTroops[0].Value()*m < player.strenght {
 								ok = true
 							}
 						}
@@ -811,8 +860,8 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							copy(simCards, opCards)
 							simCards[len(opCards)-1] = card
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > formation.Value ||
-								(simFormation.Value == formation.Value && simStrenght > strenght) {
+							if simFormation.Value > player.formation.Value ||
+								(simFormation.Value == player.formation.Value && simStrenght > player.strenght) {
 								eks = simCards
 								ok = false
 								break
@@ -824,10 +873,10 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							simCards[len(opCards)-1] = unPlayCards[v[1]]
 							simCards[len(opCards)-2] = unPlayCards[v[0]]
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > formation.Value {
+							if simFormation.Value > player.formation.Value {
 								eks = simCards
 								return true
-							} else if simFormation.Value == formation.Value && simStrenght > strenght {
+							} else if simFormation.Value == player.formation.Value && simStrenght > player.strenght {
 								return true
 							} else {
 								return false
@@ -843,10 +892,10 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							simCards[len(opCards)-2] = unPlayCards[v[1]]
 							simCards[len(opCards)-3] = unPlayCards[v[0]]
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > formation.Value {
+							if simFormation.Value > player.formation.Value {
 								eks = simCards
 								return true
-							} else if simFormation.Value == formation.Value && simStrenght > strenght {
+							} else if simFormation.Value == player.formation.Value && simStrenght > player.strenght {
 								return true
 							} else {
 								return false
@@ -863,10 +912,10 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							simCards[len(opCards)-3] = unPlayCards[v[1]]
 							simCards[len(opCards)-4] = unPlayCards[v[0]]
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > formation.Value {
+							if simFormation.Value > player.formation.Value {
 								eks = simCards
 								return true
-							} else if simFormation.Value == formation.Value && simStrenght > strenght {
+							} else if simFormation.Value == player.formation.Value && simStrenght > player.strenght {
 								eks = simCards
 								return true
 							} else {
@@ -883,7 +932,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 		}
 	}
 	if ok {
-		flag.players[playerix].won = true
+		player.won = true
 	}
 	return ok, eks
 }
