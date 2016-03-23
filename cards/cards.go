@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	T  = 60
-	TC = 10
+	TROOP_NO = 60
+	TAC_NO   = 10
 
 	T_Troop  = 1
 	T_Morale = 2
@@ -34,7 +34,7 @@ const (
 )
 
 var (
-	Cards   [TC + T + 1]Card // zero index is nil
+	Cards   [TAC_NO + TROOP_NO + 1]Card // zero index is nil
 	F_Wedge = Formation{
 		Name:    "Wedge",
 		Describ: "3(4) troops connected and same color. Like 2,1,3 or 3,2,1.",
@@ -192,7 +192,7 @@ type Formation struct {
 }
 
 func DrCard(ix int) (c Card, err error) {
-	if ix > 0 && ix < T+TC+1 {
+	if ix > 0 && ix < TROOP_NO+TAC_NO+1 {
 		return Cards[ix], err
 	} else {
 		return nil, errors.New("Card do not exist")

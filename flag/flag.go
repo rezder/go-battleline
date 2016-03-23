@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"rezder.com/game/card/battleline/cards"
 	Math "rezder.com/math/int"
+	slice "rezder.com/slice/int"
 	"sort"
 )
 
@@ -16,23 +17,72 @@ const (
 
 //Player the structer for player details of the flag.
 type Player struct {
-	won       bool
-	env       [2]int
-	troops    [4]int
-	formation *cards.Formation
-	strenght  int
+	Won       bool
+	Env       [2]int
+	Troops    [4]int
+	Formation *cards.Formation
+	Strenght  int
+}
+
+func (player *Player) Equal(other *Player) (equal bool) {
+	if other == nil && player == nil {
+		equal = true
+	} else if other != nil && player != nil {
+		if player == other {
+			equal = true
+		} else if other.Won == player.Won && other.Strenght == player.Strenght {
+			if other.Formation == player.Formation || other.Formation.Value == player.Formation.Value {
+				if slice.Equal(other.Env[:], player.Env[:]) && slice.Equal(other.Troops[:], player.Troops[:]) {
+					equal = true
+				}
+			}
+		}
+	}
+	return equal
 }
 
 //Flag the structer of the flag.
 type Flag struct {
-	players [2]Player
+	Players [2]*Player
+}
+
+func New() (flag *Flag) {
+	flag = new(Flag)
+	flag.Players[0] = new(Player)
+	flag.Players[1] = new(Player)
+	return flag
+}
+func (flag *Flag) Copy() (c *Flag) {
+	c = new(Flag)
+	c.Players[0] = &*flag.Players[0]
+	c.Players[1] = &*flag.Players[1]
+	return c
+}
+
+func (f *Flag) Equal(o *Flag) (equal bool) {
+	if o == nil && f == nil {
+		equal = true
+	} else if o != nil && f != nil {
+		if o == f {
+			equal = true
+		} else {
+			equal = true
+			for i, v := range o.Players {
+				if !v.Equal(f.Players[i]) {
+					equal = false
+					break
+				}
+			}
+		}
+	}
+	return equal
 }
 
 // Remove removes a card from the flag.
 // mudix0 contains a card if removal of the mud card result in an excess card for player 0/1
 func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err error) {
-	player := &flag.players[playerix]        // updated
-	opp := &flag.players[opponent(playerix)] // updated
+	player := flag.Players[playerix]        // updated
+	opp := flag.Players[opponent(playerix)] // updated
 	mudix1 = -1
 	mudix0 = -1
 	card, err := cards.DrCard(cardix)
@@ -42,34 +92,34 @@ func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err 
 		switch tcard := card.(type) {
 		case cards.Tactic:
 			if tcard.Type() == cards.T_Env {
-				delix, err = remove_clear(player.env[:], cardix, errMessage)
+				delix, err = remove_clear(player.Env[:], cardix, errMessage)
 				if delix != -1 {
 					if cardix == cards.TC_Mud {
-						if played(player.troops[:]) == 4 {
+						if played(player.Troops[:]) == 4 {
 							mudix0 = remove_Mud(player, opp)
-							remove_clear(player.troops[:], mudix0, errMessage)
+							remove_clear(player.Troops[:], mudix0, errMessage)
 						}
-						if played(opp.troops[:]) == 4 {
+						if played(opp.Troops[:]) == 4 {
 							mudix1 = remove_Mud(opp, player)
-							remove_clear(opp.troops[:], mudix1, errMessage)
+							remove_clear(opp.Troops[:], mudix1, errMessage)
 						}
 					}
-					sort.Sort(sort.Reverse(sort.IntSlice(player.env[:])))
-					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
-					opp.formation, opp.strenght = eval(opp.troops[:], opp.env[:], player.env[:])
+					sort.Sort(sort.Reverse(sort.IntSlice(player.Env[:])))
+					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
+					opp.Formation, opp.Strenght = eval(opp.Troops[:], opp.Env[:], player.Env[:])
 				}
 			} else if tcard.Type() == cards.T_Morale {
-				delix, err = remove_clear(player.troops[:], cardix, errMessage)
+				delix, err = remove_clear(player.Troops[:], cardix, errMessage)
 				if delix != -1 {
-					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 				}
 			} else {
 				err = errors.New(fmt.Sprintf("Illegal tactic card: %v", card.Name()))
 			}
 		case cards.Troop:
-			delix, err = remove_clear(player.troops[:], cardix, errMessage)
+			delix, err = remove_clear(player.Troops[:], cardix, errMessage)
 			if delix != -1 {
-				player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+				player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 			}
 
 		default:
@@ -87,11 +137,11 @@ func remove_Mud(player *Player, opp *Player) (mudix int) {
 	var maxf *cards.Formation = &cards.F_Host
 	var maxs int = 1
 	var troops []int
-	for i, v := range player.troops {
+	for i, v := range player.Troops {
 		troops = make([]int, 4)
-		copy(troops, player.troops[:])
+		copy(troops, player.Troops[:])
 		troops[i] = 0
-		formation, strength := eval(troops, player.env[:], opp.env[:])
+		formation, strength := eval(troops, player.Env[:], opp.Env[:])
 		if formation.Value > maxf.Value {
 			maxf = formation
 			maxs = strength
@@ -132,8 +182,8 @@ func opponent(playerix int) int {
 
 //Set a card.
 func (flag *Flag) Set(cardix int, playerix int) (err error) {
-	player := &flag.players[playerix]        // updated
-	opp := &flag.players[opponent(playerix)] // updated
+	player := flag.Players[playerix]        // updated
+	opp := flag.Players[opponent(playerix)] // updated
 	card, err := cards.DrCard(cardix)
 	if err == nil {
 		errMessage := fmt.Sprintf("Player %v do not have space for card %v", playerix, card.Name())
@@ -141,23 +191,23 @@ func (flag *Flag) Set(cardix int, playerix int) (err error) {
 		switch tcard := card.(type) {
 		case cards.Tactic:
 			if tcard.Type() == cards.T_Env {
-				place, err = set_Card(cardix, player.env[:], errMessage)
+				place, err = set_Card(cardix, player.Env[:], errMessage)
 				if place != -1 {
-					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
-					opp.formation, opp.strenght = eval(opp.troops[:], opp.env[:], player.env[:])
+					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
+					opp.Formation, opp.Strenght = eval(opp.Troops[:], opp.Env[:], player.Env[:])
 				}
 			} else if tcard.Type() == cards.T_Morale {
-				place, err = set_Card(cardix, player.troops[:], errMessage)
+				place, err = set_Card(cardix, player.Troops[:], errMessage)
 				if place != -1 {
-					player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 				}
 			} else {
 				err = errors.New("Illegal tactic card: " + card.Name())
 			}
 		case cards.Troop:
-			place, err = set_Card(cardix, player.troops[:], errMessage)
+			place, err = set_Card(cardix, player.Troops[:], errMessage)
 			if place != -1 {
-				player.formation, player.strenght = eval(player.troops[:], player.env[:], opp.env[:])
+				player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 			}
 		default:
 			fmt.Printf("card type %v", tcard)
@@ -785,25 +835,25 @@ func evalFormation_T1_Line(troops []*cards.Troop) (line bool, skipValue int) {
 // a value slice of cards map. Then a switch with drop through on the combination and each combination
 // function use the sorted cards
 func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int) {
-	opPlayer := &flag.players[opponent(playerix)]
-	player := &flag.players[playerix] // updated
-	mud, fog := evalEnv(player.env[:], opPlayer.env[:])
-	if !opPlayer.won || !player.won {
-		if player.strenght != 0 { // Formation
-			if opPlayer.strenght != 0 {
-				if player.formation.Value > opPlayer.formation.Value {
+	opPlayer := flag.Players[opponent(playerix)]
+	player := flag.Players[playerix] // updated
+	mud, fog := evalEnv(player.Env[:], opPlayer.Env[:])
+	if !opPlayer.Won || !player.Won {
+		if player.Strenght != 0 { // Formation
+			if opPlayer.Strenght != 0 {
+				if player.Formation.Value > opPlayer.Formation.Value {
 					ok = true
-				} else if player.formation.Value == opPlayer.formation.Value &&
-					player.strenght > opPlayer.strenght {
+				} else if player.Formation.Value == opPlayer.Formation.Value &&
+					player.Strenght > opPlayer.Strenght {
 					ok = true
 				} else {
 					ok = false
-					copy(eks, opPlayer.troops[:])
+					copy(eks, opPlayer.Troops[:])
 				}
 			} else { // opponent no formation
-				sortInt(opPlayer.troops[:]) //============Sort Oponnent Troops=====================
+				sortInt(opPlayer.Troops[:]) //============Sort Oponnent Troops=====================
 				opTroops := make([]*cards.Troop, 0, 3)
-				for _, v := range opPlayer.troops {
+				for _, v := range opPlayer.Troops {
 					opTroop, _ := cards.DrTroop(v)
 					if opTroop != nil {
 						opTroops = append(opTroops, opTroop)
@@ -814,7 +864,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 					value := evalFormation_Value(opTroops)
 					line, _ := evalFormation_T1_Line(opTroops) // could be better but for now ok. must be sorted
 					wedge := line && color
-					switch player.formation {
+					switch player.Formation {
 					case &cards.F_Wedge:
 						if !wedge {
 							ok = true
@@ -827,7 +877,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							if mud {
 								m = 4
 							}
-							if value && opTroops[0].Value()*m < player.strenght {
+							if value && opTroops[0].Value()*m < player.Strenght {
 								ok = true
 							}
 						}
@@ -843,9 +893,9 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 				}
 
 				if !ok {
-					playedCards := played(opPlayer.troops[:])
+					playedCards := played(opPlayer.Troops[:])
 					opCards := make([]int, 4)
-					copy(opCards, opPlayer.troops[:])
+					copy(opCards, opPlayer.Troops[:])
 					sortInt(opCards)
 					simNoCards := 3 - playedCards
 					simPlayedCards := 3
@@ -860,8 +910,8 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							copy(simCards, opCards)
 							simCards[len(opCards)-1] = card
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.formation.Value ||
-								(simFormation.Value == player.formation.Value && simStrenght > player.strenght) {
+							if simFormation.Value > player.Formation.Value ||
+								(simFormation.Value == player.Formation.Value && simStrenght > player.Strenght) {
 								eks = simCards
 								ok = false
 								break
@@ -873,10 +923,10 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							simCards[len(opCards)-1] = unPlayCards[v[1]]
 							simCards[len(opCards)-2] = unPlayCards[v[0]]
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.formation.Value {
+							if simFormation.Value > player.Formation.Value {
 								eks = simCards
 								return true
-							} else if simFormation.Value == player.formation.Value && simStrenght > player.strenght {
+							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
 								return true
 							} else {
 								return false
@@ -892,10 +942,10 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							simCards[len(opCards)-2] = unPlayCards[v[1]]
 							simCards[len(opCards)-3] = unPlayCards[v[0]]
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.formation.Value {
+							if simFormation.Value > player.Formation.Value {
 								eks = simCards
 								return true
-							} else if simFormation.Value == player.formation.Value && simStrenght > player.strenght {
+							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
 								return true
 							} else {
 								return false
@@ -912,10 +962,10 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							simCards[len(opCards)-3] = unPlayCards[v[1]]
 							simCards[len(opCards)-4] = unPlayCards[v[0]]
 							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.formation.Value {
+							if simFormation.Value > player.Formation.Value {
 								eks = simCards
 								return true
-							} else if simFormation.Value == player.formation.Value && simStrenght > player.strenght {
+							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
 								eks = simCards
 								return true
 							} else {
@@ -932,7 +982,74 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 		}
 	}
 	if ok {
-		player.won = true
+		player.Won = true
 	}
 	return ok, eks
+}
+func (flag *Flag) UsedTac() (v [2][]int) {
+	v[0] = usedTac_Tac(flag.Players[0].Env[:], flag.Players[0].Troops[:])
+	v[1] = usedTac_Tac(flag.Players[1].Env[:], flag.Players[1].Troops[:])
+	return v
+}
+func usedTac_Tac(Env []int, troops []int) (tacs []int) {
+	tacs = make([]int, 0, 5)
+	for _, e := range Env {
+		if e != 0 {
+			tacs = append(tacs, e)
+		}
+	}
+	for _, cardix := range troops {
+		if cardix != 0 {
+			_, err := cards.DrTactic(cardix)
+			if err != nil {
+				tacs = append(tacs, cardix)
+			}
+		}
+	}
+	return tacs
+}
+func (flag *Flag) Free() (v [2]bool) {
+	mud, _ := evalEnv(flag.Players[0].Env[:], flag.Players[1].Env[:])
+	p1 := played(flag.Players[0].Troops[:])
+	p2 := played(flag.Players[1].Troops[:])
+	space := 3
+	if mud {
+		space = 4
+	}
+	v[0] = space-p1 > 0
+	v[1] = space-p2 > 0
+	return v
+}
+func (flag *Flag) Env(pix int) (copyenv []int) {
+	env := flag.Players[pix].Env[:]
+	copyenv = make([]int, 0, len(env))
+	for _, v := range env {
+		if v != 0 {
+			copyenv = append(copyenv, v)
+		}
+	}
+	return copyenv
+}
+func (flag *Flag) Troops(pix int) (copyTroops []int) {
+	troops := flag.Players[pix].Troops[:]
+	copyTroops = make([]int, 0, len(troops))
+	for _, v := range troops {
+		if v != 0 {
+			copyTroops = append(copyTroops, v)
+		}
+	}
+	return copyTroops
+}
+func (flag *Flag) Claimed() bool {
+	return flag.Players[0].Won || flag.Players[1].Won
+}
+func (flag *Flag) Won() (res [2]bool) {
+	res[0] = flag.Players[0].Won
+	res[1] = flag.Players[1].Won
+	return res
+}
+func (flag *Flag) Formations() (form [2]*cards.Formation) {
+	form[0] = flag.Players[0].Formation
+	form[1] = flag.Players[1].Formation
+	return form
 }
