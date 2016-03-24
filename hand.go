@@ -1,6 +1,7 @@
 package battleline
 
 import (
+	"fmt"
 	"rezder.com/game/card/battleline/cards"
 	slice "rezder.com/slice/int"
 )
@@ -55,6 +56,14 @@ func (hand *Hand) Copy() (c *Hand) {
 
 	}
 	return c
+}
+func (hand *Hand) String() (txt string) {
+	if hand == nil {
+		txt = "Hand{nil}"
+	} else {
+		txt = fmt.Sprintf("Hand{%v,%v}", hand.Troops, hand.Tacs)
+	}
+	return txt
 }
 func (hand *Hand) play(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
@@ -130,6 +139,14 @@ func (dish *Dish) Copy() (c *Dish) {
 		}
 	}
 	return c
+}
+func (dish *Dish) String() (txt string) {
+	if dish == nil {
+		txt = "Dish{nil}"
+	} else {
+		txt = fmt.Sprintf("Dish{%v,%v}", dish.Troops, dish.Tacs)
+	}
+	return txt
 }
 func (dish *Dish) dishCard(cardix int) {
 	if tac, _ := cards.DrTactic(cardix); tac != nil {

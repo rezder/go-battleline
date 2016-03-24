@@ -77,6 +77,49 @@ func (f *Flag) Equal(o *Flag) (equal bool) {
 	}
 	return equal
 }
+func (flag *Flag) String() (txt string) {
+	if flag != nil {
+		flagSign := "#"
+		var flagx, flag1, flag2 string
+		if flag.Players[0].Won {
+			flag1 = flagSign
+			flagx = " "
+			flag2 = flagx
+		} else if flag.Players[1].Won {
+			flag2 = flagSign
+			flagx = " "
+			flag1 = flagx
+		} else {
+			flag1 = " "
+			flagx = flagSign
+			flag2 = flag1
+		}
+
+		var troops [2][]int
+		var envs [2][]string
+		for i, p := range flag.Players {
+			troop := make([]int, 0, 4)
+			for _, t := range p.Troops {
+				if t != 0 {
+					troop = append(troop, t)
+				}
+			}
+			troops[i] = troop
+			env := make([]string, 0, 2)
+			var tac *cards.Tactic
+			for _, e := range p.Env {
+				if e != 0 {
+					tac, _ = cards.DrTactic(e)
+					env = append(env, tac.Name())
+				}
+			}
+		}
+		txt = fmt.Sprintf("Flag{%v %v %v %v %v %v %v }", flag1, troops[0], envs[0], flagx, envs[1], troops[1], flag2)
+	} else {
+		txt = "Flag{nil}"
+	}
+	return txt
+}
 
 // Remove removes a card from the flag.
 // mudix0 contains a card if removal of the mud card result in an excess card for player 0/1
