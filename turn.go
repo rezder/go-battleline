@@ -440,7 +440,7 @@ func getMoveScoutReturn(hand *Hand) (m []Move) {
 }
 
 func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
-	posFlags := make([]int, FLAGS)
+	posFlags := make([]int, 0, FLAGS)
 	for i, flag := range flags {
 		if !flag.Claimed() {
 			if flag.Formations()[playerix] != nil {
