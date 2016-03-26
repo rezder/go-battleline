@@ -1295,6 +1295,7 @@ func TestFlagWedge(t *testing.T) {
 	if flag.Players[player2].Strenght != ex {
 		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
 	}
+
 }
 
 //TestFlagPhalanx testing Phalanx no jokers
@@ -1684,6 +1685,35 @@ func TestFlagClaims(t *testing.T) {
 	ok, res = flag.ClaimFlag(player1, unUsed)
 	if flag.Players[player1].Won { //ok
 		t.Errorf("Should have failed. Ok: %v, res: %v\n", ok, res)
+	}
+	unUsed = []int{1, 18, 16, 46, 55, 56}
+	t.Logf("UnUsed: %v\n", unUsed)
+	flag = New()
+	flag.Set(40, player1)
+	flag.Set(39, player1)
+
+	flag.Set(59, player2)
+	flag.Set(60, player2)
+	flag.Set(58, player2)
+	t.Logf("Max formation %+v", flag)
+	ok, res = flag.ClaimFlag(player2, unUsed)
+	if !flag.Players[player2].Won { //ok
+		t.Errorf("Should have succeded. Ok: %v, res: %v\n", ok, res)
+	}
+	unUsed = []int{1, 18, 16, 46, 55, 56}
+	t.Logf("UnUsed: %v\n", unUsed)
+	flag = New()
+	flag.Set(40, player1)
+	flag.Set(38, player1)
+	flag.Set(39, player1)
+
+	flag.Set(59, player2)
+	flag.Set(60, player2)
+	flag.Set(58, player2)
+	t.Logf("Same formation %+v", flag)
+	ok, res = flag.ClaimFlag(player2, unUsed)
+	if !flag.Players[player2].Won { //ok
+		t.Errorf("Should have succeded. Ok: %v, res: %v\n", ok, res)
 	}
 }
 func deleteCards(source []int, del []int) (res []int) {

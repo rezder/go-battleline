@@ -40,6 +40,18 @@ func (player *Player) Equal(other *Player) (equal bool) {
 	}
 	return equal
 }
+func (player *Player) String() (txt string) {
+	flag := ""
+	if player.Won {
+		flag = "#"
+	}
+	formation := "nil"
+	if player.Formation != nil {
+		formation = player.Formation.Name
+	}
+	txt = fmt.Sprintf("Player{%v,%v,%v,%v,%v}", flag, player.Env, player.Troops, formation, player.Strenght)
+	return txt
+}
 
 //Flag the structer of the flag.
 type Flag struct {
@@ -113,6 +125,7 @@ func (flag *Flag) String() (txt string) {
 					env = append(env, tac.Name())
 				}
 			}
+			envs[i] = env
 		}
 		txt = fmt.Sprintf("Flag{%v %v %v %v %v %v %v }", flag1, troops[0], envs[0], flagx, envs[1], troops[1], flag2)
 	} else {
@@ -355,7 +368,7 @@ func evalSim(mud bool, fog bool, troops []int, played int) (formation *cards.For
 			formation = vformation
 			strenght = evalStrenght(troops, v123, vLeader)
 		}
-	} else if played == 3 {
+	} else if played == 3 && !mud {
 		if fog {
 			formation = &cards.F_Host
 			strenght = evalStrenght(troops[:3], 3, 10)
@@ -887,7 +900,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 				if player.Formation.Value > opPlayer.Formation.Value {
 					ok = true
 				} else if player.Formation.Value == opPlayer.Formation.Value &&
-					player.Strenght > opPlayer.Strenght {
+					player.Strenght >= opPlayer.Strenght {
 					ok = true
 				} else {
 					ok = false
@@ -949,6 +962,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 					simCards := make([]int, 4)
 					switch simNoCards {
 					case 1:
+						ok = true
 						for _, card := range unPlayCards {
 							copy(simCards, opCards)
 							simCards[len(opCards)-1] = card
@@ -970,6 +984,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 								eks = simCards
 								return true
 							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
+								eks = simCards
 								return true
 							} else {
 								return false
@@ -989,6 +1004,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 								eks = simCards
 								return true
 							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
+								eks = simCards
 								return true
 							} else {
 								return false

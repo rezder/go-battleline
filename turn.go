@@ -239,18 +239,23 @@ func win(flags *[FLAGS]*flag.Flag, playerix int) (w bool) {
 func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *deck.Deck,
 	troopDeck *deck.Deck, dishTac []int, oppDishTac []int) (m map[int][]Move, pass bool) {
 	m = make(map[int][]Move)
-	troopSpace := make([]int, 0, 9)
+	troopSpace := make([]int, 0, FLAGS)
 
 	used := make([]int, 0, 5)
 	oppUsed := make([]int, 0, 5)
 	var usedv [2][]int
+	notClaimed := make([]int, 0, FLAGS)
 	for i, flag := range flags {
-		if flag.Free()[playerix] {
-			troopSpace = append(troopSpace, i)
+		if !flag.Claimed() {
+			notClaimed = append(notClaimed, i)
+			if flag.Free()[playerix] {
+				troopSpace = append(troopSpace, i)
+			}
 		}
 		usedv = flag.UsedTac()
 		used = append(used, usedv[playerix]...)
 		oppUsed = append(oppUsed, usedv[opponent(playerix)]...)
+
 	}
 	for _, tac := range oppDishTac {
 		oppUsed = append(oppUsed, tac)
@@ -279,7 +284,7 @@ func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *de
 					moves = getCardFlagMoves(troopSpace)
 				}
 			case cards.TC_Fog, cards.TC_Mud:
-				moves = getCardFlagMoves([]int{0, 1, 2, 3, 4, 5, 6, 7, 8})
+				moves = getCardFlagMoves(notClaimed)
 			case cards.TC_Deserter:
 				moves = getDeserterMoves(flags, opponent(playerix))
 			case cards.TC_Redeploy:
@@ -449,25 +454,24 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 		}
 	}
 	n := len(posFlags)
-
 	if n != 0 {
 		switch n {
 		case 0:
-			m = make([]Move, 1)
+			m = make([]Move, 0, 1)
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 		case 1:
-			m = make([]Move, 2)
+			m = make([]Move, 0, 2)
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 		case 2:
-			m = make([]Move, 2+2)
+			m = make([]Move, 0, 2+2)
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {
 				m = append(m, MoveClaim(posFlags[i:i+1]))
 			}
 		case 3:
-			m = make([]Move, 2+(n*2))
+			m = make([]Move, 0, 2+(n*2))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {
@@ -475,7 +479,7 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				m = append(m, MoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
 			}
 		case 4:
-			m = make([]Move, 2+(n*2)+math.Comb(n, 2))
+			m = make([]Move, 0, 2+(n*2)+math.Comb(n, 2))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {                // 1 and all -1
@@ -487,7 +491,7 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				return false
 			})
 		case 5:
-			m = make([]Move, 2+(n*2)+2*math.Comb(n, 2))
+			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {                // 1 and all -1
@@ -500,7 +504,7 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				return false
 			})
 		case 6:
-			m = make([]Move, 2+(n*2)+2*math.Comb(n, 2)+math.Comb(n, 3))
+			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+math.Comb(n, 3))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {                // 1 and all -1
@@ -517,7 +521,7 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				return false
 			})
 		case 7:
-			m = make([]Move, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3))
+			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {                // 1 and all -1
@@ -535,7 +539,7 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				return false
 			})
 		case 8:
-			m = make([]Move, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3)+math.Comb(n, 4))
+			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3)+math.Comb(n, 4))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {                // 1 and all -1
@@ -557,7 +561,7 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				return false
 			})
 		case 9:
-			m = make([]Move, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3)+2*math.Comb(n, 4))
+			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3)+2*math.Comb(n, 4))
 			m = append(m, MoveClaim(make([]int, 0))) //no claims
 			m = append(m, MoveClaim(posFlags[:]))    // all
 			for i := range posFlags {                // 1 and all -1
@@ -580,8 +584,6 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 				return false
 			})
 		}
-	} else {
-		m = make([]Move, 0)
 	}
 	return m
 }
@@ -693,7 +695,7 @@ func (m MoveScoutReturn) MoveEqual(other Move) (equal bool) {
 	if other != nil {
 		om, ok := other.(MoveScoutReturn)
 		if ok {
-			m.Equal(om)
+			equal = m.Equal(om)
 		}
 	}
 	return equal
@@ -739,7 +741,7 @@ func (m MoveClaim) MoveEqual(other Move) (equal bool) {
 	if other != nil {
 		om, ok := other.(MoveClaim)
 		if ok {
-			m.Equal(om)
+			equal = m.Equal(om)
 		}
 	}
 	return equal

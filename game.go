@@ -120,14 +120,18 @@ func (game *Game) Move(move int) {
 func moveScoutRet(move *MoveScoutReturn, deckTack *deck.Deck, deckTroop *deck.Deck, hand *Hand) {
 	if len(move.Tac) != 0 {
 		reTac := make([]int, len(move.Tac))
-		copy(reTac, move.Tac) // this may no be necessary
+		for i, v := range move.Tac {
+			reTac[i] = deckFromTactic(v)
+		}
 		deckTack.Return(reTac)
 		hand.playMulti(move.Tac)
 	}
 	if len(move.Troop) != 0 {
-		re := make([]int, len(move.Troop))
-		copy(re, move.Troop)
-		deckTroop.Return(re)
+		reTroop := make([]int, len(move.Troop))
+		for i, v := range move.Troop {
+			reTroop[i] = deckFromTroop(v)
+		}
+		deckTroop.Return(reTroop)
 		hand.playMulti(move.Troop)
 	}
 }
@@ -321,17 +325,17 @@ func (pos *GamePos) Copy() (c *GamePos) {
 
 func simTroops(deck *deck.Deck, troops1 []int, troops2 []int) (troops []int) {
 	dr := deck.Remaining()
-	troops = make([]int, len(dr), len(dr)+(2*HAND))
-	copy(troops, dr)
-	for i := 0; i < HAND; i++ {
-		c, _ := cards.DrTroop(troops1[i])
-		if c != nil {
-			troops = append(troops, troops1[i])
+	troops = make([]int, len(dr), len(dr)+len(troops1)+len(troops2))
+	if len(dr) > 0 {
+		for i, v := range dr {
+			troops[i] = deckToTroop(v)
 		}
-		c, _ = cards.DrTroop(troops2[i])
-		if c != nil {
-			troops = append(troops, troops2[i])
-		}
+	}
+	if len(troops1) > 0 {
+		troops = append(troops, troops1...)
+	}
+	if len(troops2) > 0 {
+		troops = append(troops, troops2...)
 	}
 	return troops
 }
@@ -376,8 +380,14 @@ func deckDealTactic(deckTac *deck.Deck) (tac int) {
 func deckToTroop(deckix int) int {
 	return deckix + 1
 }
+func deckFromTroop(cardix int) int {
+	return cardix - 1
+}
 func deckToTactic(deckix int) int {
 	return deckix + 1 + cards.TROOP_NO
+}
+func deckFromTactic(cardix int) int {
+	return cardix - 1 - cards.TROOP_NO
 }
 func GobRegistor() {
 	gob.Register(MoveCardFlag(0))
