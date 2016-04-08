@@ -748,7 +748,9 @@ func (m MoveClaim) MoveEqual(other Move) (equal bool) {
 }
 func (m MoveClaim) Copy() (c Move) {
 	if m != nil {
-		c = m
+		v := make([]int, len(m))
+		copy(v, m)
+		c = MoveClaim(v)
 	}
 	return c
 }

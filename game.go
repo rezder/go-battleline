@@ -15,16 +15,14 @@ const (
 )
 
 type Game struct {
-	Id        int
 	PlayerIds [2]int
 	Pos       GamePos
 	PosInit   GamePos
 	Moves     [][2]int
 }
 
-func New(id int, playerIds [2]int) (game *Game) {
+func New(playerIds [2]int) (game *Game) {
 	game = new(Game)
-	game.Id = id
 	game.PlayerIds = playerIds
 	game.Pos = *NewGamePos()
 
@@ -36,7 +34,7 @@ func (game *Game) Equal(other *Game) (equal bool) {
 	} else if other != nil && game != nil {
 		if game == other {
 			equal = true
-		} else if other.Id == game.Id && other.PlayerIds == game.PlayerIds &&
+		} else if other.PlayerIds == game.PlayerIds &&
 			other.PosInit.Equal(&game.PosInit) && other.Pos.Equal(&game.Pos) {
 			equal = true
 			for i, v := range other.Moves {
@@ -63,35 +61,35 @@ func (game *Game) addMove(cardix int, moveix int) {
 
 func (game *Game) Quit(playerix int) {
 	game.Pos.quit()
-	game.Pos.info = ""
+	game.Pos.Info = ""
 	game.addMove(-1, -1)
 }
 func (game *Game) Pass() {
 	if game.Pos.MovePass {
-		game.Pos.info = ""
+		game.Pos.Info = ""
 		game.addMove(-1, -1)
 		game.Pos.next(false, &game.Pos.Hands, &game.Pos.Flags, &game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
 	} else {
 		panic("Calling pass when not possible")
 	}
 }
-func (game *Game) Move(move int) {
+func (game *Game) Move(move int) (dealtix int) {
 	game.addMove(-1, move)
 	pos := &game.Pos //Update
-	pos.info = ""
+	pos.Info = ""
 	switch pos.State {
 
 	case TURN_FLAG:
 		moveC, ok := pos.Moves[move].(MoveClaim)
 		if ok {
-			pos.info = moveClaimFlag(pos.Player, moveC, &pos.Flags, &pos.Hands, &pos.DeckTroop)
+			pos.Info = moveClaimFlag(pos.Player, moveC, &pos.Flags, &pos.Hands, &pos.DeckTroop)
 		} else {
 			panic("There should not be only claim moves")
 		}
 	case TURN_SCOUT1, TURN_SCOUT2, TURN_DECK:
 		moveD, ok := pos.Moves[move].(MoveDeck)
 		if ok {
-			moveDeck(moveD, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
+			dealtix = moveDeck(moveD, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 		} else {
 			panic("There should not be only scout pick deck moves ")
 		}
@@ -110,7 +108,7 @@ func (game *Game) Move(move int) {
 		panic("Unexpected turn state")
 	}
 	pos.next(false, &pos.Hands, &pos.Flags, &pos.DeckTac, &pos.DeckTroop, &pos.Dishs)
-
+	return dealtix
 }
 
 //moveScoutReturn make the return from scout.
@@ -155,19 +153,22 @@ func moveClaimFlag(playerix int, claimixs []int, flags *[FLAGS]*flag.Flag, hands
 //#tacDeck
 //#troopDeck
 //#hand
-func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Hand) {
+func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Hand) (dealt int) {
 	switch int(deck) {
 	case DECK_TAC:
-		hand.draw(deckDealTactic(tacDeck))
+		dealt = deckDealTactic(tacDeck)
+		hand.draw(dealt)
 	case DECK_TROOP:
-		hand.draw(deckDealTroop(troopDeck))
+		dealt = deckDealTroop(troopDeck)
+		hand.draw(dealt)
 	}
+	return dealt
 }
 
-func (game *Game) MoveHand(cardix int, moveix int) {
+func (game *Game) MoveHand(cardix int, moveix int) (dealtix int) {
 	game.addMove(cardix, moveix)
 	pos := &game.Pos //Update
-	pos.info = ""
+	pos.Info = ""
 	scout := false
 	var err error
 	if pos.State == TURN_HAND {
@@ -176,7 +177,7 @@ func (game *Game) MoveHand(cardix int, moveix int) {
 		case MoveCardFlag:
 			err = pos.Flags[int(move)].Set(cardix, pos.Player)
 		case MoveDeck: //scout
-			moveDeck(move, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
+			dealtix = moveDeck(move, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 			pos.Dishs[pos.Player].dishCard(cardix)
 			scout = true
 		case MoveDeserter:
@@ -199,6 +200,7 @@ func (game *Game) MoveHand(cardix int, moveix int) {
 	} else {
 		panic("Wrong move function turn is not play card")
 	}
+	return dealtix
 }
 
 func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int, dishs *[2]*Dish) (err error) {
@@ -251,7 +253,7 @@ type GamePos struct { //TODO make deep copy all map slice, interface or pointers
 	DeckTac   deck.Deck
 	DeckTroop deck.Deck
 	Turn
-	info string
+	Info string
 }
 
 func NewGamePos() *GamePos {
@@ -275,7 +277,7 @@ func (pos *GamePos) Equal(other *GamePos) (equal bool) {
 		if pos == other {
 			equal = true
 		} else if other.Turn.Equal(&pos.Turn) && other.DeckTac.Equal(&pos.DeckTac) &&
-			other.DeckTroop.Equal(&pos.DeckTroop) && other.info == pos.info {
+			other.DeckTroop.Equal(&pos.DeckTroop) && other.Info == pos.Info {
 			equalList := true
 			for i, v := range other.Flags {
 				if !v.Equal(pos.Flags[i]) {
@@ -319,7 +321,7 @@ func (pos *GamePos) Copy() (c *GamePos) {
 	c.DeckTac = *pos.DeckTac.Copy()
 	c.DeckTroop = *pos.DeckTroop.Copy()
 	c.Turn = *pos.Turn.Copy()
-	c.info = pos.info
+	c.Info = pos.Info
 	return c
 }
 
@@ -406,7 +408,7 @@ func Save(game *Game, file *os.File) (err error) {
 func Load(file *os.File) (game *Game, err error) {
 	gob.Register(MoveCardFlag(0))
 	decoder := gob.NewDecoder(file)
-	var g Game = *New(1, [2]int{1, 2})
+	var g Game = *New([2]int{1, 2})
 
 	err = decoder.Decode(&g)
 	game = &g

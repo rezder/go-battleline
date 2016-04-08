@@ -10,7 +10,7 @@ import (
 
 func TestGameSave(t *testing.T) {
 	fileName := "test/save.gob"
-	game := New(1, [2]int{1, 2})
+	game := New([2]int{1, 2})
 	game.Start(1)
 	file, err := os.Create(fileName)
 	//f,err:=os.Open(fileName)
@@ -35,7 +35,7 @@ func TestGameSave(t *testing.T) {
 }
 func TestDecodeGame(t *testing.T) {
 	GobRegistor()
-	game := New(1, [2]int{1, 2})
+	game := New([2]int{1, 2})
 	game.Start(0)
 	b := new(bytes.Buffer)
 
@@ -75,7 +75,7 @@ func TestGame(t *testing.T) {
 	fileNameInit := "test/initgame.gob"
 	fileNameEnd := "test/endgame.gob"
 
-	/*tmp := New(1, [2]int{1, 2})
+	/*tmp := New( [2]int{1, 2})
 	tmp.Start(1)
 	GobRegistor()
 	saveGame(fileNameInit, tmp)
