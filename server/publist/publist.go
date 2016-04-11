@@ -59,7 +59,8 @@ func (list *List) update() {
 		data.Id = v.Id
 		data.Name = v.Name
 		data.Invite = v.Invite
-		data.DoneInvite = v.DoneInvite
+		data.DoneCom = v.DoneCom
+		data.Message = v.Message
 		gdata, found = list.games[key]
 		if found {
 			data.Opp = gdata.Opp
@@ -76,8 +77,8 @@ type GameData struct {
 	Watch *WatchChan
 }
 type WatchData struct {
-	Id   int              //This me
-	Send chan<- MoveBench //send here. Remember to close.
+	Id   int               //This me
+	Send chan<- *MoveBench //send here. Remember to close.
 }
 type WatchChan struct {
 	Channel chan *WatchData
@@ -98,19 +99,27 @@ type MoveBench struct {
 }
 
 type PlayerData struct {
-	Id         int
-	Name       string
-	Invite     chan<- *Invite //Closed by the server
-	DoneInvite chan struct{}  //Used by the server
+	Id      int
+	Name    string
+	Invite  chan<- *Invite  //Closed by the server
+	DoneCom chan struct{}   //Used by the server
+	Message chan<- *MesData //never closed
 }
-type Invite struct {
+type Invite struct { //TODO retract do not work because response is not closed, just use the list
 	Inviter  int
-	Response chan *InviteResponse //Common for all invitaion
-	Retract  chan struct{}        //Per invite
+	Name     string
+	Response chan<- *InviteResponse `json:"-"` //Common for all invitaion
+	Retract  chan struct{}          `json:"-"` //Per invite
+}
+type MesData struct {
+	Sender  int
+	Name    string
+	Message string
 }
 type InviteResponse struct {
 	Responder int
-	GameChan  chan *MoveView //nil when decline
+	Name      string
+	GameChan  chan<- *MoveView //nil when decline
 }
 type MoveView struct {
 	Mover bool
@@ -201,11 +210,12 @@ func (t *Turn) Equal(other *Turn) (equal bool) {
 }
 
 type Data struct {
-	Id         int
-	Name       string
-	Invite     chan<- *Invite
-	DoneInvite chan struct{} //Used by the player
-	Opp        int           // maybe this is not need
-	OppName    string
-	Watch      *WatchChan
+	Id      int
+	Name    string
+	Invite  chan<- *Invite
+	DoneCom chan struct{} //Used by the player
+	Message chan<- *MesData
+	Opp     int // maybe this is not need
+	OppName string
+	Watch   *WatchChan
 }

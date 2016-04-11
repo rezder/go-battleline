@@ -7,8 +7,8 @@ import (
 )
 
 func bench(watchChan *pub.WatchChan, game <-chan *MoveBenchView) {
-	initWatchers := make(map[chan<- pub.MoveBench]bool)
-	watchers := make(map[chan<- pub.MoveBench]bool)
+	initWatchers := make(map[chan<- *pub.MoveBench]bool)
+	watchers := make(map[chan<- *pub.MoveBench]bool)
 Loop:
 	for {
 		select {
@@ -43,13 +43,13 @@ Loop:
 				break Loop
 			} else {
 				if len(initWatchers) > 0 {
-					move := *NewMoveBench(moveView, true)
+					move := NewMoveBench(moveView, true)
 					for key, _ := range initWatchers {
 						key <- move
 					}
 				}
 				if len(watchers) > 0 {
-					move := *NewMoveBench(moveView, false)
+					move := NewMoveBench(moveView, false)
 					for key, _ := range watchers {
 						key <- move
 					}
