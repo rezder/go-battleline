@@ -102,14 +102,16 @@ type PlayerData struct {
 	Id      int
 	Name    string
 	Invite  chan<- *Invite  //Closed by the server
-	DoneCom chan struct{}   //Used by the server
+	DoneCom chan struct{}   //Used by all send to player
 	Message chan<- *MesData //never closed
+	BootCh  chan struct{}   //For server to boot player
 }
 type Invite struct { //TODO retract do not work because response is not closed, just use the list
-	Inviter  int
-	Name     string
-	Response chan<- *InviteResponse `json:"-"` //Common for all invitaion
-	Retract  chan struct{}          `json:"-"` //Per invite
+	Inviter   int
+	Name      string
+	Response  chan<- *InviteResponse `json:"-"` //Common for all invitaion
+	Retract   chan struct{}          `json:"-"` //Per invite
+	DoneComCh chan struct{}          `json:"-"`
 }
 type MesData struct {
 	Sender  int
