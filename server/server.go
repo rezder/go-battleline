@@ -14,7 +14,7 @@ func main() {
 	go errors(errChan)
 	list := pub.New()
 
-	startGameChan := tables.NewStartGameChan()
+	startGameChan := tables.NewStartGameChCl()
 	finTables := make(chan struct{})
 	go tables.Start(startGameChan, list, finTables)
 

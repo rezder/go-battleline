@@ -10,18 +10,20 @@ import (
 	"time"
 )
 
-func table(ids [2]int, playerChans [2]chan<- *pub.MoveView, watch *pub.WatchChan, resumeGame *bat.Game,
-	finish chan<- [2]int) {
+//Start a table with a game.
+//If resumeGame is nil a new game is started.
+func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchChCl, resumeGame *bat.Game,
+	finishCh chan<- [2]int) {
 
-	var moveChans [2]chan [2]int
-	moveChans[0] = make(chan [2]int)
-	moveChans[1] = make(chan [2]int)
-	benchChan := make(chan *MoveBenchView, 1)
-	go bench(watch, benchChan)
-	game, moveInit1, moveInit2, moveInitBench := initMove(resumeGame, ids, moveChans)
-	playerChans[0] <- moveInit1
-	playerChans[1] <- moveInit2
-	benchChan <- moveInitBench
+	var moveChs [2]chan [2]int
+	moveChs[0] = make(chan [2]int)
+	moveChs[1] = make(chan [2]int)
+	benchCh := make(chan *MoveBenchView, 1)
+	go bench(watchChCl, benchCh)
+	game, moveInit1, moveInit2, moveInitBench := initMove(resumeGame, ids, moveChs)
+	playerChs[0] <- moveInit1
+	playerChs[1] <- moveInit2
+	benchCh <- moveInitBench
 
 	var moveix [2]int
 	var move bat.Move
@@ -39,7 +41,7 @@ func table(ids [2]int, playerChans [2]chan<- *pub.MoveView, watch *pub.WatchChan
 		isClaim = false
 		cardix = 0
 		mover = game.Pos.Player
-		moveix, open = <-moveChans[mover]
+		moveix, open = <-moveChs[mover]
 		if !open {
 			game.Quit(game.Pos.Player)
 			move = MoveQuit{}
@@ -66,20 +68,22 @@ func table(ids [2]int, playerChans [2]chan<- *pub.MoveView, watch *pub.WatchChan
 			move = updateClaim(&game.Pos, claimView)
 		}
 		move1, move2, moveBench := creaMove(mover, move, cardix, &game.Pos)
-		playerChans[0] <- move1
-		playerChans[1] <- move2
-		benchChan <- moveBench
+		playerChs[0] <- move1
+		playerChs[1] <- move2
+		benchCh <- moveBench
 		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT {
 			break
 		}
 	}
 
-	close(playerChans[0])
-	close(playerChans[1])
-	finish <- ids // may be buffered tables will close bench before closing tables
-	//close(benchChan) finish close the watch that close the bench
-
+	close(playerChs[0])
+	close(playerChs[1])
+	close(benchCh)
+	finishCh <- ids // may be buffered tables will close bench before closing tables
 }
+
+//updateClaim update the MoveClaimView with the succesfully claim flags and the win
+//indicator. The updated view is casted and returned as the move.
 func updateClaim(pos *bat.GamePos, claimView *MoveClaimView) (move bat.Move) {
 	for _, v := range claimView.Claim {
 		if pos.Flags[v].Claimed() {
@@ -96,6 +100,8 @@ func updateClaim(pos *bat.GamePos, claimView *MoveClaimView) (move bat.Move) {
 	// should use ref currently interface moves value is not ref but could be??
 	return move
 }
+
+//creaMove Create a player move.
 func creaMove(mover int, move bat.Move, cardix int, pos *bat.GamePos) (move1 *pub.MoveView, move2 *pub.MoveView, moveBench *MoveBenchView) {
 	move1 = new(pub.MoveView)
 	move1.Mover = mover == 0
@@ -124,6 +130,8 @@ func creaMove(mover int, move bat.Move, cardix int, pos *bat.GamePos) (move1 *pu
 
 	return move1, move2, moveBench
 }
+
+//initMove create the initial moves.
 func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game *bat.Game, move1 *pub.MoveView,
 	move2 *pub.MoveView, moveBench *MoveBenchView) {
 	move1 = new(pub.MoveView)
@@ -138,13 +146,13 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 		}
 		move1.Turn = pub.NewTurn(&game.Pos.Turn, 0)
 		moveInitPos := *new(MoveInitPos)
-		move1.MoveChan = moveChans[0]
+		move1.MoveCh = moveChans[0]
 		moveInitPos.Pos = NewPlayPos(&game.Pos, 0)
 		move1.Move = moveInitPos
 
 		move2.Turn = pub.NewTurn(&game.Pos.Turn, 1)
 		moveInitPos = *new(MoveInitPos)
-		move2.MoveChan = moveChans[1]
+		move2.MoveCh = moveChans[1]
 		moveInitPos.Pos = NewPlayPos(&game.Pos, 1)
 		move2.Move = moveInitPos
 
@@ -160,7 +168,7 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 
 		move1.Turn = pub.NewTurn(&game.Pos.Turn, 0)
 		init := new(MoveInit)
-		move1.MoveChan = moveChans[0]
+		move1.MoveCh = moveChans[0]
 		h := make([]int, len(game.Pos.Hands[0].Troops))
 		copy(h, game.Pos.Hands[0].Troops)
 		init.Hand = h
@@ -168,7 +176,7 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 
 		move2.Turn = pub.NewTurn(&game.Pos.Turn, 1)
 		init = new(MoveInit)
-		move2.MoveChan = moveChans[1]
+		move2.MoveCh = moveChans[1]
 		h = make([]int, len(game.Pos.Hands[1].Troops))
 		copy(h, game.Pos.Hands[1].Troops)
 		init.Hand = h
@@ -194,6 +202,7 @@ type PlayPos struct {
 	DeckTroops    int
 }
 
+//opp return the oppont.
 func opp(playerix int) int {
 	if playerix == 0 {
 		return 1
@@ -232,6 +241,8 @@ func NewPlayPos(pos *bat.GamePos, playerix int) (posView *PlayPos) {
 
 	return posView
 }
+
+//copyDish extract the dished card data.
 func copyDish(pos *bat.GamePos, ix int) (troops []int, tacs []int) {
 	troops = make([]int, len(pos.Dishs[ix].Troops))
 	copy(troops, pos.Dishs[ix].Troops)
@@ -297,6 +308,8 @@ func NewFlag(flag *flag.Flag, playerix int) (view *Flag) {
 	view.PlayFlag = flag.Players[playerix].Won
 	return view
 }
+
+//flagCopyCards extract cards of a player.
 func flagCopyCards(flag *flag.Flag, playerix int) (troops []int, envs []int) {
 	troops = make([]int, 0, len(flag.Players[playerix].Troops))
 	for _, v := range flag.Players[playerix].Troops {
@@ -328,6 +341,8 @@ func (flag *Flag) Equal(other *Flag) (equal bool) {
 	return equal
 }
 
+// MoveScoutReturnView the scout return move view.
+// the scout return move as view by the opponent and the public.
 type MoveScoutReturnView struct {
 	Tac   int
 	Troop int
@@ -353,6 +368,8 @@ func NewMoveScoutReturnView(scout bat.MoveScoutReturn) (m *MoveScoutReturnView) 
 	return m
 }
 
+// MoveClaimView the claim view contain the opriginal claim move and the result.
+// The claimed flags, if the game was won and evt. information from failed claims.
 type MoveClaimView struct {
 	Claim   []int
 	Claimed []int
@@ -386,6 +403,8 @@ func NewMoveClaimView(claim bat.MoveClaim) (m *MoveClaimView) {
 	return m
 }
 
+//MoveInit id the initial move in a new game.
+//Just the 7 cards the player get.
 type MoveInit struct {
 	Hand []int //nil for bench
 }
@@ -411,6 +430,7 @@ func (m MoveInit) Copy() (c bat.Move) {
 	return c
 }
 
+//MoveInitPos is the first move in a resumed game.
 type MoveInitPos struct {
 	Pos *PlayPos
 }
@@ -429,6 +449,7 @@ func (m MoveInitPos) Copy() (c bat.Move) {
 	return c
 }
 
+// MovePass is the pass move.
 type MovePass struct{}
 
 func (m MovePass) MoveEqual(other bat.Move) (equal bool) {
@@ -445,6 +466,7 @@ func (m MovePass) Copy() (c bat.Move) {
 	return c
 }
 
+//MoveQuit the quit move.
 type MoveQuit struct{}
 
 func (m MoveQuit) MoveEqual(other bat.Move) (equal bool) {

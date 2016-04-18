@@ -3,7 +3,7 @@ The list is synchronized with read write lock. Data comes from the two servers.
 The data from the server should be a snapshot(copy) and the Read data is a pointer
 to the current list and that list is never update, but replaced when updated.
 This give all the players that read the list a reference to the same list (so no modify!!) until
-the list is updated and any new reads will give differnt list.
+the list is updated and any new reads can give differnt list.
 */
 package publist
 
@@ -13,6 +13,7 @@ import (
 	"sync"
 )
 
+//List is the structure that maintain the public data.
 type List struct {
 	lock    *sync.RWMutex
 	games   map[int]*GameData
@@ -20,6 +21,7 @@ type List struct {
 	list    map[string]*Data
 }
 
+//New create a list.
 func New() (list *List) {
 	list = new(List)
 	list.lock = new(sync.RWMutex)
@@ -29,12 +31,17 @@ func New() (list *List) {
 	return list
 }
 
+//UpdateGames update the public data with game information.
+//newgames is used directly so it must be a copy.
 func (list *List) UpdateGames(newgames map[int]*GameData) {
 	list.lock.Lock()
 	list.games = newgames
 	list.update()
 	list.lock.Unlock()
 }
+
+//UpdatePlayers update the public data with player information.
+//newplayers is used directly so it must be a copy.
 func (list *List) UpdatePlayers(newplayers map[int]*PlayerData) {
 	list.lock.Lock()
 	list.players = newplayers
@@ -42,6 +49,8 @@ func (list *List) UpdatePlayers(newplayers map[int]*PlayerData) {
 	list.lock.Unlock()
 }
 
+//Read get the current public list. The list is a multible used map.
+//So no change.
 func (list *List) Read() (publist map[string]*Data) {
 	list.lock.RLock()
 	publist = list.list
@@ -49,6 +58,7 @@ func (list *List) Read() (publist map[string]*Data) {
 	return publist
 }
 
+//update updates the list with data from players and games.
 func (list *List) update() {
 	var data *Data
 	var found bool
@@ -72,63 +82,85 @@ func (list *List) update() {
 	list.list = publist
 }
 
+//GameData is the game information in the game map.
+//Every game have two enteries one for every player.
 type GameData struct {
 	Opp   int
-	Watch *WatchChan
+	Watch *WatchChCl
 }
+
+//WatchData is the information send to a table to start watching a game.
 type WatchData struct {
 	Id   int               //This me
-	Send chan<- *MoveBench //send here. Remember to close.
+	Send chan<- *MoveBench //Send here. Remember to close.
 }
-type WatchChan struct {
+
+//The watch channel and its close channel.
+type WatchChCl struct {
 	Channel chan *WatchData
 	Close   chan struct{}
 }
 
-func NewWatchChan() (w *WatchChan) {
-	w = new(WatchChan)
+func NewWatchChCl() (w *WatchChCl) {
+	w = new(WatchChCl)
 	w.Channel = make(chan *WatchData)
 	w.Close = make(chan struct{})
 	return w
 }
 
+//MoveBench the data send to watchers.
 type MoveBench struct {
 	Mover     int
 	Move      bat.Move
 	NextMover int
 }
 
+//PlayerData the data send between logon server and the player server.
 type PlayerData struct {
 	Id      int
 	Name    string
-	Invite  chan<- *Invite  //Closed by the server
+	Invite  chan<- *Invite
 	DoneCom chan struct{}   //Used by all send to player
 	Message chan<- *MesData //never closed
 	BootCh  chan struct{}   //For server to boot player
 }
-type Invite struct { //TODO retract do not work because response is not closed, just use the list
+
+//Invite the invite data.
+//The invite can be retracted before the receive channel have stoped listening.
+//This make the standard select unreliable. Use a select with default to check if retracted and
+//the receiver must count on receiving retracted responses.
+type Invite struct {
 	Inviter   int
 	Name      string
 	Response  chan<- *InviteResponse `json:"-"` //Common for all invitaion
 	Retract   chan struct{}          `json:"-"` //Per invite
 	DoneComCh chan struct{}          `json:"-"`
 }
+
+//MesData message data.
 type MesData struct {
 	Sender  int
 	Name    string
 	Message string
 }
+
+//InviteResponse the response to a invitation.
+//GameCh is nil when decline.
 type InviteResponse struct {
 	Responder int
 	Name      string
-	GameChan  chan<- *MoveView //nil when decline
+	GameCh    chan<- *MoveView //nil when decline
 }
+
+//MoveView the information send from the table to the players.
+//It should contain all information to animate a player move.
+//Its is non symetrics, each player get his own.
 type MoveView struct {
 	Mover bool
 	Move  bat.Move
 	Card  int //This is the return card from deck moves, zero when not used.
 	*Turn
-	MoveChan chan<- [2]int `json:"-"`
+	MoveCh chan<- [2]int `json:"-"`
 }
 
 // Turn a player turn.
@@ -211,6 +243,7 @@ func (t *Turn) Equal(other *Turn) (equal bool) {
 	return equal
 }
 
+//Data the public list data a combination of tabel and player information.
 type Data struct {
 	Id      int
 	Name    string
@@ -219,5 +252,5 @@ type Data struct {
 	Message chan<- *MesData
 	Opp     int // maybe this is not need
 	OppName string
-	Watch   *WatchChan
+	Watch   *WatchChCl
 }

@@ -25,6 +25,8 @@ const (
 	DECK_TROOP = 2
 )
 
+// Turn hold the information of a turn, whos turn is it, what kind of turn (State) and
+// the possible moves.
 type Turn struct {
 	Player    int
 	State     int
@@ -33,7 +35,9 @@ type Turn struct {
 	MovePass  bool
 }
 
-func (turn *Turn) start(starter int, hand *Hand, flags *[FLAGS]*flag.Flag, deckTac *deck.Deck, deckTroop *deck.Deck, dishs *[2]*Dish) {
+//start set up the first turn.
+func (turn *Turn) start(starter int, hand *Hand, flags *[FLAGS]*flag.Flag, deckTac *deck.Deck,
+	deckTroop *deck.Deck, dishs *[2]*Dish) {
 
 	turn.Player = starter
 	turn.State = TURN_HAND
@@ -115,6 +119,8 @@ func (turn *Turn) Copy() (c *Turn) {
 	}
 	return c
 }
+
+// GetMoveix find the move index.
 func (turn *Turn) GetMoveix(handCardix int, move Move) (ix int) {
 	ix = -1
 	if len(turn.Moves) != 0 {
@@ -137,21 +143,27 @@ func (turn *Turn) GetMoveix(handCardix int, move Move) (ix int) {
 	}
 	return ix
 }
+
+//Opp the opponent to the player that have the turn.
 func (turn *Turn) Opp() int {
 	return opponent(turn.Player)
 }
+
+//quit set the state to quit.
 func (turn *Turn) quit() {
 	turn.State = TURN_QUIT
 }
+
+// next role the turn over to the next turn that need player action.
 func (turn *Turn) next(handScout bool, hands *[2]*Hand, flags *[FLAGS]*flag.Flag, deckTac *deck.Deck,
 	deckTroop *deck.Deck, dishs *[2]*Dish) {
 	turn.Player, turn.State, turn.MovePass, turn.Moves, turn.MovesHand = updateTurn(turn.Player,
 		turn.State, hands, flags, deckTac, deckTroop, dishs, handScout)
 }
 
-//updateTurn udate turn
-func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*flag.Flag, deckTac *deck.Deck,
-	deckTroop *deck.Deck, dishs *[2]*Dish, handScout bool) (player int, state int,
+//updateTurn role the turn over to the next turn that need player action.
+func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*flag.Flag,
+	deckTac *deck.Deck, deckTroop *deck.Deck, dishs *[2]*Dish, handScout bool) (player int, state int,
 	movePass bool, moves []Move, movesHand map[int][]Move) {
 	player = oldPlayer
 	switch oldState {
@@ -164,7 +176,8 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 				movesHand = handMap
 				movePass = pass
 			} else {
-				player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac, deckTroop, dishs, false) //I think there always is a move right!!!
+				player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
+					deckTac, deckTroop, dishs, false) //I think there always is a move right!!!
 			}
 		} else {
 			state = TURN_FINISH
@@ -177,7 +190,8 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 		}
 		moves = getMoveDeck(deckTac, deckTroop)
 		if len(moves) == 0 {
-			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac, deckTroop, dishs, false)
+			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac,
+				deckTroop, dishs, false)
 		}
 
 	case TURN_DECK:
@@ -185,7 +199,8 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 		player = opponent(oldPlayer)
 		moves = getMoveClaim(player, flags)
 		if len(moves) == 0 {
-			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac, deckTroop, dishs, false)
+			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
+				deckTac, deckTroop, dishs, false)
 		}
 
 	case TURN_FINISH:
@@ -195,13 +210,15 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 		state = TURN_SCOUTR
 		moves = getMoveScoutReturn(hands[player])
 		if len(moves) == 0 {
-			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac, deckTroop, dishs, false)
+			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
+				deckTac, deckTroop, dishs, false)
 		}
 	case TURN_SCOUT2:
 		state = TURN_SCOUT1
 		moves = getMoveDeck(deckTac, deckTroop)
 		if len(moves) == 0 {
-			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac, deckTroop, dishs, false)
+			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
+				deckTac, deckTroop, dishs, false)
 
 		}
 	case TURN_SCOUTR:
@@ -209,11 +226,14 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 		player = opponent(oldPlayer)
 		moves = getMoveClaim(player, flags)
 		if len(moves) == 0 {
-			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags, deckTac, deckTroop, dishs, false)
+			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
+				deckTac, deckTroop, dishs, false)
 		}
 	}
 	return player, state, movePass, moves, movesHand
 }
+
+//win check if a player have met the criteria for wining a game.
 func win(flags *[FLAGS]*flag.Flag, playerix int) (w bool) {
 	total := 0
 	row := 0
@@ -317,6 +337,8 @@ func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *de
 
 	return m, pass
 }
+
+// getScoutMoves returns the possible scout moves.
 func getScoutMoves(tac *deck.Deck, troop *deck.Deck) (moves []Move) {
 	moves = make([]Move, 0, 2)
 	if !tac.Empty() {
@@ -327,6 +349,8 @@ func getScoutMoves(tac *deck.Deck, troop *deck.Deck) (moves []Move) {
 	}
 	return moves
 }
+
+// getTraitorMoves returns the possible traiter moves.
 func getTraitorMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 	moves = make([]Move, 0, (FLAGS*3+3)*FLAGS) //270
 	for oppFlagix, oppFlag := range flags {
@@ -342,6 +366,8 @@ func getTraitorMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 	}
 	return moves
 }
+
+// getRedeployMoves returns the possible redeploy moves.
 func getRedeployMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 	moves = make([]Move, 0, (FLAGS*3+3)*(FLAGS+1)) //300
 	for outFlagix, outFlag := range flags {
@@ -366,6 +392,8 @@ func getRedeployMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 	}
 	return moves
 }
+
+// getDeserterMoves retunrs the possible deserter moves.
 func getDeserterMoves(flags *[FLAGS]*flag.Flag, opp int) (moves []Move) {
 	moves = make([]Move, 0, FLAGS*3+3)
 	for flagix, flag := range flags {
@@ -380,6 +408,9 @@ func getDeserterMoves(flags *[FLAGS]*flag.Flag, opp int) (moves []Move) {
 	}
 	return moves
 }
+
+// getCardFlagMoves create all the card to flag moves.
+// flags with space.
 func getCardFlagMoves(flags []int) (moves []Move) {
 	moves = make([]Move, len(flags))
 	for i, v := range flags {
@@ -444,6 +475,9 @@ func getMoveScoutReturn(hand *Hand) (m []Move) {
 	return m
 }
 
+// getMoveClaim returns all the possible claim flag moves.
+// There is no validation, that is it is not checked if a claim will
+// succede only that it is possible to make.
 func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 	posFlags := make([]int, 0, FLAGS)
 	for i, flag := range flags {
@@ -587,6 +621,8 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 	}
 	return m
 }
+
+// getMoveDeck returns all the possible move deck.
 func getMoveDeck(tacDeck *deck.Deck, troopDeck *deck.Deck) (m []Move) {
 	m = make([]Move, 0, 2)
 	if !tacDeck.Empty() {
@@ -598,11 +634,14 @@ func getMoveDeck(tacDeck *deck.Deck, troopDeck *deck.Deck) (m []Move) {
 	return m
 }
 
+// Move a interface for moves.
 type Move interface {
 	MoveEqual(Move) bool
 	Copy() Move
 }
 
+// MoveCardFlag the place a card on a flag move.
+// Its is just int for the flag index.
 type MoveCardFlag int
 
 func (m MoveCardFlag) MoveEqual(other Move) (equal bool) {
@@ -619,6 +658,7 @@ func (m MoveCardFlag) Copy() (c Move) {
 	return c
 }
 
+// MoveDeserter the deserter move. The flag and the index of the card to kill.
 type MoveDeserter struct {
 	Flag int
 	Card int
@@ -638,6 +678,8 @@ func (m MoveDeserter) Copy() (c Move) {
 	return c
 }
 
+// MoveTraitor the traitor move, the flag and card index of the card to move
+// and destination flag.
 type MoveTraitor struct {
 	OutFlag int
 	OutCard int
@@ -658,6 +700,8 @@ func (m MoveTraitor) Copy() (c Move) {
 	return c
 }
 
+// MoveRedeploy the redeploy move, the flag and card index of the card to move and the
+// destination flag.
 type MoveRedeploy struct {
 	OutFlag int
 	OutCard int
@@ -678,6 +722,8 @@ func (m MoveRedeploy) Copy() (c Move) {
 	return c
 }
 
+// MoveScoutReturn the scout return move. The tactic cards and the troop cards.
+// It is first in last out. The first card of the slice will be delt last.
 type MoveScoutReturn struct {
 	Tac   []int
 	Troop []int
@@ -713,6 +759,7 @@ func (m MoveScoutReturn) Copy() Move {
 	return scout
 }
 
+// MoveDeck the deck move. DECK_TAC or DECK_TROOP
 type MoveDeck int
 
 func (m MoveDeck) MoveEqual(other Move) (equal bool) {
@@ -729,6 +776,8 @@ func (m MoveDeck) Copy() (c Move) {
 	return c
 }
 
+// MoveClaim the claim flags move. The slice contain the list of flags
+// to claim.
 type MoveClaim []int
 
 func (m MoveClaim) Equal(other MoveClaim) (equal bool) {

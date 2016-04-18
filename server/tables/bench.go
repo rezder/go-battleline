@@ -6,52 +6,44 @@ import (
 	slice "rezder.com/slice/int"
 )
 
-func bench(watchChan *pub.WatchChan, game <-chan *MoveBenchView) {
-	initWatchers := make(map[chan<- *pub.MoveBench]bool)
-	watchers := make(map[chan<- *pub.MoveBench]bool)
+// The bench server for a table.
+// Handle all things related with watching the game. Adding and removing watchers and
+// relaying the game information.
+func bench(watchChCl *pub.WatchChCl, game <-chan *MoveBenchView) {
+	watchers := make(map[int]chan<- *pub.MoveBench)
+	var initMove *pub.MoveBench
 Loop:
 	for {
 		select {
-		case p := <-watchChan.Channel: //If allready there it is close else join
-			exist := initWatchers[p.Send]
-			if exist {
-				close(p.Send)
-				delete(initWatchers, p.Send)
-			} else {
-				exist = watchers[p.Send]
-				if exist {
-					close(p.Send)
-					delete(watchers, p.Send)
+		case p := <-watchChCl.Channel:
+			_, found := watchers[p.Id]
+			del := p.Send == nil
+			if found && del {
+				delete(watchers, p.Id)
+			} else if !found && !del {
+				watchers[p.Id] = p.Send
+				if initMove != nil {
+					p.Send <- initMove
 				}
+			} else if found && !del {
+				close(p.Send)
 			}
-			if !exist {
-				initWatchers[p.Send] = true
-			}
+
 		case moveView, open := <-game:
 			if !open {
-				close(watchChan.Close) //stope join and leave
-				if len(initWatchers) > 0 {
-					for key, _ := range initWatchers {
-						close(key)
-					}
-				}
+				close(watchChCl.Close) //stope join and leave
 				if len(watchers) > 0 {
-					for key, _ := range watchers {
-						close(key)
+					for _, ch := range watchers {
+						close(ch)
 					}
 				}
 				break Loop
 			} else {
-				if len(initWatchers) > 0 {
-					move := NewMoveBench(moveView, true)
-					for key, _ := range initWatchers {
-						key <- move
-					}
-				}
+				initMove = NewMoveBench(moveView, true)
 				if len(watchers) > 0 {
 					move := NewMoveBench(moveView, false)
-					for key, _ := range watchers {
-						key <- move
+					for _, ch := range watchers {
+						ch <- move
 					}
 				}
 			}
@@ -59,6 +51,10 @@ Loop:
 	} //for
 }
 
+// MoveBenchView the information send from the table to the bench.
+// The informationn is then relayed to all watchers. As watchers
+// can be new it must always contain a init move and a move unless it is the
+// first move in a new game. This is because we can always havenew watchers.
 type MoveBenchView struct {
 	Mover     int
 	Move      bat.Move
@@ -70,7 +66,12 @@ func NewMoveBench(view *MoveBenchView, ini bool) (move *pub.MoveBench) {
 	move = new(pub.MoveBench)
 	move.Mover = view.Mover
 	if ini {
-		move.Move = view.MoveInit
+		if view.MoveInit != nil {
+			move.Move = view.MoveInit
+		} else { //new game first move
+			move.Move = view.Move
+		}
+
 	} else {
 		move.Move = view.Move
 	}
@@ -78,6 +79,8 @@ func NewMoveBench(view *MoveBenchView, ini bool) (move *pub.MoveBench) {
 	return move
 }
 
+// BenchPos the complete data that describe a game position for
+// a watcher.
 type BenchPos struct {
 	Flags      [bat.FLAGS]*Flag //Player 0 flags
 	DishTroops [2][]int
@@ -163,6 +166,8 @@ func (b *BenchPos) Equal(other *BenchPos) (equal bool) {
 	return equal
 }
 
+// MoveBenchPos the first move when restarting a game or when
+// joining a game.
 type MoveBenchPos struct {
 	Pos *BenchPos
 }
