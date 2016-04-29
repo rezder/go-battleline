@@ -27,6 +27,7 @@ func TestGameSave(t *testing.T) {
 				t.Errorf("Load game file error. File :%v, Error: %v", fileName, err.Error())
 			} else {
 				compGames(game, loadGame, t)
+				os.Remove(fileName)
 			}
 		}
 	} else {

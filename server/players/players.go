@@ -86,7 +86,8 @@ type Player struct {
 	joinedCh    chan<- *Player
 }
 
-func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error) (p *Player) {
+func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error,
+	joinCh chan<- *Player) (p *Player) {
 	p = new(Player)
 	p.id = id
 	p.name = name
@@ -94,6 +95,7 @@ func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error) (p *
 	p.doneComCh = make(chan struct{})
 	p.errCh = errCh
 	p.bootCh = make(chan struct{})
+	p.joinedCh = joinCh
 	return p
 }
 
