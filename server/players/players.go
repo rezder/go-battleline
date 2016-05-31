@@ -18,6 +18,7 @@ const (
 	ACT_QUIT       = 6
 	ACT_WATCH      = 7
 	ACT_WATCHSTOP  = 8
+	ACT_LIST       = 9
 
 	WRTBUFF_SIZE = 10
 	WRTBUFF_LIM  = 8
@@ -135,6 +136,7 @@ func (player *Player) Start() {
 
 	watchGameCh := make(chan *startWatchGameData)
 	var watchGames map[int]*pub.WatchChCl
+	sendCh <- pub.NewSendList(readList)
 
 Loop:
 	for {
@@ -173,11 +175,14 @@ Loop:
 						sendCh, player.id)
 				case ACT_WATCHSTOP:
 					actWatchStop(watchGames, act, sendCh, player.id)
+				case ACT_LIST:
+					upd = true
 				default:
 					sendSysMess(sendCh, "No existen action")
 				}
 				if upd {
-					sendCh <- player.pubList.Read()
+					readList = player.pubList.Read()
+					sendCh <- pub.NewSendList(readList)
 				}
 			} else {
 				handleCloseDown(player.doneComCh, gameRespCh, watchGames, player.id,
@@ -272,7 +277,7 @@ func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *p
 			clearInvites(receivedInvites, sendInvites, playerId)
 			sendCh <- move
 			updReadList = pubList.Read()
-			sendCh <- readList
+			sendCh <- pub.NewSendList(updReadList)
 		} else {
 			gameMove = move
 			sendCh <- move
@@ -288,7 +293,7 @@ func handleCloseDown(doneComCh chan struct{}, gameRespCh chan<- [2]int,
 	watchGames map[int]*pub.WatchChCl, playerId int, receivedInvites map[int]*pub.Invite,
 	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}) {
 	close(doneComCh)
-	if gameRespCh == nil {
+	if gameRespCh != nil {
 		close(gameRespCh)
 	}
 	if len(watchGames) > 0 {
@@ -603,7 +608,7 @@ func playerExist(pubList *pub.List, readList map[string]*pub.Data, id int,
 	_, found := readList[strconv.Itoa(id)]
 	if !found {
 		upd = pubList.Read()
-		sendCh <- upd
+		sendCh <- pub.NewSendList(upd)
 	} else {
 		upd = readList
 	}
@@ -728,7 +733,7 @@ type Action struct {
 
 func NewAction() (a *Action) {
 	a = new(Action)
-	a.Id = -1
+	a.Id = -1 //TODO id do not thing it is necessary as player start from 1 now
 	a.Move = [2]int{-1, -1}
 	return a
 }

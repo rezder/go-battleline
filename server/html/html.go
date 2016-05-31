@@ -25,6 +25,7 @@ func Start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
 	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh})
 	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh})
 	http.Handle("/in/gamews", *createWsHandler(clients, errCh))
+	http.Handle("/static/", http.FileServer(http.Dir("./html")))
 
 	server := &http.Server{Addr: "game.rezder.com:8181"} //address is not used
 	err := server.Serve(tcpKeepAliveListener{netListener})

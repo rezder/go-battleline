@@ -1,14 +1,7 @@
-<!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Rezder Games</title>
-          <script src="http://game.rezder.com:8181/static/battleline.js"></script>
-        </head>
-        <body>
-            <div id="game">
-                <h1>Battleline</h1>
-               <svg
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -111,7 +104,7 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="1.4142136"
-     inkscape:cx="10.166299"
+     inkscape:cx="339.84382"
      inkscape:cy="323.43646"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -261,7 +254,7 @@
         <rect
            inkscape:label="#rect4771-5-6-2-7-3-0-7"
            style="fill:#00fa00;fill-opacity:1;stroke:none;stroke-width:4;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-           id="backTroopBackRect"
+           id="backTroopBackRec"
            width="48"
            height="70"
            x="8"
@@ -270,7 +263,7 @@
         <rect
            inkscape:label="#rect4771-2-8-7-6-6-8-2"
            style="fill:url(#pattern11963-5-7-4);fill-opacity:1;stroke:#007100;stroke-width:4;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-           id="backTroopTopRect"
+           id="backTroopTopRec"
            width="48"
            height="70"
            x="8"
@@ -279,7 +272,7 @@
       </g>
       <text
          sodipodi:linespacing="125%"
-         id="backTacText"
+         id="backTroopText"
          y="360.5"
          x="12"
          style="font-style:normal;font-weight:normal;font-size:30px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -887,54 +880,4 @@
       </g>
     </g>
   </g>
-               </svg>
-               <div id="game-buttons">
-                   <button id="stop-watching-button">Stop Watching</button>
-                   <button id="stop-playing-button">Stop Playing</button>
-                   <button id="stop-giveup-button">Give Up</button>
-               </div>
-            </div>
-            <div id="players-div">
-                <h2>Players</h2>
-                <table id="players-table">
-                    <col class ="tc-hide">
-                    <tbody>
-                        <tr>
-                            <th tc-link="Id">Id</th>
-                            <th tc-link="Name">Player</th>
-                            <th tc-link="OppName">Playing</th>
-                            <th id="pt-inv-butt">Invite</th>
-                            <th id="pt-watch-butt">Watch</th>
-                            <th id="pt-msg-butt">Message</th>
-                        </tr>
-                    </tbody>
-                </table>
-                <button id="update-button">Update</button>
-            </div>
-            <div id="info-div">
-                <h2>Info</h2>
-                <textarea id="info-text" class="text-out"rows=10 cols=80 wrap=on readonly></textarea>
-            </div>
-            <div id="message-div">
-                <h2>Message</h2>
-                <textarea id="message-text" class="text-in" rows=5 cols=80 wrap=on></textarea>
-                <select id="message-select">
-                    <option value="0">-</option>
-                </select>
-                <button value="Send" id="send-button">Send</button>
-            </div>
-            <div id="invites-div">
-                <h2>Invites</h2>
-                <table id="invites-table">
-                    <col class="tc-hide">
-                    <tr>
-                        <th>Id</th>
-                        <th>From/To</th>
-                        <th>Player</th>
-                        <th>Action</th>
-                    </tr>
-                </table>
-            </div>
-        </body> 
-      </html>
-
+</svg>

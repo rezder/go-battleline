@@ -54,7 +54,7 @@ Loop:
 // MoveBenchView the information send from the table to the bench.
 // The informationn is then relayed to all watchers. As watchers
 // can be new it must always contain a init move and a move unless it is the
-// first move in a new game. This is because we can always havenew watchers.
+// first move in a new game. This is because we can always have new watchers.
 type MoveBenchView struct {
 	Mover     int
 	Move      bat.Move

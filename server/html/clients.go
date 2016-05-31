@@ -62,6 +62,7 @@ func NewClients(games *games.Server) (c *Clients) {
 	c.Games = games
 	c.RWMutex = new(sync.RWMutex)
 	c.Clients = make(map[string]*Client)
+	c.NextId = 1
 	return c
 }
 
@@ -107,7 +108,7 @@ func (c *Clients) joinGameServer(name string, sid string, ws *websocket.Conn,
 			if client.sid != sid {
 				client.Unlock()
 			} else {
-				if client.ws != nil {
+				if client.ws == nil {
 					client.ws = ws
 					player := players.NewPlayer(client.Id, name, ws, errCh, joinCh)
 					client.Unlock()
@@ -115,6 +116,7 @@ func (c *Clients) joinGameServer(name string, sid string, ws *websocket.Conn,
 					ok = true
 				} else {
 					joined = true
+					client.Unlock()
 				}
 			}
 		}

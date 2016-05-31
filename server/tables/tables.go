@@ -38,6 +38,10 @@ Loop:
 					game, old := oldGames[gameId(start.PlayerIds)]
 					if old {
 						delete(oldGames, gameId(start.PlayerIds))
+						if game.PlayerIds != start.PlayerIds {
+							start.PlayerIds = [2]int{start.PlayerIds[1], start.PlayerIds[0]}
+							start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1], start.PlayerChs[0]}
+						}
 					}
 					watch := pub.NewWatchChCl()
 					go table(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh)

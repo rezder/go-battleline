@@ -13,6 +13,13 @@ import (
 	"sync"
 )
 
+const (
+	RES_MESS   = 1
+	RES_INVITE = 2
+	RES_MOVE   = 3
+	RES_LIST   = 4
+)
+
 //List is the structure that maintain the public data.
 type List struct {
 	lock    *sync.RWMutex
@@ -82,6 +89,18 @@ func (list *List) update() {
 	list.list = publist
 }
 
+type SendList struct {
+	ResType int
+	List    map[string]*Data
+}
+
+func NewSendList(list map[string]*Data) (res *SendList) {
+	res = new(SendList)
+	res.ResType = RES_LIST
+	res.List = list
+	return res
+}
+
 //GameData is the game information in the game map.
 //Every game have two enteries one for every player.
 type GameData struct {
@@ -130,6 +149,7 @@ type PlayerData struct {
 //This make the standard select unreliable. Use a select with default to check if retracted and
 //the receiver must count on receiving retracted responses.
 type Invite struct {
+	ResType   int
 	Inviter   int
 	Name      string
 	Response  chan<- *InviteResponse `json:"-"` //Common for all invitaion
@@ -139,9 +159,15 @@ type Invite struct {
 
 //MesData message data.
 type MesData struct {
+	ResType int
 	Sender  int
 	Name    string
 	Message string
+}
+
+func NewMesData() (msg *MesData) {
+	msg.ResType = RES_MESS
+	return msg
 }
 
 //InviteResponse the response to a invitation.
@@ -247,10 +273,10 @@ func (t *Turn) Equal(other *Turn) (equal bool) {
 type Data struct {
 	Id      int
 	Name    string
-	Invite  chan<- *Invite
-	DoneCom chan struct{} //Used by the player
-	Message chan<- *MesData
-	Opp     int // maybe this is not need
+	Invite  chan<- *Invite  `json:"-"`
+	DoneCom chan struct{}   `json:"-"` //Used by the player
+	Message chan<- *MesData `json:"-"`
+	Opp     int             // maybe this is not need
 	OppName string
-	Watch   *WatchChCl
+	Watch   *WatchChCl `json:"-"`
 }

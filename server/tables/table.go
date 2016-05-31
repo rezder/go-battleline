@@ -403,7 +403,7 @@ func NewMoveClaimView(claim bat.MoveClaim) (m *MoveClaimView) {
 	return m
 }
 
-//MoveInit id the initial move in a new game.
+//MoveInit the initial move in a new game.
 //Just the 7 cards the player get.
 type MoveInit struct {
 	Hand []int //nil for bench
