@@ -20,6 +20,12 @@ const (
 	ACT_WATCHSTOP  = 8
 	ACT_LIST       = 9
 
+	JT_Mess      = 1
+	JT_Invite    = 2
+	JT_Move      = 3
+	JT_BenchMove = 4
+	JT_List      = 5
+
 	WRTBUFF_SIZE = 10
 	WRTBUFF_LIM  = 8
 )
@@ -136,8 +142,8 @@ func (player *Player) Start() {
 
 	watchGameCh := make(chan *startWatchGameData)
 	var watchGames map[int]*pub.WatchChCl
-	sendCh <- pub.NewSendList(readList)
-
+	sendCh <- readList
+	sendSysMess(sendCh, "Welcome to Battleline!\n Will you play a game?")
 Loop:
 	for {
 		select {
@@ -182,7 +188,7 @@ Loop:
 				}
 				if upd {
 					readList = player.pubList.Read()
-					sendCh <- pub.NewSendList(readList)
+					sendCh <- readList
 				}
 			} else {
 				handleCloseDown(player.doneComCh, gameRespCh, watchGames, player.id,
@@ -277,7 +283,7 @@ func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *p
 			clearInvites(receivedInvites, sendInvites, playerId)
 			sendCh <- move
 			updReadList = pubList.Read()
-			sendCh <- pub.NewSendList(updReadList)
+			sendCh <- updReadList
 		} else {
 			gameMove = move
 			sendCh <- move
@@ -608,7 +614,7 @@ func playerExist(pubList *pub.List, readList map[string]*pub.Data, id int,
 	_, found := readList[strconv.Itoa(id)]
 	if !found {
 		upd = pubList.Read()
-		sendCh <- pub.NewSendList(upd)
+		sendCh <- upd
 	} else {
 		upd = readList
 	}
@@ -677,7 +683,7 @@ Loop:
 		data := <-dataCh
 		_, stop = data.(CloseCon)
 		if !broke {
-			err := websocket.JSON.Send(ws, data)
+			err := websocket.JSON.Send(ws, netWrite_AddJsonType(data))
 			if err != nil {
 				errCh <- err
 				broke = true
@@ -695,6 +701,26 @@ Loop:
 		}
 	}
 }
+func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
+	jdata = new(pub.JsonData)
+	jdata.Data = data
+	switch data.(type) {
+	case map[string]*pub.Data:
+		jdata.JsonType = JT_List
+	case *pub.Invite:
+		jdata.JsonType = JT_Invite
+	case *pub.MesData:
+		jdata.JsonType = JT_Mess
+	case *pub.MoveView:
+		jdata.JsonType = JT_Move
+	case *pub.MoveBench:
+		jdata.JsonType = JT_BenchMove
+	default:
+		fmt.Printf("Message not implemented yet: %v\n", data)
+
+	}
+	return jdata
+}
 
 //netRead reading data from a websocket.
 //Keep reading until eof,an error or done. Done can not breake the read stream
@@ -705,7 +731,7 @@ func netRead(ws *websocket.Conn, accCh chan<- *Action, doneCh chan struct{}, err
 Loop:
 	for {
 		var act Action
-		err := websocket.JSON.Receive(ws, act)
+		err := websocket.JSON.Receive(ws, &act)
 		if err == io.EOF {
 
 			break Loop

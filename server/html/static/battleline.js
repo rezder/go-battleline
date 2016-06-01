@@ -790,7 +790,7 @@ var batt={};
                 }
                 return res;
             };
-            svg.ItemClicked=function(elems){
+            svg.ItemClicked=function(elems,centerClick){
                 let idObj=svg.fromId(elems[0].id);
                 switch (idObj.type){
                 case ID_Card:
@@ -800,7 +800,7 @@ var batt={};
                             if(svg.hand.selected.id===elems[0].id){
                                 svg.hand.unSelect();
                             }else{
-                                //TODO
+                                svg.hand.move(elems[0],!centerClick);
                             }
                         }else{
                             svg.hand.select(elems[0]);
@@ -829,8 +829,9 @@ var batt={};
             };
             battlelineSvg.onclick=function (event){
                 let elms=svg.click.hitElems(event);
+                let centerClick=event.which===2;//right click is context menu
                 if (elms.length>0){
-                    svg.ItemClicked(elms);
+                    svg.ItemClicked(elms,centerClick);
                 }
             };
         };//init
@@ -868,7 +869,7 @@ var batt={};
         return res;
     };
     function actionBuilder(aType){
-        let res={ActType:atype};
+        let res={ActType:aType};
         res.id=function(id){
             res.Id=id;
             return res;
@@ -927,17 +928,23 @@ var batt={};
             console.log(event.wasClean);
         };
         ws.conn.onmessage=function(event){
-            const RES_MESS   = 1;
-	          const RES_INVITE = 2;
-	          const RES_MOVE   = 3;
-	          const RES_LIST   = 4;
+            const JT_Mess   = 1;
+	          const JT_Invite = 2;
+	          const JT_Move   = 3;
+            const JT_BenchMove = 4;
+	          const JT_List   = 5;
             //TODO clean up consolelog
             console.log(event.data);
             let json=JSON.parse(event.data);
             console.log(event.data);
             console.log(json);
-            if (json.ResType===RES_LIST){
-                table.players.Update(json.List);
+            switch (json.JsonType){
+            case JT_List:
+                table.players.Update(json.Data);
+                break;
+            case JT_Mess:
+                msg.recieved(json.Data);
+                break;
             }
         };
         let pTable=document.getElementById("players-table");
@@ -1018,8 +1025,26 @@ var batt={};
         };
         let msgTextArea = document.getElementById("message-text");
         let infoTextArea = document.getElementById("info-text");
+        msg.recieved=function(m){
+            let txt;
+            if (m.Name){
+                 txt=m.Name+" -> "+m.Message+"\n";
+            }else{
+                txt="Info: "+m.Message+"\n";
+            }
+            infoTextArea.value=txt+infoTextArea.value;
+        };
         msg.send=function(){
-            
+            if (messageSelect.value!=="0"){
+                let message=msgTextArea.value;
+                let id= parseInt(messageSelect.value);
+                let act =actionBuilder(ACT_MESS).id(id).mess(message).build();
+                ws.conn.send(JSON.stringify(act));
+                msgTextArea.value="";
+                let name =messageSelect.options[messageSelect.selectedIndex].text;
+                let txt=name+" <- "+message+"\n";
+                infoTextArea.value=txt+infoTextArea.value;
+            }
         };
         document.getElementById("send-button").onclick=msg.send;
 
@@ -1062,7 +1087,7 @@ var batt={};
         svg.cone.pos(2,0);
         svg.cone.pos(1,2);
         svg.cone.pos(3,1);
-        svg. click.zone.coneHit(225,350);
+        svg.click.zone.coneHit(225,350);
         // delete test end
     }; //onload
 })(batt);

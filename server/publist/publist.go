@@ -13,13 +13,6 @@ import (
 	"sync"
 )
 
-const (
-	RES_MESS   = 1
-	RES_INVITE = 2
-	RES_MOVE   = 3
-	RES_LIST   = 4
-)
-
 //List is the structure that maintain the public data.
 type List struct {
 	lock    *sync.RWMutex
@@ -89,18 +82,6 @@ func (list *List) update() {
 	list.list = publist
 }
 
-type SendList struct {
-	ResType int
-	List    map[string]*Data
-}
-
-func NewSendList(list map[string]*Data) (res *SendList) {
-	res = new(SendList)
-	res.ResType = RES_LIST
-	res.List = list
-	return res
-}
-
 //GameData is the game information in the game map.
 //Every game have two enteries one for every player.
 type GameData struct {
@@ -159,15 +140,9 @@ type Invite struct {
 
 //MesData message data.
 type MesData struct {
-	ResType int
 	Sender  int
 	Name    string
 	Message string
-}
-
-func NewMesData() (msg *MesData) {
-	msg.ResType = RES_MESS
-	return msg
 }
 
 //InviteResponse the response to a invitation.
@@ -279,4 +254,8 @@ type Data struct {
 	Opp     int             // maybe this is not need
 	OppName string
 	Watch   *WatchChCl `json:"-"`
+}
+type JsonData struct {
+	JsonType int
+	Data     interface{}
 }
