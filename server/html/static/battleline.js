@@ -15,11 +15,12 @@ var batt={};
 	  const ACT_INVITE     = 2;
 	  const ACT_INVACCEPT  = 3;
 	  const ACT_INVDECLINE = 4;
-	  const ACT_MOVE       = 5;
-	  const ACT_QUIT       = 6;
-	  const ACT_WATCH      = 7;
-	  const ACT_WATCHSTOP  = 8;
-	  const ACT_LIST       = 9;
+    const ACT_INVRETRACT = 5;
+	  const ACT_MOVE       = 6;
+	  const ACT_QUIT       = 7;
+	  const ACT_WATCH      = 8;
+	  const ACT_WATCHSTOP  = 9;
+	  const ACT_LIST       = 10;
 
     const TROOP_NO = 60;//TODO maybe card infor could be moved to battSvg
 	  const TAC_NO   = 10;
@@ -836,37 +837,57 @@ var batt={};
             };
         };//init
         return svg;
-    };
-
+    }
     svg=battSvg();
     table.buttonGetId=function(event){
         let row=event.target.parentNode.parentNode;
         return parseInt(row.cells[0].textContent);
     };
-    table.getFieldIx=function(linkField,headers){
+    table.getFieldIx=function(linkField,headers,useId){
         for (let i=0;i<headers.length; i++){
-            let field=headers[i].getAttribute("tc-link");
+            let field;
+            if (useId){
+                field=headers[i].id;
+            }else{
+                field=headers[i].getAttribute("tc-link");
+            }
             if (field===linkField){
                 return i;
             }
         }
         return -1;
     };
-    table.getFieldsIx=function(linkFields,headers){
+    //table.getFieldsIx find field indexes assume all fields match
+    table.getFieldsIx=function(linkFields,headers,useId){
         let res=[];
-        for (let i=0;i<headers.length; i++){
-            let field=headers[i].getAttribute("tc-link");
-            for (let lf of linkFields){
+        for (let lf of linkFields){
+            for (let i=0;i<headers.length; i++){
+                let field;
+                if (useId){
+                    field=headers[i].id;
+                }else{
+                    field=headers[i].getAttribute("tc-link");
+                }
                 if (lf===field){
                     res.push(i);
                     break;
                 }
             }
-            if (res.length===linkFields.length){
-                break;
-            }
+        }
+        if (res.length!==linkFields.length){
+            console.log("Missing field");
         }
         return res;
+    };
+    table.invites.recieved=function(invite){
+        if(invite.Rejected){
+            let name=table.invites.delete(invite.ReceiverId,true);
+            if(name){
+                msg.recieved({Message:name+" declined your invitation"});
+            }
+        }else{
+            table.invites.replace(invite.InvitorId,invite.InvitorName,false);
+        }
     };
     function actionBuilder(aType){
         let res={ActType:aType};
@@ -914,6 +935,8 @@ var batt={};
         return res;
     }
     window.onload=function(){
+        const IV_From="From";
+        const IV_To="To";
         id.name=getCookies(document)["name"];
         svg.init(document);
         ws.conn=new WebSocket("ws://game.rezder.com:8181/in/gamews");
@@ -933,6 +956,7 @@ var batt={};
 	          const JT_Move   = 3;
             const JT_BenchMove = 4;
 	          const JT_List   = 5;
+            const JT_CloseCon=6;
             //TODO clean up consolelog
             console.log(event.data);
             let json=JSON.parse(event.data);
@@ -940,13 +964,137 @@ var batt={};
             console.log(json);
             switch (json.JsonType){
             case JT_List:
-                table.players.Update(json.Data);
+                table.players.update(json.Data);
                 break;
             case JT_Mess:
                 msg.recieved(json.Data);
                 break;
+            case JT_Invite:
+                table.invites.recieved(json.Data);
+                break;
             }
         };
+        let iTable=document.getElementById("invites-table");
+        let iTableHeaders=iTable.getElementsByTagName("th");
+
+        table.invites.onRetractButton=function(event){
+            let row=event.target.parentNode.parentNode;
+            let idix=table.getFieldIx("ith-id",iTableHeaders,true);
+            let id=parseInt(row.cells[idix].textContent);
+            iTable.deleteRow(row.rowIndex);
+            let act=actionBuilder(ACT_INVRETRACT).id(id).build();
+            ws.conn.send(JSON.stringify(act));
+        };
+        table.invites.onActionChange=function(event){
+            let row=event.target.parentNode.parentNode;
+            let idix=table.getFieldIx("ith-id",iTableHeaders,true);
+            let id=parseInt(row.cells[idix].textContent);
+            if (event.target.value!=="0"){
+                let act;
+                if (event.target.value==="1"){
+                    act=actionBuilder(ACT_INVDECLINE).id(id).build();
+                }else if (event.target.value==="2"){
+                    act=actionBuilder(ACT_INVACCEPT).id(id).build();
+                }
+                iTable.deleteRow(row.rowIndex);
+                ws.conn.send(JSON.stringify(act));
+            }
+        };
+        table.invites.clear=function(){
+            for (let i=iTable.rows.length-1;i>1;i--){
+                iTable.deleteRow(iTable.rows[i].rowIndex);
+            }
+        };
+        table.invites.delete=function(id,send){
+            let from=IV_From;
+            if (send){
+                from=IV_To;
+            }
+            let name="";
+            let [idix,nameix,fromix]=table.getFieldsIx(["ith-id","ith-name","ith-from"],iTableHeaders,true);
+            for (let i=1;i<iTable.rows.length;i++){
+                let row =iTable.rows[i];
+                if(row.cells[idix].textContent===id.toString()&&row.cells[fromix].textContent===from){
+                    iTable.deleteRow(row.rowIndex);
+                    name=row.cells[nameix].textContent;
+                    break;
+                }
+            }
+            return name;
+        };
+        table.invites.add=function(id,name,send){
+            let newRow=iTable.insertRow(-1);// -1 is add
+            for (let i=0;i<iTableHeaders.length; i++){
+                let fieldId=iTableHeaders[i].id;
+                let cell=newRow.insertCell(-1);// -1 is add
+                let newTxtNode;
+                switch (fieldId){
+                case "ith-id":
+                    newTxtNode=document.createTextNode(id);
+                    cell.appendChild(newTxtNode);
+                    break;
+                case "ith-from":
+                    if (send){
+                        newTxtNode=document.createTextNode(IV_To);
+                    }else{
+                        newTxtNode=document.createTextNode(IV_From);
+                    }
+                    cell.appendChild(newTxtNode);
+                    break;
+                case "ith-name":
+                    newTxtNode=document.createTextNode(name);
+                    cell.appendChild(newTxtNode);
+                    break;
+                case "ith-action":
+                    if (send){
+                        let btn = document.createElement("BUTTON");
+                        btn.onclick=table.invites.onRetractButton;
+                        let newTxtNode=document.createTextNode("Retract");
+                        btn.appendChild(newTxtNode);
+                        cell.appendChild(btn);
+                    }else{
+                        let dropDown=document.createElement("SELECT");
+                        let opt=document.createElement("OPTION");
+                        opt.value="0";
+                        opt.text= "-";
+                        dropDown.add(opt);
+                        opt=document.createElement("OPTION");
+                        opt.value="1";
+                        opt.text= "Decline";
+                        dropDown.add(opt);
+                        opt=document.createElement("OPTION");
+                        opt.value="2";
+                        opt.text= "Accept";
+                        dropDown.add(opt);
+                        dropDown.onchange=table.invites.onActionChange;
+                        cell.appendChild(dropDown);
+                    }
+                    break;
+                }
+
+            }
+        };
+        table.invites.contain=function(id,send){
+            let ix=0;
+            let [idix,fromix]=table.getFieldsIx(["ith-id","ith-from"],iTableHeaders,true);
+            let from=IV_From;
+            if (send){
+                from=IV_To;
+            }
+            for (let i=1;i<iTable.rows.length;i++){
+                let row =iTable.rows[i];
+                if(row.cells[idix].textContent===id.toString()&&row.cells[fromix].textContent===from){
+                    ix=i;
+                    break;
+                }
+            }
+            return ix;
+        };
+        table.invites.replace=function(id,name,send){
+            table.invites.delete(id,send);
+            table.invites.add(id,name,send);
+        };
+
         let pTable=document.getElementById("players-table");
         let pTbodyEmpty=pTable.getElementsByTagName("tbody")[0].cloneNode(true);
         let pTableHeaders=pTbodyEmpty.getElementsByTagName("th");
@@ -955,8 +1103,7 @@ var batt={};
             let act=actionBuilder(ACT_LIST).build();
             ws.conn.send(JSON.stringify(act));
         };
-
-        table.players.Update=function(pMap){
+        table.players.update=function(pMap){
             let options=messageSelect.options;
             if (options.length>2){
                 let removeIx=[];
@@ -971,6 +1118,15 @@ var batt={};
                     }
                 }
             }
+            if(iTable.rows.length>1){
+                let idix=table.getFieldIx("ith-id",iTableHeaders,true);
+                for (let i=iTable.rows.length-1;i>0;i--){
+                    let id=iTable.rows[i].cells[idix].textContent;
+                    if(!pMap[id]){
+                        iTable.deleteRow(i);
+                    }
+                }
+            }
             pTable.removeChild(pTable.getElementsByTagName("tbody")[0]);
             pTable.appendChild(pTbodyEmpty.cloneNode(true));
             let players=[];
@@ -981,22 +1137,34 @@ var batt={};
                 return a.Name.localeCompare(b.Name);
             });
             for(let p of players){
-                let newRow=pTable.insertRow(-1);
+                let newRow=pTable.insertRow(-1);// -1 is add
                 for (let i=0;i<pTableHeaders.length; i++){
                     let field=pTableHeaders[i].getAttribute("tc-link");
                     if (field){
-                        let cell=newRow.insertCell(-1);
+                        let cell=newRow.insertCell(-1);// -1 is add
                         let newTxtNode=document.createTextNode(p[field]);
                         cell.appendChild(newTxtNode);
                     }else{
                         if (p.Name!==id.name){
-                            if (pTableHeaders[i].id==="pt-inv-butt"){
+                            if (pTableHeaders[i].id==="pt-inv-butt"&&!p.OppName){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");
+                                btn.onclick=function(event){
+                                    let cells=event.target.parentNode.parentNode.cells;
+                                    let [idix,nameix]=table.getFieldsIx(["Id","Name"],pTableHeaders);
+                                    let id=parseInt(cells[idix].textContent);
+                                    let name=cells[nameix].textContent;
+                                    let send=true;
+                                    if (table.invites.contain(id,send)===0){//0 is header so we do
+                                        table.invites.add(id,name,send);    //not use -1
+                                        let act=actionBuilder(ACT_INVITE).id(id).build();
+                                        ws.conn.send(JSON.stringify(act));
+                                    }
+                                };
                                 let newTxtNode=document.createTextNode("I");
                                  btn.appendChild(newTxtNode);
                                  cell.appendChild(btn);
-                            }else if(pTableHeaders[i].id==="pt-watch-butt"){
+                            }else if(pTableHeaders[i].id==="pt-watch-butt"&&p.OppName){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");
                                 let newTxtNode=document.createTextNode("W");
@@ -1090,4 +1258,4 @@ var batt={};
         svg.click.zone.coneHit(225,350);
         // delete test end
     }; //onload
-})(batt);
+ })(batt);

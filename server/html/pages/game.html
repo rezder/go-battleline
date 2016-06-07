@@ -893,6 +893,20 @@
                    <button id="stop-playing-button">Stop Playing</button>
                    <button id="stop-giveup-button">Give Up</button>
                </div>
+               <div id="game-turn">
+                   <table>
+                       <tr>
+                           <th class="textCenter" colspan="3">Turn</th>
+                       </tr>
+                       <tr>
+                           <td id="turn-player-cell">-------</td>
+                           <td id="turn-type-cell">-------------</td>
+                           <td>
+                               <button type="button" id="turn-skip-button" disabled>Skip</button>
+                           </td>
+                       </tr>
+                   </table>
+               </div>
             </div>
             <div id="players-div">
                 <h2>Players</h2>
@@ -928,10 +942,10 @@
                 <table id="invites-table">
                     <col class="tc-hide">
                     <tr>
-                        <th>Id</th>
-                        <th>From/To</th>
-                        <th>Player</th>
-                        <th>Action</th>
+                        <th id="ith-id">Id</th>
+                        <th id="ith-from">From/To</th>
+                        <th id="ith-name">Player</th>
+                        <th id="ith-action">Action</th>
                     </tr>
                 </table>
             </div>

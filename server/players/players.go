@@ -14,17 +14,19 @@ const (
 	ACT_INVITE     = 2
 	ACT_INVACCEPT  = 3
 	ACT_INVDECLINE = 4
-	ACT_MOVE       = 5
-	ACT_QUIT       = 6
-	ACT_WATCH      = 7
-	ACT_WATCHSTOP  = 8
-	ACT_LIST       = 9
+	ACT_INVRETRACT = 5
+	ACT_MOVE       = 6
+	ACT_QUIT       = 7
+	ACT_WATCH      = 8
+	ACT_WATCHSTOP  = 9
+	ACT_LIST       = 10
 
 	JT_Mess      = 1
 	JT_Invite    = 2
 	JT_Move      = 3
 	JT_BenchMove = 4
 	JT_List      = 5
+	JT_CloseCon  = 6
 
 	WRTBUFF_SIZE = 10
 	WRTBUFF_LIM  = 8
@@ -168,6 +170,8 @@ Loop:
 					upd = actAccInvite(receivedInvites, act, sendCh, gameReceiveCh, player.doneComCh, player.id)
 				case ACT_INVDECLINE:
 					upd = actDeclineInvite(receivedInvites, act, player.id)
+				case ACT_INVRETRACT:
+					actRetractInvite(sendInvites, act)
 				case ACT_MOVE:
 					actMove(act, gameRespCh, gameMove, sendCh)
 				case ACT_QUIT:
@@ -207,18 +211,18 @@ Loop:
 				sendCh <- wgd.initMove
 			}
 		case invite := <-player.inviteCh:
-			readList = playerExist(player.pubList, readList, invite.Inviter, sendCh)
-			_, found := readList[strconv.Itoa(invite.Inviter)]
+			readList = playerExist(player.pubList, readList, invite.InvitorId, sendCh)
+			_, found := readList[strconv.Itoa(invite.InvitorId)]
 			if found {
-				receivedInvites[invite.Inviter] = invite
+				receivedInvites[invite.InvitorId] = invite
 				sendCh <- invite
 			}
 
 		case response := <-inviteResponse:
 			invite, found := sendInvites[response.Responder]
 			if found {
-				handleInviteResponse(response, invite, sendInvites, sendCh, player.id, player.doneComCh, gameReceiveCh,
-					player.tableStChCl)
+				handleInviteResponse(response, invite, sendInvites, sendCh, player.id, player.doneComCh,
+					gameReceiveCh, player.tableStChCl)
 			} else {
 				if response.GameCh != nil {
 					close(response.GameCh)
@@ -235,6 +239,15 @@ Loop:
 	player.leaveCh <- player.id
 }
 
+//actRetractInvite retract an invite
+func actRetractInvite(sendInvites map[int]*pub.Invite, act *Action) {
+	invite, found := sendInvites[act.Id]
+	if found {
+		close(invite.Retract)
+		delete(sendInvites, act.Id)
+	}
+}
+
 //handleInviteResponse handle a invite response.
 //# sendInvites
 func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
@@ -243,11 +256,8 @@ func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
 
 	delete(sendInvites, response.Responder)
 	if response.GameCh == nil {
-		mess := new(pub.MesData)
-		mess.Sender = response.Responder
-		mess.Name = response.Name
-		mess.Message = "Sorry I must decline your offer to play a game."
-		sendCh <- mess
+		invite.Rejected = true
+		sendCh <- invite
 	} else {
 		moveRecCh := make(chan *pub.MoveView, 1)
 		tableData := new(tables.StartGameData)
@@ -255,7 +265,7 @@ func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
 		tableData.PlayerChs = [2]chan<- *pub.MoveView{moveRecCh, response.GameCh}
 		select {
 		case tableStChCl.Channel <- tableData:
-			go gameListen(gameReceiveCh, doneComCh, moveRecCh, sendCh, invite.Name)
+			go gameListen(gameReceiveCh, doneComCh, moveRecCh, sendCh, invite)
 		case <-tableStChCl.Close:
 			txt := fmt.Sprintf("Failed to start game with %v as server no longer accept games",
 				response.Name)
@@ -458,19 +468,19 @@ func actAccInvite(recInvites map[int]*pub.Invite, act *Action, sendCh chan<- int
 		resp.GameCh = moveRecCh
 		select {
 		case <-invite.Retract:
-			txt := fmt.Sprintf("Accept invite to id: %v failed invitation retracted", act.Id)
+			txt := fmt.Sprintf("Accepting invite from %v failed invitation retracted", invite.InvitorName)
 			sendSysMess(sendCh, txt)
 		default:
 			select {
 			case invite.Response <- resp:
-				go gameListen(startGame, doneCh, moveRecCh, sendCh, invite.Name)
+				go gameListen(startGame, doneCh, moveRecCh, sendCh, invite)
 			case <-invite.DoneComCh:
-				txt := fmt.Sprintf("Accept invite to id: %v failed player done", act.Id)
+				txt := fmt.Sprintf("Accepting invite from %v failed player done", invite.InvitorName)
 				sendSysMess(sendCh, txt)
 				upd = true
 			}
 		}
-		delete(recInvites, invite.Inviter)
+		delete(recInvites, invite.InvitorId)
 	} else {
 		txt := fmt.Sprintf("Invite id %v do not exist.", act.Id)
 		sendSysMess(sendCh, txt)
@@ -483,7 +493,7 @@ func actAccInvite(recInvites map[int]*pub.Invite, act *Action, sendCh chan<- int
 // the listener keep listening until the channel is close but it do not resend the moves.
 //
 func gameListen(gameCh chan<- *pub.MoveView, doneCh chan struct{}, moveRecCh <-chan *pub.MoveView,
-	sendCh chan<- interface{}, oppName string) {
+	sendCh chan<- interface{}, invite *pub.Invite) {
 	initMove, initOpen := <-moveRecCh
 	if initOpen {
 		select {
@@ -524,9 +534,9 @@ func gameListen(gameCh chan<- *pub.MoveView, doneCh chan struct{}, moveRecCh <-c
 				}
 			}
 		}
-	} else { //Do not think this could happen
-		txt := fmt.Sprintf("Failed to start game with %v", oppName)
-		sendSysMessGo(sendCh, doneCh, txt)
+	} else {
+		invite.Rejected = true
+		sendCh <- invite
 	}
 }
 
@@ -536,16 +546,17 @@ func actSendInvite(invites map[int]*pub.Invite, respCh chan<- *pub.InviteRespons
 	p, found := readList[strconv.Itoa(act.Id)]
 	if found {
 		invite := new(pub.Invite)
-		invite.Inviter = id
-		invite.Name = name
+		invite.InvitorId = id
+		invite.InvitorName = name
+		invite.ReceiverId = p.Id
 		invite.Response = respCh
 		invite.Retract = make(chan struct{})
 		invite.DoneComCh = doneCh
 		select {
 		case p.Invite <- invite:
-			invites[id] = invite
+			invites[p.Id] = invite
 		case <-p.DoneCom:
-			m := fmt.Sprintf("Invite to Id: %v failed player done", act.Id)
+			m := fmt.Sprintf("Invite to %v failed player done", p.Name)
 			sendSysMess(sendCh, m)
 			upd = true
 		}
@@ -586,7 +597,7 @@ func actDeclineInvite(receivedInvites map[int]*pub.Invite, act *Action, playerId
 	invite, found := receivedInvites[act.Id]
 	if found {
 		upd = declineInvite(invite, playerId)
-		delete(receivedInvites, invite.Inviter)
+		delete(receivedInvites, invite.InvitorId)
 	}
 	return upd
 }
@@ -715,6 +726,8 @@ func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
 		jdata.JsonType = JT_Move
 	case *pub.MoveBench:
 		jdata.JsonType = JT_BenchMove
+	case CloseCon:
+		jdata.JsonType = JT_CloseCon
 	default:
 		fmt.Printf("Message not implemented yet: %v\n", data)
 

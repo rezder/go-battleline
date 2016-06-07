@@ -61,8 +61,10 @@ func (list *List) Read() (publist map[string]*Data) {
 //update updates the list with data from players and games.
 func (list *List) update() {
 	var data *Data
-	var found bool
+	var gFound bool
 	var gdata *GameData
+	var oppFound bool
+	var opp *PlayerData
 	publist := make(map[string]*Data)
 	for key, v := range list.players {
 		data = new(Data)
@@ -71,11 +73,14 @@ func (list *List) update() {
 		data.Invite = v.Invite
 		data.DoneCom = v.DoneCom
 		data.Message = v.Message
-		gdata, found = list.games[key]
-		if found {
-			data.Opp = gdata.Opp
-			data.OppName = list.players[data.Opp].Name
-			data.Watch = gdata.Watch
+		gdata, gFound = list.games[key]
+		if gFound {
+			opp, oppFound = list.players[data.Opp] // opponent may have left
+			if oppFound {
+				data.Opp = gdata.Opp
+				data.OppName = opp.Name
+				data.Watch = gdata.Watch
+			}
 		}
 		publist[strconv.Itoa(key)] = data
 	}
@@ -130,12 +135,14 @@ type PlayerData struct {
 //This make the standard select unreliable. Use a select with default to check if retracted and
 //the receiver must count on receiving retracted responses.
 type Invite struct {
-	ResType   int
-	Inviter   int
-	Name      string
-	Response  chan<- *InviteResponse `json:"-"` //Common for all invitaion
-	Retract   chan struct{}          `json:"-"` //Per invite
-	DoneComCh chan struct{}          `json:"-"`
+	ResType     int
+	InvitorId   int
+	InvitorName string
+	ReceiverId  int
+	Rejected    bool
+	Response    chan<- *InviteResponse `json:"-"` //Common for all invitaion
+	Retract     chan struct{}          `json:"-"` //Per invite
+	DoneComCh   chan struct{}          `json:"-"`
 }
 
 //MesData message data.

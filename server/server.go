@@ -15,12 +15,13 @@ func main() {
 	errCh := make(chan error, 10)
 	finErrCh := make(chan struct{})
 	go errServer(errCh, finErrCh)
-	laddr, err := net.ResolveTCPAddr("tcp", "game.rezder.com:8181")
+	laddr, err := net.ResolveTCPAddr("tcp", ":8181")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	netListener, err := net.ListenTCP("tcp", laddr)
+	//netListener, err := net.ListenTCP("tcp", ":8181")
 	if err != nil {
 		fmt.Println(err)
 		return
