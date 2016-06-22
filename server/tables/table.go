@@ -2,6 +2,7 @@
 package tables
 
 import (
+	"fmt"
 	"math/rand"
 	bat "rezder.com/game/card/battleline"
 	"rezder.com/game/card/battleline/flag"
@@ -24,33 +25,42 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	playerChs[0] <- moveInit1
 	playerChs[1] <- moveInit2
 	benchCh <- moveInitBench
-
 	var moveix [2]int
 	var move bat.Move
 	var open bool
 	var mover int
 
-	var cardix int
+	var deltCardix int
 	var isScout bool
 	var scout bat.MoveScoutReturn
 	var isClaim bool
 	var claim bat.MoveClaim
 	var claimView *MoveClaimView
+	var redeploy bat.MoveRedeploy
+	var isRedeploy bool
+	var redeployDishixs []int
 	for {
 		isScout = false
 		isClaim = false
-		cardix = 0
+		isRedeploy = false
+		deltCardix = 0
 		mover = game.Pos.Player
+		fmt.Printf("Waiting for mover ix: %v id: %v\n", mover, ids[mover])
 		moveix, open = <-moveChs[mover]
+		fmt.Printf("Recived move ix:%v from mover ix: %v id:%v\n", moveix, mover, ids[mover])
 		if !open {
 			game.Quit(game.Pos.Player)
-			move = MoveQuit{}
-		} else if moveix[0] == -1 && moveix[1] == -1 {
+			move = *NewMoveQuit()
+		} else if moveix[0] == 0 && moveix[1] == -1 {
 			game.Pass()
-			move = MovePass{}
-		} else if moveix[0] != -1 {
+			move = *NewMovePass()
+		} else if moveix[0] != 0 {
 			move = game.Pos.MovesHand[moveix[0]][moveix[1]]
-			cardix = game.MoveHand(moveix[0], moveix[1])
+			deltCardix, redeployDishixs = game.MoveHand(moveix[0], moveix[1])
+			redeploy, isRedeploy = move.(bat.MoveRedeploy)
+			if isRedeploy {
+				move = *NewMoveRedeployView(&redeploy, redeployDishixs)
+			}
 		} else {
 			move = game.Pos.Moves[moveix[1]]
 			scout, isScout = move.(bat.MoveScoutReturn)
@@ -62,13 +72,15 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 					claimView = NewMoveClaimView(claim)
 				}
 			}
-			cardix = game.Move(moveix[1])
+			deltCardix = game.Move(moveix[1])
 		}
 		if isClaim {
 			move = updateClaim(&game.Pos, claimView)
 		}
-		move1, move2, moveBench := creaMove(mover, move, cardix, &game.Pos)
+		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, &game.Pos, ids)
+		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[0], move1)
 		playerChs[0] <- move1
+		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[1], move2)
 		playerChs[1] <- move2
 		benchCh <- moveBench
 		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT {
@@ -85,6 +97,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 //updateClaim update the MoveClaimView with the succesfully claim flags and the win
 //indicator. The updated view is casted and returned as the move.
 func updateClaim(pos *bat.GamePos, claimView *MoveClaimView) (move bat.Move) {
+
 	for _, v := range claimView.Claim {
 		if pos.Flags[v].Claimed() {
 			claimView.Claimed = append(claimView.Claimed, v)
@@ -102,30 +115,32 @@ func updateClaim(pos *bat.GamePos, claimView *MoveClaimView) (move bat.Move) {
 }
 
 //creaMove Create a player move.
-func creaMove(mover int, move bat.Move, cardix int, pos *bat.GamePos) (move1 *pub.MoveView, move2 *pub.MoveView, moveBench *MoveBenchView) {
+func creaMove(mover int, move bat.Move, moveCardix int, deltCardix int, pos *bat.GamePos, ids [2]int) (move1 *pub.MoveView, move2 *pub.MoveView, moveBench *MoveBenchView) {
 	move1 = new(pub.MoveView)
 	move1.Mover = mover == 0
 	move1.Move = move
+	move1.MoveCardix = moveCardix
 	move1.Turn = pub.NewTurn(&pos.Turn, 0)
 
 	move2 = new(pub.MoveView)
 	move2.Mover = mover == 1
 	move2.Move = move
+	move2.MoveCardix = moveCardix
 	move2.Turn = pub.NewTurn(&pos.Turn, 1)
 
-	if cardix != 0 {
+	if deltCardix != 0 {
 		if mover == 0 {
-			move1.Card = cardix
+			move1.DeltCardix = deltCardix
 		} else {
-			move2.Card = cardix
+			move2.DeltCardix = deltCardix
 		}
 	}
 	moveBench = new(MoveBenchView)
 	moveBench.Mover = mover
 	moveBench.Move = move
 	moveBench.NextMover = pos.Player
-	initMove := *new(MoveBenchPos)
-	initMove.Pos = NewBenchPos(pos)
+	moveBench.MoveCardix = moveCardix
+	initMove := NewMoveBenchPos(NewBenchPos(pos, ids))
 	moveBench.MoveInit = initMove
 
 	return move1, move2, moveBench
@@ -145,21 +160,15 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 			panic("Old game and player id out of synch")
 		}
 		move1.Turn = pub.NewTurn(&game.Pos.Turn, 0)
-		moveInitPos := *new(MoveInitPos)
 		move1.MoveCh = moveChans[0]
-		moveInitPos.Pos = NewPlayPos(&game.Pos, 0)
-		move1.Move = moveInitPos
+		move1.Move = NewMoveInitPos(NewPlayPos(&game.Pos, 0))
 
 		move2.Turn = pub.NewTurn(&game.Pos.Turn, 1)
-		moveInitPos = *new(MoveInitPos)
 		move2.MoveCh = moveChans[1]
-		moveInitPos.Pos = NewPlayPos(&game.Pos, 1)
-		move2.Move = moveInitPos
+		move2.Move = NewMoveInitPos(NewPlayPos(&game.Pos, 1))
 
 		moveBench.NextMover = game.Pos.Player
-		moveBenchPos := *new(MoveBenchPos)
-		moveBenchPos.Pos = NewBenchPos(&game.Pos)
-		moveBench.MoveInit = moveBenchPos
+		moveBench.MoveInit = NewMoveBenchPos(NewBenchPos(&game.Pos, ids))
 	} else {
 		game = bat.New(ids)
 		rand.Seed(time.Now().UnixNano())
@@ -167,24 +176,19 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 		game.Start(r[0])
 
 		move1.Turn = pub.NewTurn(&game.Pos.Turn, 0)
-		init := new(MoveInit)
 		move1.MoveCh = moveChans[0]
 		h := make([]int, len(game.Pos.Hands[0].Troops))
 		copy(h, game.Pos.Hands[0].Troops)
-		init.Hand = h
-		move1.Move = init
+		move1.Move = NewMoveInit(h)
 
 		move2.Turn = pub.NewTurn(&game.Pos.Turn, 1)
-		init = new(MoveInit)
 		move2.MoveCh = moveChans[1]
 		h = make([]int, len(game.Pos.Hands[1].Troops))
 		copy(h, game.Pos.Hands[1].Troops)
-		init.Hand = h
-		move2.Move = init
+		move2.Move = NewMoveInit(h)
 
 		moveBench.NextMover = game.Pos.Player
-		init = new(MoveInit)
-		moveBench.Move = init
+		moveBench.Move = NewMoveBenchInit(ids)
 	}
 	return game, move1, move2, moveBench
 }
@@ -301,6 +305,7 @@ type Flag struct {
 
 func NewFlag(flag *flag.Flag, playerix int) (view *Flag) {
 	opp := opp(playerix)
+	view = new(Flag)
 	view.OppFlag = flag.Players[opp].Won
 	view.OppTroops, view.OppEnvs = flagCopyCards(flag, opp)
 	view.NeuFlag = !flag.Players[0].Won && !flag.Players[1].Won
@@ -341,11 +346,49 @@ func (flag *Flag) Equal(other *Flag) (equal bool) {
 	return equal
 }
 
+// MoveReployView the redeploy move view.
+type MoveRedeployView struct {
+	Move            *bat.MoveRedeploy
+	RedeployDishixs []int
+	JsonType        string
+}
+
+func NewMoveRedeployView(move *bat.MoveRedeploy, dishixs []int) (m *MoveRedeployView) {
+	m = new(MoveRedeployView)
+	m.Move = move
+	m.RedeployDishixs = dishixs
+	m.JsonType = "MoveRedeployView"
+	return m
+}
+
+func (m MoveRedeployView) MoveEqual(other bat.Move) (equal bool) {
+	if other != nil {
+		om, ok := other.(MoveRedeployView)
+		if ok && m.Move.MoveEqual(om.Move) && slice.Equal(m.RedeployDishixs, om.RedeployDishixs) {
+			equal = true
+		}
+	}
+	return equal
+}
+func (m MoveRedeployView) Copy() (c bat.Move) {
+	c = m
+	return c
+}
+
 // MoveScoutReturnView the scout return move view.
 // the scout return move as view by the opponent and the public.
 type MoveScoutReturnView struct {
-	Tac   int
-	Troop int
+	Tac      int
+	Troop    int
+	JsonType string
+}
+
+func NewMoveScoutReturnView(scout bat.MoveScoutReturn) (m *MoveScoutReturnView) {
+	m = new(MoveScoutReturnView)
+	m.Troop = len(scout.Troop)
+	m.Tac = len(scout.Tac)
+	m.JsonType = "MoveScoutReturnView"
+	return m
 }
 
 func (m MoveScoutReturnView) MoveEqual(other bat.Move) (equal bool) {
@@ -361,20 +404,15 @@ func (m MoveScoutReturnView) Copy() (c bat.Move) {
 	c = m
 	return c
 }
-func NewMoveScoutReturnView(scout bat.MoveScoutReturn) (m *MoveScoutReturnView) {
-	m = new(MoveScoutReturnView)
-	m.Troop = len(scout.Troop)
-	m.Tac = len(scout.Tac)
-	return m
-}
 
 // MoveClaimView the claim view contain the opriginal claim move and the result.
 // The claimed flags, if the game was won and evt. information from failed claims.
 type MoveClaimView struct {
-	Claim   []int
-	Claimed []int
-	Win     bool
-	Info    string
+	Claim    []int //The players claimed this flags
+	Claimed  []int //The players claimed flag that was not rejected
+	Win      bool
+	Info     string
+	JsonType string
 }
 
 func (m MoveClaimView) Equal(other MoveClaimView) (equal bool) {
@@ -397,16 +435,28 @@ func (m MoveClaimView) Copy() (c bat.Move) {
 	c = m //no deep copy
 	return c
 }
+
 func NewMoveClaimView(claim bat.MoveClaim) (m *MoveClaimView) {
-	m.Claim = make([]int, len(claim))
-	copy(m.Claim, claim)
+	m = new(MoveClaimView)
+	m.Claim = make([]int, len(claim.Flags))
+	m.Claimed = make([]int, 0, len(claim.Flags))
+	copy(m.Claim, claim.Flags)
+	m.JsonType = "MoveClaimView"
 	return m
 }
 
 //MoveInit the initial move in a new game.
 //Just the 7 cards the player get.
 type MoveInit struct {
-	Hand []int //nil for bench
+	Hand     []int //nil for bench
+	JsonType string
+}
+
+func NewMoveInit(hand []int) *MoveInit {
+	res := new(MoveInit)
+	res.Hand = hand
+	res.JsonType = "MoveInit"
+	return res
 }
 
 func (m MoveInit) Equal(other MoveInit) (equal bool) {
@@ -432,9 +482,16 @@ func (m MoveInit) Copy() (c bat.Move) {
 
 //MoveInitPos is the first move in a resumed game.
 type MoveInitPos struct {
-	Pos *PlayPos
+	Pos      *PlayPos
+	JsonType string
 }
 
+func NewMoveInitPos(pos *PlayPos) *MoveInitPos {
+	res := new(MoveInitPos)
+	res.Pos = pos
+	res.JsonType = "MoveInitPos"
+	return res
+}
 func (m MoveInitPos) MoveEqual(other bat.Move) (equal bool) {
 	if other != nil {
 		om, ok := other.(MoveInitPos)
@@ -450,7 +507,15 @@ func (m MoveInitPos) Copy() (c bat.Move) {
 }
 
 // MovePass is the pass move.
-type MovePass struct{}
+type MovePass struct {
+	JsonType string
+}
+
+func NewMovePass() *MovePass {
+	res := new(MovePass)
+	res.JsonType = "MovePass"
+	return res
+}
 
 func (m MovePass) MoveEqual(other bat.Move) (equal bool) {
 	if other != nil {
@@ -467,8 +532,15 @@ func (m MovePass) Copy() (c bat.Move) {
 }
 
 //MoveQuit the quit move.
-type MoveQuit struct{}
+type MoveQuit struct {
+	JsonType string
+}
 
+func NewMoveQuit() *MoveQuit {
+	res := new(MoveQuit)
+	res.JsonType = "MoveQuit"
+	return res
+}
 func (m MoveQuit) MoveEqual(other bat.Move) (equal bool) {
 	if other != nil {
 		_, ok := other.(MoveQuit)

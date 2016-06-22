@@ -56,10 +56,8 @@ Loop:
 // can be new it must always contain a init move and a move unless it is the
 // first move in a new game. This is because we can always have new watchers.
 type MoveBenchView struct {
-	Mover     int
-	Move      bat.Move
-	NextMover int
-	MoveInit  bat.Move
+	pub.MoveBench
+	MoveInit bat.Move
 }
 
 func NewMoveBench(view *MoveBenchView, ini bool) (move *pub.MoveBench) {
@@ -74,6 +72,7 @@ func NewMoveBench(view *MoveBenchView, ini bool) (move *pub.MoveBench) {
 
 	} else {
 		move.Move = view.Move
+		move.MoveCardix = view.MoveCardix
 	}
 	move.NextMover = view.NextMover
 	return move
@@ -88,9 +87,10 @@ type BenchPos struct {
 	Hands      [2][]bool
 	DeckTacs   int
 	DeckTroops int
+	Ids        [2]int
 }
 
-func NewBenchPos(pos *bat.GamePos) (bench *BenchPos) {
+func NewBenchPos(pos *bat.GamePos, ids [2]int) (bench *BenchPos) {
 	bench = new(BenchPos)
 	for i, v := range pos.Flags {
 		bench.Flags[i] = NewFlag(v, 0)
@@ -116,6 +116,7 @@ func NewBenchPos(pos *bat.GamePos) (bench *BenchPos) {
 			bench.Hands[i][j+troops] = false
 		}
 	}
+	bench.Ids = ids
 	bench.DeckTroops = len(pos.DeckTroop.Remaining())
 	bench.DeckTacs = len(pos.DeckTac.Remaining())
 	return bench
@@ -127,7 +128,7 @@ func (b *BenchPos) Equal(other *BenchPos) (equal bool) {
 	} else if other != nil && b != nil {
 		if b == other {
 			equal = true
-		} else if b.DeckTacs == other.DeckTacs && b.DeckTroops == other.DeckTroops {
+		} else if b.DeckTacs == other.DeckTacs && b.DeckTroops == other.DeckTroops && b.Ids == other.Ids {
 			equal = true
 			for i := 0; i < 2; i++ {
 				if !slice.Equal(b.DishTroops[i], other.DishTroops[i]) {
@@ -169,9 +170,16 @@ func (b *BenchPos) Equal(other *BenchPos) (equal bool) {
 // MoveBenchPos the first move when restarting a game or when
 // joining a game.
 type MoveBenchPos struct {
-	Pos *BenchPos
+	Pos      *BenchPos
+	JsonType string
 }
 
+func NewMoveBenchPos(pos *BenchPos) *MoveBenchPos {
+	res := new(MoveBenchPos)
+	res.Pos = pos
+	res.JsonType = "MoveBenchPos"
+	return res
+}
 func (m MoveBenchPos) MoveEqual(other bat.Move) (equal bool) {
 	if other != nil {
 		om, ok := other.(MoveBenchPos)
@@ -182,6 +190,32 @@ func (m MoveBenchPos) MoveEqual(other bat.Move) (equal bool) {
 	return equal
 }
 func (m MoveBenchPos) Copy() (c bat.Move) {
+	c = m //no deep copy
+	return c
+}
+
+// MoveBenchInit the first move in new game.
+type MoveBenchInit struct {
+	Ids      [2]int
+	JsonType string
+}
+
+func NewMoveBenchInit(ids [2]int) *MoveBenchInit {
+	res := new(MoveBenchInit)
+	res.Ids = ids
+	res.JsonType = "MoveBenchInit"
+	return res
+}
+func (m MoveBenchInit) MoveEqual(other bat.Move) (equal bool) {
+	if other != nil {
+		om, ok := other.(MoveBenchInit)
+		if ok {
+			equal = m.Ids == om.Ids
+		}
+	}
+	return equal
+}
+func (m MoveBenchInit) Copy() (c bat.Move) {
 	c = m //no deep copy
 	return c
 }

@@ -104,7 +104,7 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="1.4142136"
-     inkscape:cx="339.84382"
+     inkscape:cx="293.17477"
      inkscape:cy="323.43646"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -760,7 +760,7 @@
       </g>
       <g
          id="oF3TacGroup"
-         transform="matrix(1,0,0,-1,0,1100)">
+         transform="matrix(-1,0,0,1,450,0)">
         <rect
            style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-2-1"
@@ -796,7 +796,7 @@
       </g>
       <g
          id="oF6TacGroup"
-         transform="matrix(1,0,0,-1,0,1100)">
+         transform="matrix(-1,0,0,1,825,0)">
         <rect
            style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-3-0"

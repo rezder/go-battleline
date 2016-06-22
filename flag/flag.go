@@ -189,6 +189,9 @@ func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err 
 
 // remove_Mud finds the excess card that gives the highest formation
 // and strenght when it is removed.
+// There are a problem with this, a dished card can not be a traitor, so removing
+// the card that gives the best formation may not be the best move. The rules does not
+// cover this.
 func remove_Mud(player *Player, opp *Player) (mudix int) {
 	var maxf *cards.Formation = &cards.F_Host
 	var maxs int = 1
@@ -1060,7 +1063,7 @@ func usedTac_Tac(Env []int, troops []int) (tacs []int) {
 	for _, cardix := range troops {
 		if cardix != 0 {
 			_, err := cards.DrTactic(cardix)
-			if err != nil {
+			if err == nil {
 				tacs = append(tacs, cardix)
 			}
 		}

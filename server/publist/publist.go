@@ -115,9 +115,10 @@ func NewWatchChCl() (w *WatchChCl) {
 
 //MoveBench the data send to watchers.
 type MoveBench struct {
-	Mover     int
-	Move      bat.Move
-	NextMover int
+	Mover      int
+	Move       bat.Move
+	MoveCardix int
+	NextMover  int
 }
 
 //PlayerData the data send between logon server and the player server.
@@ -139,7 +140,7 @@ type Invite struct {
 	InvitorId   int
 	InvitorName string
 	ReceiverId  int
-	Rejected    bool
+	Rejected    bool                   //TODO maybe add reason
 	Response    chan<- *InviteResponse `json:"-"` //Common for all invitaion
 	Retract     chan struct{}          `json:"-"` //Per invite
 	DoneComCh   chan struct{}          `json:"-"`
@@ -164,9 +165,10 @@ type InviteResponse struct {
 //It should contain all information to animate a player move.
 //Its is non symetrics, each player get his own.
 type MoveView struct {
-	Mover bool
-	Move  bat.Move
-	Card  int //This is the return card from deck moves, zero when not used.
+	Mover      bool
+	Move       bat.Move
+	MoveCardix int
+	DeltCardix int //This is the return card from deck moves, zero when not used.
 	*Turn
 	MoveCh chan<- [2]int `json:"-"`
 }

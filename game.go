@@ -82,23 +82,23 @@ func (game *Game) Move(move int) (dealtix int) {
 	case TURN_FLAG:
 		moveC, ok := pos.Moves[move].(MoveClaim)
 		if ok {
-			pos.Info = moveClaimFlag(pos.Player, moveC, &pos.Flags, &pos.Hands, &pos.DeckTroop)
+			pos.Info = moveClaimFlag(pos.Player, moveC.Flags, &pos.Flags, &pos.Hands, &pos.DeckTroop)
 		} else {
-			panic("There should not be only claim moves")
+			panic("There should be only claim moves")
 		}
 	case TURN_SCOUT1, TURN_SCOUT2, TURN_DECK:
 		moveD, ok := pos.Moves[move].(MoveDeck)
 		if ok {
 			dealtix = moveDeck(moveD, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 		} else {
-			panic("There should not be only scout pick deck moves ")
+			panic("There should be only pick deck moves ")
 		}
 	case TURN_SCOUTR:
 		moveSctR, ok := pos.Moves[move].(MoveScoutReturn)
 		if ok {
 			moveScoutRet(&moveSctR, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 		} else {
-			panic("There should not be only scout return deck moves ")
+			panic("There should not only scout return deck moves ")
 		}
 	case TURN_HAND:
 		panic(" There should be now hand move here, pass hand move is not handle her")
@@ -154,7 +154,7 @@ func moveClaimFlag(playerix int, claimixs []int, flags *[FLAGS]*flag.Flag, hands
 //#troopDeck
 //#hand
 func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Hand) (dealt int) {
-	switch int(deck) {
+	switch int(deck.Deck) {
 	case DECK_TAC:
 		dealt = deckDealTactic(tacDeck)
 		hand.draw(dealt)
@@ -165,7 +165,7 @@ func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Han
 	return dealt
 }
 
-func (game *Game) MoveHand(cardix int, moveix int) (dealtix int) {
+func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, redeployixs []int) {
 	game.addMove(cardix, moveix)
 	pos := &game.Pos //Update
 	pos.Info = ""
@@ -175,7 +175,7 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int) {
 		pos.Hands[pos.Player].play(cardix)
 		switch move := pos.MovesHand[cardix][moveix].(type) {
 		case MoveCardFlag:
-			err = pos.Flags[int(move)].Set(cardix, pos.Player)
+			err = pos.Flags[move.Flagix].Set(cardix, pos.Player)
 		case MoveDeck: //scout
 			dealtix = moveDeck(move, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 			pos.Dishs[pos.Player].dishCard(cardix)
@@ -184,10 +184,10 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int) {
 			err = moveDeserter(&move, &pos.Flags, pos.Opp(), &pos.Dishs)
 			pos.Dishs[pos.Player].dishCard(cardix)
 		case MoveTraitor:
-			err = moveTraitor(&move, &pos.Flags, pos.Player)
+			err = moveTraitor(&move, &pos.Flags, pos.Dishs[pos.Opp()], pos.Player)
 			pos.Dishs[pos.Player].dishCard(cardix)
 		case MoveRedeploy:
-			err = moveRedeploy(&move, &pos.Flags, pos.Player, &pos.Dishs)
+			err, redeployixs = moveRedeploy(&move, &pos.Flags, pos.Player, &pos.Dishs)
 			pos.Dishs[pos.Player].dishCard(cardix)
 		default:
 			panic("Illegal move type")
@@ -200,35 +200,44 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int) {
 	} else {
 		panic("Wrong move function turn is not play card")
 	}
-	return dealtix
+	return dealtix, redeployixs
 }
 
-func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int, dishs *[2]*Dish) (err error) {
+func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
+	dishs *[2]*Dish) (err error, dishixs []int) {
 	var outFlag *flag.Flag = flags[move.OutFlag]
-	var inFlag *flag.Flag = flags[move.InFlag]
+	dishixs = make([]int, 0, 2)
 	m0ix, m1ix, err := outFlag.Remove(move.OutCard, playerix)
 	if err == nil {
 		if m0ix != -1 {
 			dishs[0].dishCard(m0ix)
+			dishixs = append(dishixs, m0ix)
 		}
 		if m1ix != -1 {
 			dishs[1].dishCard(m1ix)
+			dishixs = append(dishixs, m1ix)
 		}
-		if move.OutCard != -1 {
+		if move.InFlag != -1 {
+			var inFlag *flag.Flag = flags[move.InFlag]
 			err = inFlag.Set(move.OutCard, playerix)
 		} else {
 			dishs[playerix].dishCard(move.OutCard)
 		}
 	}
-	return err
+	return err, dishixs
 }
-func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, playerix int) (err error) {
+func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, oppDish *Dish, playerix int) (err error) {
 	var outFlag *flag.Flag = flags[move.OutFlag]
-	var inFlag *flag.Flag = flags[move.InFlag]
 	_, _, err = outFlag.Remove(move.OutCard, opponent(playerix)) //Only troop can be a traitor so no mudix
 	if err == nil {
-		err = inFlag.Set(move.OutCard, playerix)
+		if move.InFlag < 0 {
+			oppDish.dishCard(move.OutCard)
+		} else {
+			var inFlag *flag.Flag = flags[move.InFlag]
+			err = inFlag.Set(move.OutCard, playerix)
+		}
 	}
+
 	return err
 }
 func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int, dishs *[2]*Dish) (err error) {
@@ -392,9 +401,9 @@ func deckFromTactic(cardix int) int {
 	return cardix - 1 - cards.TROOP_NO
 }
 func GobRegistor() {
-	gob.Register(MoveCardFlag(0))
-	gob.Register(MoveClaim([]int{}))
-	gob.Register(MoveDeck(0))
+	gob.Register(MoveCardFlag{})
+	gob.Register(MoveClaim{})
+	gob.Register(MoveDeck{})
 	gob.Register(MoveDeserter{})
 	gob.Register(MoveRedeploy{})
 	gob.Register(MoveScoutReturn{})
@@ -406,7 +415,7 @@ func Save(game *Game, file *os.File) (err error) {
 	return err
 }
 func Load(file *os.File) (game *Game, err error) {
-	gob.Register(MoveCardFlag(0))
+	gob.Register(MoveCardFlag{})
 	decoder := gob.NewDecoder(file)
 	var g Game = *New([2]int{1, 2})
 

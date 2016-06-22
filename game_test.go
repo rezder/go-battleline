@@ -92,9 +92,9 @@ func TestGame(t *testing.T) {
 			t.Errorf("Load game file error. File :%v, Error: %v", fileNameInit, err.Error())
 		} else {
 			var move Move
-			move = MoveCardFlag(2)
+			move = *NewMoveCardFlag(2)
 			game.MoveHand(59, game.Pos.GetMoveix(59, move)) //59,3
-			move = MoveDeck(DECK_TROOP)
+			move = *NewMoveDeck(DECK_TROOP)
 			game.Move(game.Pos.GetMoveix(0, move)) //0,1
 
 			moveHandDeck(game, 40, 2, DECK_TROOP)  //0
@@ -111,7 +111,7 @@ func TestGame(t *testing.T) {
 			moveHandDeck(game, 33, 5, DECK_TAC)    //1
 			moveHandDeck(game, 14, 7, DECK_TROOP)  //0 Formation
 			moveHandDeck(game, 32, 5, DECK_TROOP)  //1
-			move = MoveClaim([]int{7})             //0
+			move = *NewMoveClaim([]int{7})         //0
 			game.Move(game.Pos.GetMoveix(0, move)) //0
 			moveHandDeck(game, 53, 8, DECK_TROOP)  //0
 			moveHandDeck(game, 9, 6, DECK_TROOP)   //1
@@ -130,9 +130,9 @@ func TestGame(t *testing.T) {
 			moveHandDeck(game, 24, 4, DECK_TROOP)  //0
 			moveHandDeck(game, 70, 6, DECK_TROOP)  //1
 			//Deserter 62
-			move = MoveDeserter{6, 70} // 0
+			move = *NewMoveDeserter(6, 70) // 0
 			game.MoveHand(62, game.Pos.GetMoveix(62, move))
-			move = MoveDeck(DECK_TAC)
+			move = *NewMoveDeck(DECK_TAC)
 			game.Move(game.Pos.GetMoveix(0, move)) //0
 			moveHandDeck(game, 51, 3, DECK_TAC)    //1
 			moveHandDeck(game, 34, 3, DECK_TROOP)  //0
@@ -150,7 +150,7 @@ func TestGame(t *testing.T) {
 			moveHandDeck(game, 49, 6, DECK_TROOP)  //1
 			playerClaimFlag(game, -1)              //0
 			moveHandDeck(game, 1, 0, DECK_TAC)     //0
-			move = MoveClaim([]int{1, 6})          // claim two get one//1
+			move = *NewMoveClaim([]int{1, 6})      // claim two get one//1
 			game.Move(game.Pos.GetMoveix(0, move)) //1
 			moveHandDeck(game, 21, 3, DECK_TROOP)  //1
 			playerClaimFlag(game, -1)              //0
@@ -164,13 +164,13 @@ func TestGame(t *testing.T) {
 			moveHandDeck(game, 48, 1, DECK_TROOP) //1
 			playerClaimFlag(game, -1)             //0
 			//scout
-			move = MoveDeck(DECK_TROOP) //0
+			move = *NewMoveDeck(DECK_TROOP) //0
 			game.MoveHand(64, game.Pos.GetMoveix(64, move))
-			move = MoveDeck(DECK_TROOP)
+			move = *NewMoveDeck(DECK_TROOP)
 			game.Move(game.Pos.GetMoveix(-1, move))
-			move = MoveDeck(DECK_TROOP)
+			move = *NewMoveDeck(DECK_TROOP)
 			game.Move(game.Pos.GetMoveix(-1, move))
-			move = MoveScoutReturn{[]int{67}, []int{11}}
+			move = *NewMoveScoutReturn([]int{67}, []int{11})
 			game.Move(game.Pos.GetMoveix(-1, move))
 			playerClaimFlag(game, 1)               // fail 1
 			moveHandDeck(game, 41, 3, DECK_TAC)    //1
@@ -178,7 +178,7 @@ func TestGame(t *testing.T) {
 			moveHandDeck(game, 19, 5, DECK_TROOP)  //0
 			playerClaimFlag(game, 1)               // 1
 			moveHandDeck(game, 26, 0, DECK_TAC)    //1
-			move = MoveClaim([]int{4, 5})          // claim two get one//0
+			move = *NewMoveClaim([]int{4, 5})      // claim two get one//0
 			game.Move(game.Pos.GetMoveix(0, move)) //0
 			moveHandDeck(game, 11, 0, DECK_TROOP)  //0
 			playerClaimFlag(game, 0)               // 1
@@ -193,7 +193,7 @@ func TestGame(t *testing.T) {
 			moveHandDeck(game, 56, 4, DECK_TAC)    //1
 			playerClaimFlag(game, -1)              //0
 			moveHandDeck(game, 38, 3, DECK_TAC)    //0
-			move = MoveClaim([]int{3, 4})          //1 claim two get  two and win
+			move = *NewMoveClaim([]int{3, 4})      //1 claim two get  two and win
 			game.Move(game.Pos.GetMoveix(0, move)) //1
 
 			_ = fmt.Sprintf("Move pos: %v\n", game.Pos) // Do not want to delete fmt
@@ -232,19 +232,19 @@ func TestGame(t *testing.T) {
 func playerClaimFlag(game *Game, flag int) {
 	var move Move
 	if flag == -1 {
-		move = MoveClaim([]int{}) //make([]int,0)
+		move = *NewMoveClaim([]int{}) //make([]int,0)
 	} else {
-		move = MoveClaim([]int{flag})
+		move = *NewMoveClaim([]int{flag})
 	}
 	game.Move(game.Pos.GetMoveix(0, move))
 
 }
 func moveHandDeck(game *Game, card int, flag int, deck int) {
 	var move Move
-	move = MoveCardFlag(flag)
+	move = *NewMoveCardFlag(flag)
 	ix := game.Pos.GetMoveix(card, move)
 	game.MoveHand(card, ix)
-	move = MoveDeck(deck)
+	move = *NewMoveDeck(deck)
 	game.Move(game.Pos.GetMoveix(0, move))
 
 }
@@ -278,9 +278,9 @@ func TestGameTraitor(t *testing.T) {
 			moveHandDeck(game, 57, 5, DECK_TAC)   //1
 			moveHandDeck(game, 46, 3, DECK_TAC)   //0
 			//Redeploy
-			move = MoveRedeploy{3, 50, 4}                   //1
+			move = *NewMoveRedeploy(3, 50, 4)               //1
 			game.MoveHand(63, game.Pos.GetMoveix(63, move)) //1
-			move = MoveDeck(DECK_TROOP)                     //1
+			move = *NewMoveDeck(DECK_TROOP)                 //1
 			game.Move(game.Pos.GetMoveix(0, move))          //1
 			playerClaimFlag(game, -1)                       //0
 			moveHandDeck(game, 19, 2, DECK_TROOP)           //0
@@ -314,9 +314,9 @@ func TestGameTraitor(t *testing.T) {
 			moveHandDeck(game, 37, 6, DECK_TROOP)           //1
 			playerClaimFlag(game, -1)                       //0
 			//traitor
-			move = MoveTraitor{6, 37, 4}                    //0
+			move = *NewMoveTraitor(6, 37, 4)                //0
 			game.MoveHand(61, game.Pos.GetMoveix(61, move)) //0
-			move = MoveDeck(DECK_TROOP)                     //0
+			move = *NewMoveDeck(DECK_TROOP)                 //0
 			game.Move(game.Pos.GetMoveix(0, move))          //0
 			playerClaimFlag(game, -1)                       //1
 			moveHandDeck(game, 13, 8, DECK_TROOP)           //1

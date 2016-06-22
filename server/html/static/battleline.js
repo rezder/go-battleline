@@ -1,13 +1,18 @@
 var batt={};
 (function(batt){
     var game={};
+    game.turn={};
+    game.turn.current=null;
+    game.cone={};
+    game.cone.clickedixs=new Set();
+    game.cone.validixs=new Set();
+    game.scoutReturnTacixs=[];
+    game.scoutReturnTroopixs=[];
     var ws={};
     var table={};
     table.players={};
     table.invites={};
     var msg={};
-    var invite={};
-    var pList={};
     var id={};
     var svg;
 
@@ -22,7 +27,7 @@ var batt={};
 	  const ACT_WATCHSTOP  = 9;
 	  const ACT_LIST       = 10;
 
-    const TROOP_NO = 60;//TODO maybe card infor could be moved to battSvg
+    const TROOP_NO = 60;//TODO maybe card information could be moved to battSvg
 	  const TAC_NO   = 10;
 
 	  const TC_Alexander = 70;
@@ -36,17 +41,34 @@ var batt={};
 	  const TC_Deserter  = 62;
 	  const TC_Traitor   = 61;
 
-    function battSvg(){
-        const ID_Cone=1;
-        const ID_FlagTroop=2;
-        const ID_FlagTac=3;
-        const ID_Card=4;
-        const ID_DeckTac=5;
-        const ID_DeckTroop=6;
-        const ID_DishTac=7;
-        const ID_DishTroop=8;
+    const TURN_FLAG = 0;
+	  const TURN_HAND = 1;
+	  //TURN_SCOUT2 player picks second of tree scout cards.
+	  const TURN_SCOUT2 = 2;
+	  //TURN_SCOUT2 player picks last of tree scout cards.
+	  const TURN_SCOUT1 = 3;
+	  //TURN_SCOUTR player return 3 cards to decks.
+	  const TURN_SCOUTR = 4;
+	  const TURN_DECK   = 5;
+	  const TURN_FINISH = 6;
+	  const TURN_QUIT   = 7;
 
-        const COLORS_Troops=["#00ff00","#ff0000","#af3dff","#ffff00","#007fff","#ff8c00"];
+	  const DECK_TAC   = 1;
+	  const DECK_TROOP = 2;
+
+    const ID_Cone=1;
+    const ID_FlagTroop=2;
+    const ID_FlagTac=3;
+    const ID_Card=4;
+    const ID_DeckTac=5;
+    const ID_DeckTroop=6;
+    const ID_DishTac=7;
+    const ID_DishTroop=8;
+    const ID_Hand=9;
+
+    function battSvg(){
+        const COLORS_Troops=["#00ff00","#ff0000","#af3dff","#ffff00","#007fff","#ffa500"];
+        const COLORS_Names=["Green","Red","Purpel","Yellow","Blue","Orange"];
         const COLOR_CardFrame="#ffffff";
         const COLOR_CardFrameSpecial="#000000";
         let svg={};
@@ -85,6 +107,15 @@ var batt={};
             case ID_DeckTroop:
                 id="deckTroopGroup";
                 break;
+            case ID_DishTac:
+                id=pText+"DishTacGroup";
+                break;
+            case ID_DishTroop:
+                id=pText+"DishTroopGroup";
+                break;
+            case ID_Hand:
+                id=pText+"Hand";
+                break;
             }
             return id;
         };
@@ -93,27 +124,36 @@ var batt={};
             switch (id.charAt(0)){
             case "k":
                 res.type=ID_Cone;
-                res.no=id.match(/\d/)[0];
+                res.no=parseInt(id.match(/\d/)[0]);
                 break;
             case "p":
-                let dish=true;
-                if (id.search(/Dish/)===-1){
-                    dish=false;
+                let dish=false;
+                let hand=false;
+                if (id.search(/Dish/)>-1){
+                    dish=true;
+                }else if (id.search(/Hand/)>-1){
+                    hand=true;
                 }
-                if (id.search(/Troop/)===-1){
-                    if (dish){
-                        res.type=ID_DishTac;
-                    }else{
-                        res.type=ID_FlagTac;
-                    }
+                if (hand){
+                    res.type=ID_Hand;
                 }else{
-                    if (dish){
-                        res.type=ID_DishTroop;
+                    if (id.search(/Troop/)===-1){
+                        if (dish){
+                            res.type=ID_DishTac;
+                        }else{
+                            res.type=ID_FlagTac;
+                        }
                     }else{
-                        res.type=ID_FlagTroop;
+                        if (dish){
+                            res.type=ID_DishTroop;
+                        }else{
+                            res.type=ID_FlagTroop;
+                        }
+                    }
+                    if(!dish){
+                        res.no=parseInt(id.match(/\d/)[0]);
                     }
                 }
-                res.no=id.match(/\d/)[0];
                 res.player=true;
                 break;
             case "o":
@@ -122,12 +162,12 @@ var batt={};
                 }else{
                     res.type=ID_FlagTroop;
                 }
-                res.no=id.match(/\d/)[0];
+                res.no=parseInt(id.match(/\d/)[0]);
                 res.player=false;
                 break;
             case "c":
                 res.type=ID_Card;
-                res.no=id.match(/\d{1,2}/)[0];
+                res.no=parseInt(id.match(/\d{1,2}/)[0]);
                 break;
             case "d":
                 if (id.search(/Troop/)===-1){
@@ -220,14 +260,20 @@ var batt={};
                 }else{
                     let newX,newY;
                     if (vertical){
-                        newX=cards[i].transform.baseVal.getItem(0).matrix.e+svg.hand.vSpace;
+                        newX=cards[i].transform.baseVal.getItem(0).matrix.e-svg.hand.vSpace;
                         newY=cards[i].transform.baseVal.getItem(0).matrix.f;
                     }else{
                         newX=cards[i].transform.baseVal.getItem(0).matrix.e;
-                        newY=cards[i].transform.baseVal.getItem(0).matrix.f+svg.hand.vSpace;
+                        newY=cards[i].transform.baseVal.getItem(0).matrix.f-svg.hand.hSpace;
                     }
                     cards[i].transform.baseVal.getItem(0).setTranslate(newX,newY);
                 }
+            }
+        };
+        svg.card.clearGroup=function(group){
+            let cards=group.getElementsByTagName("g");
+            for(let i=cards.length-1;i>=0;i--){
+                group.removeChild(cards[i]);
             }
         };
         svg.card.hit=function(group,x,y){
@@ -306,7 +352,7 @@ var batt={};
         svg.flag.cardToFlagPlayer=function(flagGroup){
             let cardGroup=svg.flag.cardSelected;
             svg.flag.cardUnSelect();
-            svg.flag.cardToFlag(cardGroup,flagGroup);
+            svg.flag.cardToFlag(cardGroup,flagGroup,true);
         };
         svg.cone.pos=function(coneX,pos){
             let coneCircle;
@@ -330,6 +376,16 @@ var batt={};
                 break;
             }
             coneCircle.cy.baseVal.value=newY ;
+        };
+        svg.cone.clear=function(){
+            for (let i =1;i<10;i++){
+                svg.cone.pos(i,1);
+            }
+        };
+        svg.itemClicked=function(elems,centerClick){
+        };
+        svg.card.colorName=function(cardix){
+            return COLORS_Names[Math.floor((cardNo-1)/10)];
         };
         svg.init=function (document){
             let backTroop= document.getElementById("backTroopGroup").cloneNode(true);
@@ -437,6 +493,9 @@ var batt={};
             let deckTacTspan=document.getElementById("deckTacTspan");
             let deckTroopTspan=document.getElementById("deckTroopTspan");
             svg.hand.drawPlayer=function(cardNo){
+                if (svg.hand.selected){
+                    svg.hand.unSelect();
+                }
                 let cardGroup=svg.hand.createCard(cardNo);
                 svg.card.set(pHandGroup,cardGroup,true);
                 svg.hand.select(cardGroup);
@@ -455,6 +514,9 @@ var batt={};
                 }else{
                     deckTacTspan.textContent=""+deckTacTspan.textContent-1;
                 }
+            };
+            svg.hand.countPlayer= function(){
+                return svg.card.count(pHandGroup);
             };
             svg.hand.move=function(toCard,before){
                 let fromCard=svg.hand.selected;
@@ -560,15 +622,59 @@ var batt={};
                 }
                 svg.card.set(dishGroup,cardGroup,false);
             };
-            svg.hand.moveToFlagPlayer=function(flagGroup){
+            svg.card.clear=function(){
+                svg.card.clearGroup(oDishTroopGroup);
+                svg.card.clearGroup(oDishTacGroup);
+                svg.card.clearGroup(pDishTroopGroup);
+                svg.card.clearGroup(pDishTacGroup);
+                for(let i=1;i<10;i++){
+                    let id= svg.toId(ID_FlagTroop,i,true);
+                    svg.card.clearGroup(document.getElementById(id));
+                    id= svg.toId(ID_FlagTroop,i,false);
+                    svg.card.clearGroup(document.getElementById(id));
+                    id= svg.toId(ID_FlagTac,i,true);
+                    svg.card.clearGroup(document.getElementById(id));
+                    id= svg.toId(ID_FlagTac,i,false);
+                    svg.card.clearGroup(document.getElementById(id));
+                }
+                svg.card.clearGroup(pHandGroup);
+                svg.card.clearGroup(oHandGroup);
+                deckTacTspan.textContent=""+TAC_NO;
+                deckTroopTspan.textContent=""+TROOP_NO;
+            };
+            svg.hand.moveToFlagPlayer=function(flagX){
                 let c=svg.hand.selected;
+                let cardix=svg.fromId(c.id).no;
+                let flagGroup;
+                if (flagX.parentNode){
+                    let flagIdObj=svg.fromId(flagX.id);
+                    if (cardix===TC_Mud||cardix===TC_Fog){
+                        if(flagIdObj.type===ID_FlagTac){
+                            flagGroup=flagX;
+                        }else{
+                            flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagIdObj.no,true));
+                        }
+                    }else{
+                        if(flagIdObj.type===ID_FlagTroop){
+                            flagGroup=flagX;
+                        }else{
+                            flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagIdObj.no,true));
+                        }
+                    }
+                }else{
+                    if (cardix===TC_Mud||cardix===TC_Fog){
+                        flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagX));
+                    }else{
+                        flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagX));
+                    }
+                }
                 svg.hand.unSelect();
                 svg.card.leave(c,true);
                 svg.card.set(flagGroup,c,false);
             };
             svg.hand.moveToFlagOpp=function(cardNo,flagNo){
                 let flagGroup;
-                if (cardNo>TROOP_NO){
+                if (cardNo===TC_Mud||cardNo===TC_Fog){
                     flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagNo,false));
                 }else{
                     flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagNo,false));
@@ -588,7 +694,7 @@ var batt={};
                 }else{
                     deckTroopTspan.textContent=""+(parseInt(deckTroopTspan.textContent)+1);
                 }
-                svg.card.leave(cc);
+                svg.card.leave(cc,true);
                 svg.hand.removePlayer(cc,true);
             };
             svg.hand.moveToDeckOpp=function(tac){
@@ -668,7 +774,7 @@ var batt={};
                     x=point.x;
                     y=point.y;
                 }
-                function hitGroup(group){
+                function hitGroup(group,x,y){
                     let hit=false;
                     let rect=group.getElementsByTagName("rect")[0];
                     if (!player){
@@ -701,12 +807,12 @@ var batt={};
                                 res[res.length]=tacGroup;
                                 break;
                             }
-                            if (hitGroup(troopGroup)){
+                            if (hitGroup(troopGroup,x,y)){
                                 res[res.length]=troopGroup;
                                 break;
                             }
-                            if (hitGroup(tacGroup)){
-                                res[res.length]=troopGroup;
+                            if (hitGroup(tacGroup,x,y)){
+                                res[res.length]=tacGroup;
                                 break;
                             }
                         }else{
@@ -765,7 +871,7 @@ var batt={};
             };
             let firstCone=document.getElementById("k1Path");
             let lastCone=document.getElementById("k9Path");
-            let coneR=firstCone.r.baseVal.value+firstCone.style.strokeWidth;
+            let coneR=firstCone.r.baseVal.value+parseFloat(firstCone.style.strokeWidth);
             let coneArea=new Area(firstCone.cx.baseVal.value-coneR,
                                   lastCone.cx.baseVal.value+coneR,
                                   firstCone.cy.baseVal.value-coneR,
@@ -791,48 +897,12 @@ var batt={};
                 }
                 return res;
             };
-            svg.ItemClicked=function(elems,centerClick){
-                let idObj=svg.fromId(elems[0].id);
-                switch (idObj.type){
-                case ID_Card:
-                    let parentId=elems[0].parentNode.id;
-                    if(parentId===pHandGroup.id){
-                        if(svg.hand.selected){
-                            if(svg.hand.selected.id===elems[0].id){
-                                svg.hand.unSelect();
-                            }else{
-                                svg.hand.move(elems[0],!centerClick);
-                            }
-                        }else{
-                            svg.hand.select(elems[0]);
-                        }
-                    }else{//Flag
-                        //TODO
-                    }
-                    break;
-                case ID_DeckTroop:
-                    break;
-                case ID_DeckTac:
-                    break;
-                case ID_FlagTroop:
-                    break;
-                case ID_FlagTac:
-                    break;
-                case ID_Cone:
-                    break;
-                case ID_DishTroop:
-                    break;
-                case ID_DishTac:
-                    break;
 
-                }
-
-            };
             battlelineSvg.onclick=function (event){
                 let elms=svg.click.hitElems(event);
                 let centerClick=event.which===2;//right click is context menu
                 if (elms.length>0){
-                    svg.ItemClicked(elms,centerClick);
+                    svg.itemClicked(elms,centerClick);
                 }
             };
         };//init
@@ -883,7 +953,7 @@ var batt={};
         if(invite.Rejected){
             let name=table.invites.delete(invite.ReceiverId,true);
             if(name){
-                msg.recieved({Message:name+" declined your invitation"});
+                msg.recieved({Message:name+" declined your invitation."});
             }
         }else{
             table.invites.replace(invite.InvitorId,invite.InvitorName,false);
@@ -895,8 +965,8 @@ var batt={};
             res.Id=id;
             return res;
         };
-        res.move=function(x,y){
-            this.Move=[x,y];
+        res.move=function(cardix,flagix){
+            this.Move=[cardix,flagix];
             return this;
         };
         res.mess=function(msg){
@@ -934,6 +1004,487 @@ var batt={};
         }
         return res;
     }
+    game.ends=function(){
+        game.turn.current=null;
+        game.turn.isMyTurn=false;
+        let act=actionBuilder(ACT_LIST).build();
+        ws.conn.send(JSON.stringify(act));
+    };
+    game.showMove=function(moveView){
+        game.cone.validixs.clear();
+        let move=moveView.Move;
+        if (moveView.Mover){
+            if (move.JsonType==="MoveClaimView"){
+               if (move.Claimed.length!==move.Claim.length){
+                    for(let i=0;i<move.Claim.length;i++){
+                        let found=false;
+                        for(let j=0;j<move.Claimed.length;j++){
+                            if (move.Claim[i]===move.Claimed[j]){
+                                found=true;
+                                break;
+                            }
+                        }
+                        if (!found){
+                            svg.cone.pos(move.Claim[i]+1,1);//reset cone
+                        }
+                    }
+                    msg.recieved({Message:move.Info}); 
+                }
+                if (move.Win){
+                    msg.recieved({Message:"Congratulation you won the game."});
+                }
+            }else if (moveView.DeltCardix!==0){
+                if (svg.hand.selected){
+                    svg.hand.unSelect();
+                }
+               svg.hand.drawPlayer(moveView.DeltCardix);
+            }else if(move.JsonType==="MoveQuit"){
+                msg.recieved({Message:"You have lost the game by giving up."});
+            }else if(move.JsonType==="MoveRedeployView"){
+                if(move.RedeployDishixs.length>0){
+                    for(let i=0;i<move.RedeployDishixs.length;i++){
+                        svg.flag.cardToDish(move.RedeployDishixs[i]);
+                    }
+                }
+            }
+        }else{
+            //Move bat.Move and Card int
+            switch (move.JsonType){
+            case "MoveInit":
+                for (let i=0;i<move.Hand.length;i++){
+                    svg.hand.drawPlayer(move.Hand[i]);
+                    svg.hand.drawOpp(true);
+                }
+                break;
+            case "MoveInitPos":
+                let pos=move.Pos;
+                for (let i;i<pos.Flags.length;i++){
+                    let flag=pos.Flags[i];
+                    if (flag.OppFlag){
+                        svg.cone.pos(i+1,0);
+                    }else if(flag.NeuFlag){
+                        svg.cone.pos(i+1,1);
+                    }else if(flag.PlayFlag){
+                        svg.cone.pos(i+1,2);
+                    }
+                    for (let j=0;j<flag.OppTroops.length;j++){
+                        svg.hand.drawOpp(true);
+                        svg.hand.moveToFlagOpp(flag.OppTroops[j],i+1);
+                    }
+                    for (let j=0;j<flag.OppEnvs.length;j++){
+                        svg.hand.drawOpp(false);
+                        svg.hand.moveToFlagOpp(flag.OppEnvs[j],i+1);
+                    }
+                    for (let j=0;j<flag.PlayTroops.length;j++){
+                        svg.hand.drawPlayer(flag.PlayTroops[j]);
+                        svg.hand.moveToFlagPlayer(i+1);
+                    }
+                    for (let j=0;j<flag.PlayEnvs.length;j++){
+                       svg.hand.drawPlayer(flag.PlayEnvs[j]);
+                       svg.hand.moveToFlagPlayer(i+1);
+                    }
+                }
+                for (let i;i<pos.OppDishTroops.length;i++){
+                    let cardNo=pos.OppDishTroops[i];
+                    svg.hand.drawOpp(true);
+                    svg.hand.moveToDishOpp(cardNo);
+                }
+                for (let i;i<pos.OppDishTacs.length;i++){
+                    let cardNo=pos.OppDishTacs[i];
+                    svg.hand.drawOpp(false);
+                    svg.hand.moveToDishOpp(cardNo);
+                }
+                for (let i;i<pos.DishTroops.length;i++){
+                    let cardNo=pos.DishTroops[i];
+                    svg.hand.drawPlayer(cardNo);
+                    svg.hand.moveToDishPlayer();
+                }
+                for (let i;i<pos.DishTacs.length;i++){
+                    let cardNo=pos.DishTacs[i];
+                    svg.hand.drawPlayer(cardNo);
+                    svg.hand.moveToDishPlayer();
+                }
+                for (let i;i<pos.OppHand.length;i++){
+                    svg.hand.drawOpp(pos.OppHand[i]);
+                }
+                for (let i;i<pos.Hand.length;i++){
+                    let cardNo=pos.Hand[i];
+                    svg.hand.drawOpp(cardNo);
+                    svg.hand.unSelect();
+                }
+                break;
+            case "MoveCardFlag":
+                svg.hand.moveToFlagOpp(moveView.MoveCardix,move.Flagix+1);
+                break;
+            case "MoveDeck":
+                svg.hand.drawOpp(move.Deck===DECK_TROOP);
+                break;
+            case "MoveClaimView":
+                if (move.Claimed.length>0){
+                    for(let i=0;i<move.Claimed.length;i++){
+                        svg.cone.pos(move.Claimed[i]+1,0);
+                    }
+                    if (move.Win){
+                        msg.recieved({Message:"Sorry you you lost the game."});
+                    }
+                }
+                break;
+            case "MoveDeserter":
+                svg.hand.moveToDishOpp(moveView.MoveCardix);
+                svg.flag.cardToDish(move.Card);
+                break;
+            case "MoveScoutReturnView":
+                svg.hand.moveToDishOpp(TC_Scout);
+                if (move.Tac>0){
+                    for (let i=0;i<move.Tac;i++){
+                        svg.hand.moveToDeckOpp(true);
+                    }
+                }
+                if (move.Troop>0){
+                    for (let i=0;i<move.Troop;i++){
+                        svg.hand.moveToDeckOpp(false);
+                    }
+                }
+                msg.recieved({Message:"Opponent return "+move.Tac+" tactic cards and "+move.Troop+" troop cards."});
+                break;
+            case "MoveTraitor":
+                svg.hand.moveToDishOpp(moveView.MoveCardix);
+                if (move.InFlag>=0){
+                    svg.flag.cardToFlag(move.OutCard,move.InFlag+1,false);
+                }else{
+                    svg.flag.cardToDish(move.OutCard);
+                }
+                break;
+            case "MoveRedeployView":
+                svg.hand.moveToDishOpp(moveView.MoveCardix);
+                if (move.Move.InFlag>=0){
+                    svg.flag.cardToFlag(move.Move.OutCard,move.Move.InFlag+1,false);
+                }else{
+                    svg.flag.cardToDish(move.Move.OutCard);
+                }
+                if(move.RedeployDishixs.length>0){
+                    for(let i=0;i<move.RedeployDishixs.length;i++){
+                        svg.flag.cardToDish(move.RedeployDishixs[i]);
+                    }
+                }
+                break;
+            case "MovePass":
+                msg.recieved({Message:"Your opponent chose not to play a card."});
+                break;
+            case "MoveQuit":
+                msg.recieved({Message:"Congratulation your opponent have given up."});
+                break;
+            default:
+                console.log("Unsupported move: "+move.JsonType);
+
+            }
+        }
+    };
+    game.cone.clear=function(){
+        game.cone.clickedixs.clear();
+        game.cone.validixs.clear();
+    };
+    game.clear=function(){
+        game.cone.clear();
+        game.turn.clear();
+        svg.card.clear();
+        svg.cone.clear();
+        svg.hand.selected=null;
+        svg.flag.cardSelected=null;
+        game.scoutReturnTroopixs=[];
+        game.scoutReturnTacixs=[];
+    };
+    game.move=function(moveView){
+        if (game.turn.current===null){
+            table.invites.clear();
+            game.clear();
+        }else{
+            game.turn.oldState=game.turn.current.State;
+        }
+        game.turn.current=moveView;
+        game.turn.isMyTurn=game.turn.update(game.turn.current);
+        game.showMove(moveView);
+    };
+    game.onClickedCard=function(clickedFlagElm,clickedCardElm,clickedDishElm){
+        function moveToFlag(turn,cardix,flagElm){
+            let flagIdObj=svg.fromId(flagElm.id);
+            let flagNo=flagIdObj.no;
+            if (flagIdObj.player){
+                let moves=turn.MovesHand[""+cardix];
+                if (moves){
+                    for(let i=0;i<moves.length;i++){
+                        if (moves[i].Flagix===flagNo-1){
+                            svg.hand.moveToFlagPlayer(flagElm);
+                            game.turn.isMyTurn=false;
+                            let act=actionBuilder(ACT_MOVE).move(cardix,i).build();
+                            ws.conn.send(JSON.stringify(act));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if(game.turn.isMyTurn&&svg.hand.selected!==null&&game.turn.current.State===TURN_HAND){
+            let player;
+            let clickedFlagix;
+            if (clickedFlagElm){
+                let flagIdObj=svg.fromId(clickedFlagElm.id);
+                player=flagIdObj.player;
+                clickedFlagix=flagIdObj.no-1;
+            }else{
+                player=svg.fromId(clickedDishElm.id).player;
+                clickedFlagix=-1;
+            }
+            let selectedHandCardix=svg.fromId(svg.hand.selected.id).no;
+            let turn=game.turn.current;
+            if (selectedHandCardix>TROOP_NO){//TAC
+                switch (selectedHandCardix){
+                case TC_123:
+                case TC_8:
+                case TC_Fog:
+                case TC_Mud:
+                case TC_Alexander:
+                case TC_Darius:
+                    moveToFlag(turn,selectedHandCardix,clickedFlagElm);
+                    break;
+                case TC_Deserter:
+                    if (clickedCardElm&&!player){
+                        let clickedCardix=svg.fromId(clickedCardElm.id).no;
+                        let dmoves=turn.MovesHand[""+selectedHandCardix];
+                        for(let i=0;i<dmoves.length;i++){
+                            if (dmoves[i].Card===clickedCardix){
+                                svg.hand.moveToDishPlayer();
+                                svg.flag.cardToDish(clickedCardix);
+                                game.turn.isMyTurn=false;
+                                let act=actionBuilder(ACT_MOVE).move(selectedHandCardix,i).build();
+                                ws.conn.send(JSON.stringify(act));
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                case TC_Redeploy:
+                    if (player){
+                        if (!svg.flag.cardSelected){
+                            if (clickedCardElm){
+                                svg.flag.cardSelect(clickedCardElm);
+                            }
+                        }else{
+                            if (clickedCardElm &&svg.flag.cardSelected.id===clickedCardElm.id){
+                                svg.flag.cardUnSelect();
+                            }else{
+                                let selectedFlagCardix=svg.fromId(svg.flag.cardSelected.id).no;
+                                let rmoves=turn.MovesHand[""+selectedHandCardix];
+                                for(let i=0;i<rmoves.length;i++){
+                                    if (rmoves[i].OutCard===selectedFlagCardix&&rmoves[i].InFlag===clickedFlagix){
+                                        svg.hand.moveToDishPlayer();
+                                        game.turn.isMyTurn=false;
+                                        let act= actionBuilder(ACT_MOVE).move(selectedHandCardix,i).build();
+                                        if(clickedFlagix!==-1){
+                                            svg.flag.cardToFlagPlayer(clickedFlagElm);
+                                        }else{
+                                            svg.flag.cardUnSelect();
+                                            svg.flag.cardToDish(selectedFlagCardix);
+                                        }
+                                        ws.conn.send(JSON.stringify(act));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case TC_Traitor:
+                    if (player){
+                        if (svg.flag.cardSelected){
+                            let selectedFlagCardix=svg.fromId(svg.flag.cardSelected.id).no;
+                            let tmoves=turn.MovesHand[""+selectedHandCardix];
+                            for(let i=0;i<tmoves.length;i++){
+                                if (tmoves[i].OutCard===selectedFlagCardix&&tmoves[i].InFlag===clickedFlagix){
+                                    svg.hand.moveToDishPlayer();
+                                    game.turn.isMyTurn=false;
+                                    let act= actionBuilder(ACT_MOVE).move(selectedHandCardix,i).build();
+                                    svg.flag.cardToFlagPlayer(clickedFlagElm);
+                                    ws.conn.send(JSON.stringify(act));
+                                    break;
+                                }
+                            }
+                        }
+                    }else{//clicked on opp flag
+                        if (!svg.flag.cardSelected){
+                            if (clickedCardElm){
+                                svg.flag.cardSelect(clickedCardElm);
+                            }
+                        }else{
+                            if (clickedCardElm &&svg.flag.cardSelected.id===clickedCardElm.id){
+                                svg.flag.cardUnSelect();
+                            }
+                        }
+                    }
+                    break;
+                }
+            }else{//TROOP
+                moveToFlag(turn,selectedHandCardix,clickedFlagElm);
+            }
+        }
+    };
+    game.onClickedDeck=function(deckElm,idType){
+        if(game.turn.isMyTurn){
+            let deck;
+            if (idType===ID_DeckTac){
+                deck=DECK_TAC;
+            }else{
+                deck=DECK_TROOP;
+            }
+            if (game.turn.current.State===TURN_SCOUT1||
+                game.turn.current.State===TURN_SCOUT2||
+                game.turn.current.State===TURN_DECK){
+                let moves=game.turn.current.Moves;
+                for(let i=0;i<moves.length;i++){
+                    if (moves[i].Deck===deck){
+                        game.turn.isMyTurn=false;
+                        let act= actionBuilder(ACT_MOVE).move(0,i).build();
+                        ws.conn.send(JSON.stringify(act));
+                        break;
+                    }
+                }
+            }else if (game.turn.current.State===TURN_HAND && svg.hand.selected &&
+                      svg.fromId(svg.hand.selected.id).no===TC_Scout){
+                let moves=game.turn.current.MovesHand[""+TC_Scout];
+                for(let i=0;i<moves.length;i++){
+                    if (moves[i].Deck===deck){
+                        svg.hand.moveToDishPlayer();
+                        game.turn.isMyTurn=false;
+                        let act= actionBuilder(ACT_MOVE).move(TC_Scout,i).build();
+                        ws.conn.send(JSON.stringify(act));
+                        break;
+                    }
+                }
+            }else if(game.turn.current.State===TURN_SCOUTR && svg.hand.selected){
+                let selectedHandCardix=svg.fromId(svg.hand.selected.id).no;
+                let handCount;
+                if( selectedHandCardix>TROOP_NO){
+                    if(deck===DECK_TAC){
+                        game.scoutReturnTacixs.push(selectedHandCardix) ;
+                        svg.hand.moveToDeckPlayer();
+                    }
+                }else{
+                    if(deck===DECK_TROOP){
+                        game.scoutReturnTroopixs.push(selectedHandCardix) ;
+                        svg.hand.moveToDeckPlayer();
+                    }
+                }
+                let moves=game.turn.current.Moves;
+                for(let i=0;i<moves.length;i++){
+                    let tacEqual=false;
+                    if(moves[i].Tac){
+                        if(moves[i].Tac.length===game.scoutReturnTacixs.length){
+                            tacEqual=true;
+                            for(let j=0;j<moves[i].Tac.length;j++){
+                                if(game.scoutReturnTacixs[j]!==moves[i].Tac[j]){
+                                    tacEqual=false;
+                                    break;
+                                }
+                            }
+                        }
+                    }else{
+                        if(game.scoutReturnTacixs.length===0){
+                            tacEqual=true;
+                        }
+                    }
+                    if(tacEqual){
+                        let equal=false;
+                        if(moves[i].Troop){
+                            if(moves[i].Troop.length===game.scoutReturnTroopixs.length){
+                                equal=true;
+                                for(let j=0;j<moves[i].Troop.length;j++){
+                                    if(game.scoutReturnTroopixs[j]!==moves[i].Troop[j]){
+                                        equal=false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }else{
+                            if(game.scoutReturnTroopixs.length===0){
+                                equal=true;
+                            }
+                        }
+                        if (equal){
+                            game.turn.isMyTurn=false;
+                            let act= actionBuilder(ACT_MOVE).move(0,i).build();
+                            ws.conn.send(JSON.stringify(act));
+                            game.scoutReturnTroopixs=[];
+                            game.scoutReturnTacixs=[];
+                            break;
+                        }
+                    }
+                }
+
+            }
+        }
+    };
+    game.onClickedCone= function(coneElm,idObj){
+        //TODO maybe add unSelect
+        if (game.turn.isMyTurn&&game.turn.current.State===TURN_FLAG){
+            if (game.cone.validixs.size===0){
+                let moves=game.turn.current.Moves;
+                let validixs;
+                let max=0;
+                for (let i=0;i<moves.length;i++){
+                    if (moves[i].Flags.length>max){
+                        max=moves[i].Flags.length;
+                        validixs=moves[i].Flags;
+                    }
+                }
+                game.cone.validixs=new Set(validixs);
+            }
+            let ix=idObj.no-1;
+            if (game.cone.validixs.has(ix)){
+                game.cone.clickedixs.add(ix);
+                svg.cone.pos(coneElm,2);
+            }
+        }
+    };
+    svg.itemClicked=function(elems,centerClick){
+        let idObj=svg.fromId(elems[0].id);
+        switch (idObj.type){
+        case ID_Card:
+            let clickedCardElm=elems[0];
+            let parentIdObj=svg.fromId(clickedCardElm.parentNode.id);
+            if(parentIdObj.type===ID_Hand&&parentIdObj.player){
+                if(svg.hand.selected){
+                    if(svg.hand.selected.id===clickedCardElm.id){
+                        svg.hand.unSelect();
+                        if (svg.flag.cardSelected){
+                            svg.flag.cardUnSelect();
+                        }
+                    }else{
+                        svg.hand.move(clickedCardElm,!centerClick);
+                    }
+                }else{
+                    svg.hand.select(clickedCardElm);
+                }
+            }else{//Flag
+                game.onClickedCard(elems[1],clickedCardElm,null);
+            }
+            break;
+        case ID_DeckTroop:
+        case ID_DeckTac:
+            game.onClickedDeck(elems[0],idObj.type);
+            break;
+        case ID_FlagTroop:
+        case ID_FlagTac:
+            game.onClickedCard(elems[0],null,null);
+            break;
+        case ID_Cone:
+            game.onClickedCone(elems[0],idObj);
+            break;
+        case ID_DishTroop,ID_DishTac:
+            game.onClickedCard(null,null,elems[0]);
+            break;
+        }
+
+    };
     window.onload=function(){
         const IV_From="From";
         const IV_To="To";
@@ -944,6 +1495,11 @@ var batt={};
             console.log(event.code);
             console.log(event.reason);
             console.log(event.wasClean);
+            if(!event.wasClean){
+                let txt="Lost connection to server.\n"+event.reason;
+                msg.recieved({Message:txt});
+            }
+            game.clear();
         };
         ws.conn.onerror=function(event){
             console.log(event.code);
@@ -958,9 +1514,7 @@ var batt={};
 	          const JT_List   = 5;
             const JT_CloseCon=6;
             //TODO clean up consolelog
-            console.log(event.data);
             let json=JSON.parse(event.data);
-            console.log(event.data);
             console.log(json);
             switch (json.JsonType){
             case JT_List:
@@ -972,7 +1526,14 @@ var batt={};
             case JT_Invite:
                 table.invites.recieved(json.Data);
                 break;
+            case JT_Move:
+                game.move(json.Data);
+                break;
+            case JT_CloseCon:
+                msg.recieved({Message:json.Data});
+                break;
             }
+
         };
         let iTable=document.getElementById("invites-table");
         let iTableHeaders=iTable.getElementsByTagName("th");
@@ -985,23 +1546,26 @@ var batt={};
             let act=actionBuilder(ACT_INVRETRACT).id(id).build();
             ws.conn.send(JSON.stringify(act));
         };
-        table.invites.onActionChange=function(event){
-            let row=event.target.parentNode.parentNode;
-            let idix=table.getFieldIx("ith-id",iTableHeaders,true);
-            let id=parseInt(row.cells[idix].textContent);
-            if (event.target.value!=="0"){
-                let act;
-                if (event.target.value==="1"){
-                    act=actionBuilder(ACT_INVDECLINE).id(id).build();
-                }else if (event.target.value==="2"){
-                    act=actionBuilder(ACT_INVACCEPT).id(id).build();
-                }
+        table.invites.onAcceptButton=function(event){
+            if(game.turn.current===null){
+                let row=event.target.parentNode.parentNode;
+                let idix=table.getFieldIx("ith-id",iTableHeaders,true);
+                let id=parseInt(row.cells[idix].textContent);
+                let act=actionBuilder(ACT_INVACCEPT).id(id).build();
                 iTable.deleteRow(row.rowIndex);
                 ws.conn.send(JSON.stringify(act));
             }
         };
+        table.invites.onDeclineButton=function(event){
+            let row=event.target.parentNode.parentNode;
+            let idix=table.getFieldIx("ith-id",iTableHeaders,true);
+            let id=parseInt(row.cells[idix].textContent);
+            let act=actionBuilder(ACT_INVDECLINE).id(id).build();
+            iTable.deleteRow(row.rowIndex);
+            ws.conn.send(JSON.stringify(act));
+        };
         table.invites.clear=function(){
-            for (let i=iTable.rows.length-1;i>1;i--){
+            for (let i=iTable.rows.length-1;i>0;i--){
                 iTable.deleteRow(iTable.rows[i].rowIndex);
             }
         };
@@ -1045,34 +1609,33 @@ var batt={};
                     newTxtNode=document.createTextNode(name);
                     cell.appendChild(newTxtNode);
                     break;
-                case "ith-action":
+                case "ith-retract":
                     if (send){
                         let btn = document.createElement("BUTTON");
                         btn.onclick=table.invites.onRetractButton;
-                        let newTxtNode=document.createTextNode("Retract");
+                        newTxtNode=document.createTextNode("Retract");
                         btn.appendChild(newTxtNode);
                         cell.appendChild(btn);
-                    }else{
-                        let dropDown=document.createElement("SELECT");
-                        let opt=document.createElement("OPTION");
-                        opt.value="0";
-                        opt.text= "-";
-                        dropDown.add(opt);
-                        opt=document.createElement("OPTION");
-                        opt.value="1";
-                        opt.text= "Decline";
-                        dropDown.add(opt);
-                        opt=document.createElement("OPTION");
-                        opt.value="2";
-                        opt.text= "Accept";
-                        dropDown.add(opt);
-                        dropDown.onchange=table.invites.onActionChange;
-                        cell.appendChild(dropDown);
                     }
                     break;
-                }
-
-            }
+                case "ith-accept":
+                    if(!send){ 
+                        let btn = document.createElement("BUTTON");
+                        btn.onclick=table.invites.onAcceptButton;
+                        btn.appendChild(document.createTextNode("Accept"));
+                        cell.appendChild(btn);
+                    }
+                    break;
+                case "ith-decline":
+                    if(!send){
+                        let btn = document.createElement("BUTTON");
+                        btn.onclick=table.invites.onDeclineButton;
+                        btn.appendChild(document.createTextNode("Decline"));
+                        cell.appendChild(btn);
+                    }
+                    break;
+                }//select
+            }//for
         };
         table.invites.contain=function(id,send){
             let ix=0;
@@ -1146,18 +1709,23 @@ var batt={};
                         cell.appendChild(newTxtNode);
                     }else{
                         if (p.Name!==id.name){
-                            if (pTableHeaders[i].id==="pt-inv-butt"&&!p.OppName){
+                            if (pTableHeaders[i].id==="pt-inv-butt"&&!p.OppName&&game.turn.current===null){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");
                                 btn.onclick=function(event){
-                                    let cells=event.target.parentNode.parentNode.cells;
-                                    let [idix,nameix]=table.getFieldsIx(["Id","Name"],pTableHeaders);
-                                    let id=parseInt(cells[idix].textContent);
-                                    let name=cells[nameix].textContent;
-                                    let send=true;
-                                    if (table.invites.contain(id,send)===0){//0 is header so we do
-                                        table.invites.add(id,name,send);    //not use -1
-                                        let act=actionBuilder(ACT_INVITE).id(id).build();
+                                    if (game.turn.current===null){
+                                        let cells=event.target.parentNode.parentNode.cells;
+                                        let [idix,nameix]=table.getFieldsIx(["Id","Name"],pTableHeaders);
+                                        let id=parseInt(cells[idix].textContent);
+                                        let name=cells[nameix].textContent;
+                                        let send=true;
+                                        if (table.invites.contain(id,send)===0){//0 is header so we do
+                                            table.invites.add(id,name,send);    //not use -1
+                                            let act=actionBuilder(ACT_INVITE).id(id).build();
+                                            ws.conn.send(JSON.stringify(act));
+                                        }
+                                    }else{
+                                        let act=actionBuilder(ACT_LIST).build();
                                         ws.conn.send(JSON.stringify(act));
                                     }
                                 };
@@ -1216,6 +1784,110 @@ var batt={};
         };
         document.getElementById("send-button").onclick=msg.send;
 
+        let turnPlayerCell=document.getElementById("turn-player-cell");
+        let turnPlayerCellClear=turnPlayerCell.textContent;
+        let turnTypeCell=document.getElementById("turn-type-cell");
+        let turnTypeCellClear=turnTypeCell.textContent;
+        let turnDoneButton=document.getElementById("turn-done-button");
+        turnDoneButton.onclick=function(){
+            if (game.turn.isMyTurn){
+                if(game.turn.current.State===TURN_FLAG){
+                    let moves=game.turn.current.Moves;
+                    let equal=false;
+                    for(let i=0;i<moves.length;i++){
+                        if (moves[i].Flags.length===game.cone.clickedixs.size){
+                            equal=true;
+                            for(let j=0;j<moves[i].Flags.length;j++){
+                                if (!game.cone.clickedixs.has(moves[i].Flags[j])){
+                                    equal=false;
+                                    break;
+                                }
+                            }
+                            if(equal){
+                                game.turn.isMyTurn=false;
+                                game.cone.clickedixs.clear();
+                                let act= actionBuilder(ACT_MOVE).move(0,i).build();
+                                ws.conn.send(JSON.stringify(act));
+                                break;
+                            }
+                        }
+                    }
+                    if (!equal){
+                        console.log("No legal move was found this should not happen");
+                    }
+                }
+            }
+
+        };
+        document.getElementById("stop-giveup-button").onclick=function(){
+            if (game.turn.current&&!game.turn.gaveup){
+                let act=actionBuilder(ACT_QUIT).build();
+                ws.conn.send(JSON.stringify(act));
+                if (game.turn.isMyTurn){
+                    game.turn.isMyTurn=false;
+                }
+                game.turn.gaveup=true;
+            }
+        };
+        game.turn.update=function(turn){
+            let myturn=false;
+            if (turn.MyTurn){
+                turnPlayerCell.textContent="Your Move";
+                if(!game.turn.gaveup){
+                    myturn=true;
+                }
+            }else{
+                turnPlayerCell.textContent="Opponent Move";
+            }
+            let txt;
+            switch (turn.State){
+            case TURN_FLAG:
+                txt="Claim Flags";
+                break;
+            case TURN_HAND:
+                txt="Play a Card";
+                break;
+            case TURN_SCOUTR:
+                txt="Return a Cards to Deck";
+                break;
+            case TURN_QUIT:
+            case TURN_FINISH:
+                myturn=false;
+                txt="Game is Over";
+                game.ends();
+                break;
+            case TURN_DECK:
+            case TURN_SCOUT1:
+            case TURN_SCOUT2:
+                txt="Draw a Card";
+                break;
+            }
+            turnTypeCell.textContent=txt;
+            if  (myturn){
+                if (turn.MovesPass){
+                    turnDoneButton.disabled=false;
+                }else{
+                    if (turn.State!==TURN_FLAG){
+                        turnDoneButton.disabled=true;
+                    }else{
+                        turnDoneButton.disabled=false;
+                    }
+                }
+            }else{
+                turnDoneButton.disabled=true;
+            }
+            return myturn;
+        };
+        game.turn.clear=function(){
+            game.turn.current=null;
+            game.turn.isMyTurn=false;
+            game.turn.gaveup=false;
+            game.turn.oldState=-1;
+            turnDoneButton.disabled=true;
+            turnTypeCell.textContent=turnTypeCellClear;
+            turnPlayerCell.textContent=turnPlayerCellClear;
+        };
+
         //TODO delete test begin
         svg.hand.drawOpp(true);
         svg.hand.drawOpp(false);
@@ -1244,8 +1916,13 @@ var batt={};
         svg.hand.moveToFlagPlayer(document.getElementById("pF2TroopGroup"));
         svg.hand.drawOpp(true);
         svg.hand.drawOpp(true);
+        svg.hand.drawPlayer(30);
+        svg.hand.unSelect();
         svg.hand.drawPlayer(27);
         svg.hand.moveToFlagPlayer(document.getElementById("pF1TroopGroup"));
+        svg.hand.select(document.getElementById("card30"));
+        svg.hand.drawPlayer(30);
+        svg.hand.moveToFlagPlayer(document.getElementById("pF3TroopGroup"));
         svg.hand.drawPlayer(37);
         svg.hand.unSelect();
         svg.hand.drawPlayer(42);
@@ -1256,6 +1933,8 @@ var batt={};
         svg.cone.pos(1,2);
         svg.cone.pos(3,1);
         svg.click.zone.coneHit(225,350);
+        window.setTimeout(game.clear,10000);
         // delete test end
     }; //onload
+
  })(batt);

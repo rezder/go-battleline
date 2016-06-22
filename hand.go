@@ -90,6 +90,13 @@ func (hand *Hand) draw(cardix int) {
 		panic("Card index is not valid")
 	}
 }
+func (hand *Hand) size() int {
+	res := 0
+	if hand != nil {
+		res = len(hand.Troops) + len(hand.Tacs)
+	}
+	return res
+}
 
 type Dish struct {
 	Tacs   []int
