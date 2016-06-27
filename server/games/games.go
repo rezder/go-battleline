@@ -13,6 +13,8 @@ type Server struct {
 	playerCh   chan *players.Player
 	finPlayers chan struct{}
 	errCh      chan<- error
+	save       bool
+	saveDir    string
 }
 
 func New(errCh chan<- error) (g *Server) {
@@ -25,8 +27,8 @@ func New(errCh chan<- error) (g *Server) {
 	g.errCh = errCh
 	return g
 }
-func (g *Server) Start() {
-	go tables.Start(g.tableChCl, g.list, g.finTables)
+func (g *Server) Start(save bool, saveDir string) {
+	go tables.Start(g.tableChCl, g.list, g.finTables, save, saveDir, g.errCh)
 	go players.Start(g.playerCh, g.list, g.tableChCl, g.finPlayers)
 }
 func (g *Server) Stop() {

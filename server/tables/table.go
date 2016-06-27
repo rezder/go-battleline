@@ -4,6 +4,8 @@ package tables
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	bat "rezder.com/game/card/battleline"
 	"rezder.com/game/card/battleline/flag"
 	pub "rezder.com/game/card/battleline/server/publist"
@@ -14,7 +16,7 @@ import (
 //Start a table with a game.
 //If resumeGame is nil a new game is started.
 func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchChCl, resumeGame *bat.Game,
-	finishCh chan<- [2]int) {
+	finishCh chan<- [2]int, save bool, savedir string, errCh chan<- error) {
 
 	var moveChs [2]chan [2]int
 	moveChs[0] = make(chan [2]int)
@@ -31,6 +33,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	var mover int
 
 	var deltCardix int
+	var claimFailMap map[string][]int //may contain zero index for 4 card
 	var isScout bool
 	var scout bat.MoveScoutReturn
 	var isClaim bool
@@ -44,6 +47,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		isClaim = false
 		isRedeploy = false
 		deltCardix = 0
+		claimFailMap = nil
 		mover = game.Pos.Player
 		fmt.Printf("Waiting for mover ix: %v id: %v\n", mover, ids[mover])
 		moveix, open = <-moveChs[mover]
@@ -72,18 +76,36 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 					claimView = NewMoveClaimView(claim)
 				}
 			}
-			deltCardix = game.Move(moveix[1])
+			deltCardix, claimFailMap = game.Move(moveix[1])
 		}
 		if isClaim {
-			move = updateClaim(&game.Pos, claimView)
+			move = updateClaim(game.Pos, claimFailMap, claimView)
 		}
-		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, &game.Pos, ids)
+		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, game.Pos, ids)
 		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[0], move1)
 		playerChs[0] <- move1
 		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[1], move2)
 		playerChs[1] <- move2
 		benchCh <- moveBench
 		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT {
+			if save {
+				hour, min, _ := time.Now().Clock()
+				fileName := fmt.Sprintf("game%vvs%v%v%v.gob", ids[0], ids[1], hour, min)
+				fileNamePath := filepath.Join(savedir, fileName)
+				file, err := os.Create(fileNamePath)
+				//defer file.Close()//close even if panic. Double close produce a error
+				//but we are not listening it is possible to add the close error to err of a returning function
+				//but id do not think i care.
+				if err == nil {
+					err = bat.Save(game, file, true)
+					file.Close()
+					if err != nil {
+						errCh <- err
+					}
+				} else {
+					errCh <- err
+				}
+			}
 			break
 		}
 	}
@@ -96,15 +118,15 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 
 //updateClaim update the MoveClaimView with the succesfully claim flags and the win
 //indicator. The updated view is casted and returned as the move.
-func updateClaim(pos *bat.GamePos, claimView *MoveClaimView) (move bat.Move) {
+func updateClaim(pos *bat.GamePos, claimFailMap map[string][]int, claimView *MoveClaimView) (move bat.Move) {
 
 	for _, v := range claimView.Claim {
 		if pos.Flags[v].Claimed() {
 			claimView.Claimed = append(claimView.Claimed, v)
 		}
 	}
-	if len(pos.Info) != 0 {
-		claimView.Info = pos.Info
+	if len(claimFailMap) != 0 {
+		claimView.FailMap = claimFailMap
 	}
 	if pos.State == bat.TURN_FINISH {
 		claimView.Win = true
@@ -161,14 +183,14 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 		}
 		move1.Turn = pub.NewTurn(&game.Pos.Turn, 0)
 		move1.MoveCh = moveChans[0]
-		move1.Move = NewMoveInitPos(NewPlayPos(&game.Pos, 0))
+		move1.Move = NewMoveInitPos(NewPlayPos(game.Pos, 0))
 
 		move2.Turn = pub.NewTurn(&game.Pos.Turn, 1)
 		move2.MoveCh = moveChans[1]
-		move2.Move = NewMoveInitPos(NewPlayPos(&game.Pos, 1))
+		move2.Move = NewMoveInitPos(NewPlayPos(game.Pos, 1))
 
 		moveBench.NextMover = game.Pos.Player
-		moveBench.MoveInit = NewMoveBenchPos(NewBenchPos(&game.Pos, ids))
+		moveBench.MoveInit = NewMoveBenchPos(NewBenchPos(game.Pos, ids))
 	} else {
 		game = bat.New(ids)
 		rand.Seed(time.Now().UnixNano())
@@ -411,14 +433,34 @@ type MoveClaimView struct {
 	Claim    []int //The players claimed this flags
 	Claimed  []int //The players claimed flag that was not rejected
 	Win      bool
-	Info     string
+	FailMap  map[string][]int
 	JsonType string
 }
 
 func (m MoveClaimView) Equal(other MoveClaimView) (equal bool) {
-	if m.Info == other.Info && m.Win == other.Win &&
-		slice.Equal(m.Claim, other.Claim) && slice.Equal(m.Claimed, other.Claimed) {
+	if m.Win == other.Win && slice.Equal(m.Claim, other.Claim) &&
+		slice.Equal(m.Claimed, other.Claimed) {
 		equal = true
+		if len(m.FailMap) == len(other.FailMap) {
+			if len(m.FailMap) != 0 {
+				for flagix, ex := range m.FailMap {
+					otherEx, found := other.FailMap[flagix]
+					if found {
+						if !slice.Equal(ex, otherEx) {
+							equal = false
+							break
+						}
+					} else {
+						equal = false
+						break
+					}
+				}
+			} else {
+				equal = true
+			}
+		} else {
+			equal = false
+		}
 	}
 	return equal
 }

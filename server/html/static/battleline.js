@@ -1,143 +1,130 @@
 var batt={};
 (function(batt){
-    var game={};
-    game.turn={};
-    game.turn.current=null;
-    game.cone={};
-    game.cone.clickedixs=new Set();
-    game.cone.validixs=new Set();
-    game.scoutReturnTacixs=[];
-    game.scoutReturnTroopixs=[];
-    var ws={};
-    var table={};
-    table.players={};
-    table.invites={};
-    var msg={};
-    var id={};
-    var svg;
 
-    const ACT_MESS       = 1;
-	  const ACT_INVITE     = 2;
-	  const ACT_INVACCEPT  = 3;
-	  const ACT_INVDECLINE = 4;
-    const ACT_INVRETRACT = 5;
-	  const ACT_MOVE       = 6;
-	  const ACT_QUIT       = 7;
-	  const ACT_WATCH      = 8;
-	  const ACT_WATCHSTOP  = 9;
-	  const ACT_LIST       = 10;
-
-    const TROOP_NO = 60;//TODO maybe card information could be moved to battSvg
-	  const TAC_NO   = 10;
-
-	  const TC_Alexander = 70;
-	  const TC_Darius    = 69;
-	  const TC_8         = 68;
-	  const TC_123       = 67;
-	  const TC_Fog       = 66;
-	  const TC_Mud       = 65;
-	  const TC_Scout     = 64;
-	  const TC_Redeploy  = 63;
-	  const TC_Deserter  = 62;
-	  const TC_Traitor   = 61;
-
-    const TURN_FLAG = 0;
-	  const TURN_HAND = 1;
-	  //TURN_SCOUT2 player picks second of tree scout cards.
-	  const TURN_SCOUT2 = 2;
-	  //TURN_SCOUT2 player picks last of tree scout cards.
-	  const TURN_SCOUT1 = 3;
-	  //TURN_SCOUTR player return 3 cards to decks.
-	  const TURN_SCOUTR = 4;
-	  const TURN_DECK   = 5;
-	  const TURN_FINISH = 6;
-	  const TURN_QUIT   = 7;
-
-	  const DECK_TAC   = 1;
-	  const DECK_TROOP = 2;
-
-    const ID_Cone=1;
-    const ID_FlagTroop=2;
-    const ID_FlagTac=3;
-    const ID_Card=4;
-    const ID_DeckTac=5;
-    const ID_DeckTroop=6;
-    const ID_DishTac=7;
-    const ID_DishTroop=8;
-    const ID_Hand=9;
-
-    function battSvg(){
+    function createSvg(document){
         const COLORS_Troops=["#00ff00","#ff0000","#af3dff","#ffff00","#007fff","#ffa500"];
         const COLORS_Names=["Green","Red","Purpel","Yellow","Blue","Orange"];
         const COLOR_CardFrame="#ffffff";
         const COLOR_CardFrameSpecial="#000000";
-        let svg={};
-        svg.card={};
-        svg.hand={};
-        svg.hand.vSpace=26;
-        svg.hand.hSpace=20;
-        svg.flag={};
-        svg.cone={};
-        svg.click={};
 
-        svg.toId=function(type,no,player){
+        const ID_Cone=1;
+        const ID_FlagTroop=2;
+        const ID_FlagTac=3;
+        const ID_Card=4;
+        const ID_DeckTac=5;
+        const ID_DeckTroop=6;
+        const ID_DishTac=7;
+        const ID_DishTroop=8;
+        const ID_Hand=9;
+
+        const TROOP_NO = 60;
+	      const TAC_NO   = 10;
+
+	      const TC_Alexander = 70;
+	      const TC_Darius    = 69;
+	      const TC_8         = 68;
+	      const TC_123       = 67;
+	      const TC_Fog       = 66;
+	      const TC_Mud       = 65;
+	      const TC_Scout     = 64;
+	      const TC_Redeploy  = 63;
+	      const TC_Deserter  = 62;
+	      const TC_Traitor   = 61;
+
+        let exp={};
+        let card={};
+        exp.card={};
+
+	      exp.card.TC_Alexander = 70;
+	      exp.card.TC_Darius    = 69;
+	      exp.card.TC_8         = 68;
+	      exp.card.TC_123       = 67;
+	      exp.card.TC_Fog       = 66;
+	      exp.card.TC_Mud       = 65;
+	      exp.card.TC_Scout     = 64;
+	      exp.card.TC_Redeploy  = 63;
+	      exp.card.TC_Deserter  = 62;
+	      exp.card.TC_Traitor   = 61;
+
+        let hand={};
+        exp.hand={};
+        hand.vSpace=26;
+        hand.hSpace=20;
+        let flag={};
+        exp.flag={};
+        let cone={};
+        exp.cone={};
+        let click={};
+        let id={};
+        exp.id={};
+        exp.id.ID_Cone=1;
+        exp.id.ID_FlagTroop=2;
+        exp.id.ID_FlagTac=3;
+        exp.id.ID_Card=4;
+        exp.id.ID_DeckTac=5;
+        exp.id.ID_DeckTroop=6;
+        exp.id.ID_DishTac=7;
+        exp.id.ID_DishTroop=8;
+        exp.id.ID_Hand=9;
+
+        id.typeToName=function(type,no,player){
             let pText;
             if(player){
                 pText="p";
             }else{
                 pText="o";
             }
-            let id;
+            let idName;
             switch (type){
             case ID_Cone:
-            id="k"+no+"Path";
+            idName="k"+no+"Path";
                 break;
             case ID_FlagTroop:
-                id=pText+"F"+no+"TroopGroup";
+                idName=pText+"F"+no+"TroopGroup";
                 break;
             case ID_FlagTac:
-                id=pText+"F"+no+"TacGroup";
+                idName=pText+"F"+no+"TacGroup";
                 break;
             case ID_Card:
-                id="card"+no;
+                idName="card"+no;
                 break;
             case ID_DeckTac:
-                id="deckTacGroup";
+                idName="deckTacGroup";
                 break;
             case ID_DeckTroop:
-                id="deckTroopGroup";
+                idName="deckTroopGroup";
                 break;
             case ID_DishTac:
-                id=pText+"DishTacGroup";
+                idName=pText+"DishTacGroup";
                 break;
             case ID_DishTroop:
-                id=pText+"DishTroopGroup";
+                idName=pText+"DishTroopGroup";
                 break;
             case ID_Hand:
-                id=pText+"Hand";
+                idName=pText+"Hand";
                 break;
             }
-            return id;
+            return idName;
         };
-        svg.fromId=function(id){
+        id.fromName=function from(idName){
             let res={};
-            switch (id.charAt(0)){
+            switch (idName.charAt(0)){
             case "k":
                 res.type=ID_Cone;
-                res.no=parseInt(id.match(/\d/)[0]);
+                res.no=parseInt(idName.match(/\d/)[0]);
                 break;
             case "p":
                 let dish=false;
                 let hand=false;
-                if (id.search(/Dish/)>-1){
+                if (idName.search(/Dish/)>-1){
                     dish=true;
-                }else if (id.search(/Hand/)>-1){
+                }else if (idName.search(/Hand/)>-1){
                     hand=true;
                 }
                 if (hand){
                     res.type=ID_Hand;
                 }else{
-                    if (id.search(/Troop/)===-1){
+                    if (idName.search(/Troop/)===-1){
                         if (dish){
                             res.type=ID_DishTac;
                         }else{
@@ -151,26 +138,26 @@ var batt={};
                         }
                     }
                     if(!dish){
-                        res.no=parseInt(id.match(/\d/)[0]);
+                        res.no=parseInt(idName.match(/\d/)[0]);
                     }
                 }
                 res.player=true;
                 break;
             case "o":
-                if (id.search(/Troop/)===-1){
+                if (idName.search(/Troop/)===-1){
                     res.type=ID_FlagTac;
                 }else{
                     res.type=ID_FlagTroop;
                 }
-                res.no=parseInt(id.match(/\d/)[0]);
+                res.no=parseInt(idName.match(/\d/)[0]);
                 res.player=false;
                 break;
             case "c":
                 res.type=ID_Card;
-                res.no=parseInt(id.match(/\d{1,2}/)[0]);
+                res.no=parseInt(idName.match(/\d{1,2}/)[0]);
                 break;
             case "d":
-                if (id.search(/Troop/)===-1){
+                if (idName.search(/Troop/)===-1){
                     res.type=ID_DeckTac;
                 }else{
                     res.type=ID_DeckTroop;
@@ -179,6 +166,8 @@ var batt={};
             }
             return res;
         };
+        exp.id.fromName=id.fromName;
+
         class Area{
             constructor(x0,x1,y0,y1){
                 this.x0=x0;
@@ -194,8 +183,11 @@ var batt={};
                 return res;
             }
         }
-
-        svg.card.count=function(group){
+        card.isTac=function(cardix){
+            return cardix>TROOP_NO;
+        };
+        exp.card.isTac=card.isTac;
+        card.count=function(group){
             let res={n:0,x:0,y:0};
             for (let i=0;i<group.childNodes.length;i++){
                 let node=group.childNodes[i];
@@ -210,7 +202,7 @@ var batt={};
             }
             return res;
         };
-        svg.card.stripChildIds =function(group){
+        card.stripChildIds =function(group){
             let all = group.getElementsByTagName("*");
 
             for (let i=0, max=all.length; i < max; i++) {
@@ -220,22 +212,22 @@ var batt={};
             }
         };
 
-        svg.card.set=function(group,cardGroup,vertical){
+        card.set=function(group,cardGroup,vertical){
             let vspace=0;
             let hspace=0;
             let cardFrame=cardGroup.getElementsByTagName("rect")[0];
             if (vertical){
-                vspace=svg.hand.vSpace;
+                vspace=hand.vSpace;
             }else{
-                hspace=svg.hand.hSpace;
+                hspace=hand.hSpace;
             }
             let cards,posX,posY;
             if (group.id.charAt(0)==="p"){
-                ({n:cards,x:posX,y:posY}=svg.card.count(group));
+                ({n:cards,x:posX,y:posY}=card.count(group));
             }else{
                 let gpid="p"+group.id.substring(1,group.id.length);
-                ({x:posX,y:posY}=svg.card.count(document.getElementById(gpid)));
-                ({n:cards}=svg.card.count(group));
+                ({x:posX,y:posY}=card.count(document.getElementById(gpid)));
+                ({n:cards}=card.count(group));
             }
             let newX=vspace*cards+posX-cardFrame.x.baseVal.value;
             let newY=hspace*cards+posY-cardFrame.y.baseVal.value;
@@ -251,7 +243,7 @@ var batt={};
         };
         //leave does not remove the card just shift the other cards
         //when the card is insert in another group is should move.
-        svg.card.leave=function(cardGroup,vertical){
+        card.leave=function(cardGroup,vertical){
             let group=cardGroup.parentNode;
             let cards=group.getElementsByTagName("g");
             for(let i=cards.length-1;i>=0;i--){
@@ -260,23 +252,23 @@ var batt={};
                 }else{
                     let newX,newY;
                     if (vertical){
-                        newX=cards[i].transform.baseVal.getItem(0).matrix.e-svg.hand.vSpace;
+                        newX=cards[i].transform.baseVal.getItem(0).matrix.e-hand.vSpace;
                         newY=cards[i].transform.baseVal.getItem(0).matrix.f;
                     }else{
                         newX=cards[i].transform.baseVal.getItem(0).matrix.e;
-                        newY=cards[i].transform.baseVal.getItem(0).matrix.f-svg.hand.hSpace;
+                        newY=cards[i].transform.baseVal.getItem(0).matrix.f-hand.hSpace;
                     }
                     cards[i].transform.baseVal.getItem(0).setTranslate(newX,newY);
                 }
             }
         };
-        svg.card.clearGroup=function(group){
+        card.clearGroup=function(group){
             let cards=group.getElementsByTagName("g");
             for(let i=cards.length-1;i>=0;i--){
                 group.removeChild(cards[i]);
             }
         };
-        svg.card.hit=function(group,x,y){
+        card.hit=function(group,x,y){
             let res=[];
             let cards=group.getElementsByTagName("g");
             if (cards.length!==0){
@@ -299,67 +291,87 @@ var batt={};
             }
             return res;
         };
-        svg.hand.select=function(cardGroup){
+        hand.select=function(cardGroup){
             let matrix = document.createElementNS("http://www.w3.org/2000/svg", "svg").createSVGMatrix();
             matrix=matrix.translate(0,-20);
             let item=cardGroup.transform.baseVal.createSVGTransformFromMatrix(matrix);
             cardGroup.transform.baseVal.appendItem(item);
-            svg.hand.selected=cardGroup;
+            hand.selected=cardGroup;
         };
-        svg.hand.unSelect=function(){
-            svg.hand.selected.transform.baseVal.removeItem(1);
-            svg.hand.selected=null;
+        exp.hand.select=hand.select;
+        exp.hand.selected=function(){
+            return hand.selected;
         };
+        hand.unSelect=function(){
+            hand.selected.transform.baseVal.removeItem(1);
+            hand.selected=null;
+        };
+        exp.hand.unSelect=hand.unSelect;
 
-        svg.flag.cardSelect=function(cardGroup){
+        flag.cardSelect=function(cardGroup){
             cardGroup.getElementsByTagName("rect")[0].style.stroke=COLOR_CardFrameSpecial;
-            svg.flag.cardSelected=cardGroup;
+            flag.cardSelected=cardGroup;
         };
-        svg.flag.cardUnSelect=function(){
-            svg.flag.cardSelected.getElementsByTagName("rect")[0].style.stroke=COLOR_CardFrame;
-            svg.flag.cardSelected=null;
+        exp.flag.cardSelect=flag.cardSelect;
+        exp.flag.cardSelected=function(){
+            return flag.cardSelected;
         };
-        svg.flag.cardToDish=function(cardX){
+        flag.cardUnSelect=function(){
+            flag.cardSelected.getElementsByTagName("rect")[0].style.stroke=COLOR_CardFrame;
+            flag.cardSelected=null;
+        };
+        exp.flag.cardUnSelect=flag.cardUnSelect;
+
+        flag.cardToDish=function(cardX){
             let cardGroup;
             if (cardX.parentNode){
                 cardGroup=cardX;
             }else{
-                cardGroup=document.getElementById(svg.toId(ID_Card,cardX));
+                cardGroup=document.getElementById(id.typeToName(ID_Card,cardX));
             }
-            svg.card.leave(cardGroup,false);
-            svg.card.moveToDish(cardGroup);
+            card.leave(cardGroup,false);
+            card.moveToDish(cardGroup);
         };
-        svg.flag.cardToFlag=function(cardX,flagX,player){
+        exp.flag.cardToDish=flag.cardToDish;
+
+        flag.cardToFlag=function(cardX,flagX,player){
             let cardGroup;
+            let cardNo;
             if (cardX.parentNode){
                 cardGroup=cardX;
+                cardNo=id.fromName(cardGroup.id).no;
             }else{
-                cardGroup=document.getElementById(svg.toId(ID_Card,cardX));
+                cardGroup=document.getElementById(id.typeToName(ID_Card,cardX));
+                cardNo=cardX;
             }
             let flagGroup;
             if (flagX.parentNode){
                 flagGroup=flagX;
             }else{
-                if (svg.fromId(cardGroup.id).no>TROOP_NO){
-                    flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagX,player));
+                if (cardNo===TC_Mud||cardNo===TC_Fog){
+                    flagGroup=document.getElementById(id.typeToName(ID_FlagTac,flagX,player));
                 }else{
-                    flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagX,player));
+                    flagGroup=document.getElementById(id.typeToName(ID_FlagTroop,flagX,player));
                 }
             }
-            svg.card.leave(cardGroup,false);
-            svg.card.set(flagGroup,cardGroup,false);
+            card.leave(cardGroup,false);
+            card.set(flagGroup,cardGroup,false);
         };
-        svg.flag.cardToFlagPlayer=function(flagGroup){
-            let cardGroup=svg.flag.cardSelected;
-            svg.flag.cardUnSelect();
-            svg.flag.cardToFlag(cardGroup,flagGroup,true);
+        exp.flag.cardToFlag=flag.cardToFlag;
+
+        flag.cardToFlagPlayer=function(flagGroup){
+            let cardGroup=flag.cardSelected;
+            flag.cardUnSelect();
+            flag.cardToFlag(cardGroup,flagGroup,true);
         };
-        svg.cone.pos=function(coneX,pos){
+        exp.flag.cardToFlagPlayer=flag.cardToFlagPlayer;
+
+        cone.pos=function(coneX,pos){
             let coneCircle;
             if (coneX.parentNode){
                 coneCircle=coneX;
             }else{
-                coneCircle=document.getElementById(svg.toId(ID_Cone,coneX));
+                coneCircle=document.getElementById(id.typeToName(ID_Cone,coneX));
             }
             let center=350;
             let move=262;
@@ -377,617 +389,566 @@ var batt={};
             }
             coneCircle.cy.baseVal.value=newY ;
         };
-        svg.cone.clear=function(){
+        exp.cone.pos=cone.pos;
+        cone.clear=function(){
             for (let i =1;i<10;i++){
-                svg.cone.pos(i,1);
+                cone.pos(i,1);
             }
         };
-        svg.itemClicked=function(elems,centerClick){
-        };
-        svg.card.colorName=function(cardix){
+
+        exp.card.tacName=card.tacName;
+        function clear(){
+            card.clear();
+            cone.clear();
+            hand.selected=null;
+            flag.cardSelected=null;
+        }
+        exp.clear=clear;
+        card.colorName=function(cardNo){
             return COLORS_Names[Math.floor((cardNo-1)/10)];
         };
-        svg.init=function (document){
-            let backTroop= document.getElementById("backTroopGroup").cloneNode(true);
-            let backTroopRect=document.getElementById("backTroopTopRect");
-            let backTroopColor=backTroopRect.style.stroke;
-            let backTac= document.getElementById("backTacGroup").cloneNode(true);
-            let backTacRect=document.getElementById("backTacTopRect");
-            let backTacColor=backTacRect.style.stroke;
-            let lTroop1=document.getElementById("troop1Group");
-            let lTroop10=document.getElementById("troop10Group");
-            let troop1=lTroop1.cloneNode(true);
-            let troop10=lTroop10.cloneNode(true);
-            let pDishTroopGroup=document.getElementById("pDishTroopGroup");
-            pDishTroopGroup.removeChild(lTroop10);
-            pDishTroopGroup.removeChild(lTroop1);
+        exp.card.colorName=card.colorName;
+        card.troopValue =function(cardNo){
+           let no=""+cardNo%10;
+            if (no==="0"){
+                no="10";
+            }
+            return no;
+        };
+        exp.card.troopValue=card.troopValue;
+        card.tacName =function(cardNo){
+            let nameTxt;
+            switch(cardNo){
+            case TC_Traitor:
+                nameTxt="Traitor";
+                break;
+            case TC_Alexander:
+                nameTxt="Alexander";
+                break;
+            case TC_Darius:
+                nameTxt="Darius";
+                break;
+            case TC_123:
+                nameTxt="123";
+                break;
+            case TC_8:
+                nameTxt="8";
+                break;
+            case TC_Deserter:
+                nameTxt="Deserter";
+                break;
+            case TC_Redeploy:
+                nameTxt="Redeploy";
+                break;
+            case TC_Scout:
+                nameTxt="Scout";
+                break;
+            case TC_Mud:
+                nameTxt="Mud";
+                break;
+            case TC_Fog:
+                nameTxt="Fog";
+                break;
+            }
+            return nameTxt;
+        };
+        let backTroop= document.getElementById("backTroopGroup").cloneNode(true);
+        let backTroopRect=document.getElementById("backTroopTopRect");
+        let backTroopColor=backTroopRect.style.stroke;
+        let backTac= document.getElementById("backTacGroup").cloneNode(true);
+        let backTacRect=document.getElementById("backTacTopRect");
+        let backTacColor=backTacRect.style.stroke;
+        let lTroop1=document.getElementById("troop1Group");
+        let lTroop10=document.getElementById("troop10Group");
+        let troop1=lTroop1.cloneNode(true);
+        let troop10=lTroop10.cloneNode(true);
+        let pDishTroopGroup=document.getElementById("pDishTroopGroup");
+        pDishTroopGroup.removeChild(lTroop10);
+        pDishTroopGroup.removeChild(lTroop1);
 
-            let lTac=document.getElementById("tacGroup");
-            let tac=lTac.cloneNode(true);
-            let pDishTacGroup=document.getElementById("pDishTacGroup");
-            pDishTacGroup.removeChild(lTac);
+        let lTac=document.getElementById("tacGroup");
+        let tac=lTac.cloneNode(true);
+        let pDishTacGroup=document.getElementById("pDishTacGroup");
+        pDishTacGroup.removeChild(lTac);
 
 
-            svg.hand.createCard=function(cardNo){
-                let cardGroup;
-                let text;
-                let color;
-                if (cardNo>TROOP_NO){
-                    switch(cardNo){
-                    case TC_Traitor:
-                        text="Traitor";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Alexander:
-                        text="Alexander";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Darius:
-                        text="Darius";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_123:
-                        text="123";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_8:
-                        text="8";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Deserter:
-                        text="Deserter";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Redeploy:
-                        text="Redeploy";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Scout:
-                        text="Scout";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Mud:
-                        text="Mud";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    case TC_Fog:
-                        text="Fog";
-                        cardGroup=tac.cloneNode(true);
-                        break;
-                    }
+        hand.createCard=function(cardNo){
+            let cardGroup;
+            let text;
+            let color;
+            if (card.isTac(cardNo)){
+                text=card.tacName(cardNo);
+                cardGroup=tac.cloneNode(true);
+            }else{
+                text=card.troopValue(cardNo);
+                color=COLORS_Troops [Math.floor((cardNo-1)/10)];
+                if (text==="10"){
+                    cardGroup=troop10.cloneNode(true);
                 }else{
-                    text=""+cardNo%10;
-                    if (text==="0"){
-                        text="10";
-                    }
-                    color=COLORS_Troops [Math.floor((cardNo-1)/10)];
-                    if (text==="10"){
-                        cardGroup=troop10.cloneNode(true);
-                    }else{
-                        cardGroup=troop1.cloneNode(true);
-                    }
+                    cardGroup=troop1.cloneNode(true);
                 }
-                let texts=cardGroup.getElementsByTagName("tspan");
-                texts[0].textContent=text;
-                texts[1].textContent=text;
-                if (color){
-                    cardGroup.getElementsByTagName("rect")[0].style.fill=color;
-                }
+            }
+            let texts=cardGroup.getElementsByTagName("tspan");
+            texts[0].textContent=text;
+            texts[1].textContent=text;
+            if (color){
+                cardGroup.getElementsByTagName("rect")[0].style.fill=color;
+            }
 
-                cardGroup.id=svg.toId(ID_Card,cardNo,false);
-                svg.card.stripChildIds(cardGroup);
-                return cardGroup;
-            };
-            svg.hand.createBack=function(troop){
-                let cardGroup;
-                if (troop){
-                    cardGroup=backTroop.cloneNode(true);
-                }else{
-                    cardGroup=backTac.cloneNode(true);
-                }
-                cardGroup.removeAttribute("id");
-                svg.card.stripChildIds(cardGroup);
-                return cardGroup;
-            };
-            let pHandGroup=document.getElementById("pHandGroup");
-            let deckTacTspan=document.getElementById("deckTacTspan");
-            let deckTroopTspan=document.getElementById("deckTroopTspan");
-            svg.hand.drawPlayer=function(cardNo){
-                if (svg.hand.selected){
-                    svg.hand.unSelect();
-                }
-                let cardGroup=svg.hand.createCard(cardNo);
-                svg.card.set(pHandGroup,cardGroup,true);
-                svg.hand.select(cardGroup);
-                if (cardNo>TROOP_NO){
-                    deckTacTspan.textContent=""+deckTacTspan.textContent-1;
-                }else{
-                    deckTroopTspan.textContent=""+deckTroopTspan.textContent-1;
-                }
-            };
-            let oHandGroup=document.getElementById("oHandGroup");
-            svg.hand.drawOpp=function(troop){
-                let cardGroup=svg.hand.createBack(troop);
-                svg.card.set(oHandGroup,cardGroup,true);
-                if (troop){
-                    deckTroopTspan.textContent=""+deckTroopTspan.textContent-1;
-                }else{
-                    deckTacTspan.textContent=""+deckTacTspan.textContent-1;
-                }
-            };
-            svg.hand.countPlayer= function(){
-                return svg.card.count(pHandGroup);
-            };
-            svg.hand.move=function(toCard,before){
-                let fromCard=svg.hand.selected;
-                svg.hand.unSelect();
-                let cards=pHandGroup.getElementsByTagName("g");
-                let moves=0;
-                function moveCard(cc,m){
-                    moves=moves+m;
-                    let newX=cc.transform.baseVal.getItem(0).matrix.e+m;
-                    let newY=cc.transform.baseVal.getItem(0).matrix.f;
-                    cc.transform.baseVal.getItem(0).setTranslate(newX,newY);
-                }
-                for (let i=0,move=0;i<cards.length;i++){
-                    if (cards[i].id===toCard.id){
-                        if(move===0){
-                            move=svg.hand.vSpace;
-                            if (before){
-                                moveCard(cards[i],move);
-                            }
-                        }else{
-                            if (!before){
-                                moveCard(cards[i],move);
-                            }
-                            break;
-                        }
-                    }else if(cards[i].id===fromCard.id){
-                        if (move===0){
-                            move=-svg.hand.vSpace;
-                        }else{
-                            break;
+            cardGroup.id=id.typeToName(ID_Card,cardNo,false);
+            card.stripChildIds(cardGroup);
+            return cardGroup;
+        };
+        hand.createBack=function(troop){
+            let cardGroup;
+            if (troop){
+                cardGroup=backTroop.cloneNode(true);
+            }else{
+                cardGroup=backTac.cloneNode(true);
+            }
+            cardGroup.removeAttribute("id");
+            card.stripChildIds(cardGroup);
+            return cardGroup;
+        };
+        let pHandGroup=document.getElementById("pHandGroup");
+        let deckTacTspan=document.getElementById("deckTacTspan");
+        let deckTroopTspan=document.getElementById("deckTroopTspan");
+
+        hand.drawPlayer=function(cardNo){
+            if (hand.selected){
+                hand.unSelect();
+            }
+            let cardGroup=hand.createCard(cardNo);
+            card.set(pHandGroup,cardGroup,true);
+            hand.select(cardGroup);
+            if (card.isTac(cardNo)){
+                deckTacTspan.textContent=""+deckTacTspan.textContent-1;
+            }else{
+                deckTroopTspan.textContent=""+deckTroopTspan.textContent-1;
+            }
+        };
+        exp.hand.drawPlayer=hand.drawPlayer;
+        let oHandGroup=document.getElementById("oHandGroup");
+
+        hand.drawOpp=function(troop){
+            let cardGroup=hand.createBack(troop);
+            card.set(oHandGroup,cardGroup,true);
+            if (troop){
+                deckTroopTspan.textContent=""+deckTroopTspan.textContent-1;
+            }else{
+                deckTacTspan.textContent=""+deckTacTspan.textContent-1;
+            }
+        };
+        exp.hand.drawOpp=hand.drawOpp;
+        hand.countPlayer= function(){
+            return card.count(pHandGroup);
+        };
+
+        hand.move=function(toCard,before){
+            let fromCard=hand.selected;
+            hand.unSelect();
+            let cards=pHandGroup.getElementsByTagName("g");
+            let moves=0;
+            function moveCard(cc,m){
+                moves=moves+m;
+                let newX=cc.transform.baseVal.getItem(0).matrix.e+m;
+                let newY=cc.transform.baseVal.getItem(0).matrix.f;
+                cc.transform.baseVal.getItem(0).setTranslate(newX,newY);
+            }
+            for (let i=0,move=0;i<cards.length;i++){
+                if (cards[i].id===toCard.id){
+                    if(move===0){
+                        move=hand.vSpace;
+                        if (before){
+                            moveCard(cards[i],move);
                         }
                     }else{
-                        if (move!==0){
-                            moveCard(cards[i],move); 
+                        if (!before){
+                            moveCard(cards[i],move);
                         }
-                    }
-                }
-                if(moves!==0){
-                    moveCard(fromCard,-moves);
-                    if (before){
-                        pHandGroup.insertBefore(fromCard,toCard);
-                    }else{
-                        if (toCard.nextElementSibling){
-                            pHandGroup.insertBefore(fromCard,toCard.nextElementSibling);
-                        }else{
-                            pHandGroup.appendChild(fromCard);
-                        }
-                    }
-                }
-            };
-            svg.hand.moveToDishPlayer=function(){
-                let c=svg.hand.selected;
-                svg.hand.unSelect();
-                svg.card.leave(c,true);
-                svg.card.moveToDish(c,true);
-            };
-            svg.hand.removeOpp=function(cardNo){
-                let cards=oHandGroup.getElementsByTagName("g");
-                let color;
-                if (cardNo>TROOP_NO){
-                    color=backTacColor;
-                }else{
-                    color=backTroopColor;
-                }
-                for(let i=cards.length-1;i>=0;i--){
-                    if(cards[i].getElementsByTagName("rect")[1].style.stroke===color){
-                        oHandGroup.removeChild(cards[i]);
                         break;
-                    }else{
-                        let newX,newY;
-                        let cc=cards[i];
-                        newX=cards[i].transform.baseVal.getItem(0).matrix.e-svg.hand.vSpace;
-                        newY=cards[i].transform.baseVal.getItem(0).matrix.f;
-                        cards[i].transform.baseVal.getItem(0).setTranslate(newX,newY);
                     }
-                }
-            };
-            svg.hand.moveToDishOpp=function(cardNo){
-                svg.hand.removeOpp(cardNo);
-                let c=svg.hand.createCard(cardNo);
-                svg.card.moveToDish(c,false);
-            };
-            let oDishTacGroup=document.getElementById("oDishTacGroup");
-            let oDishTroopGroup=document.getElementById("oDishTroopGroup");
-            svg.card.moveToDish=function(cardGroup,player){
-                let v=svg.fromId(cardGroup.id).no;
-                if(player===undefined){//work only for flag
-                    player=svg.fromId(cardGroup.parentNode.id).player;
-                }
-                let dishGroup;
-                if (player){
-                    if(v>TROOP_NO){
-                        dishGroup=pDishTacGroup;
+                }else if(cards[i].id===fromCard.id){
+                    if (move===0){
+                        move=-hand.vSpace;
                     }else{
-                        dishGroup=pDishTroopGroup;
+                        break;
                     }
                 }else{
-                    if(v>TROOP_NO){
-                        dishGroup=oDishTacGroup;
-                    }else{
-                        dishGroup=oDishTroopGroup;
+                    if (move!==0){
+                        moveCard(cards[i],move); 
                     }
                 }
-                svg.card.set(dishGroup,cardGroup,false);
-            };
-            svg.card.clear=function(){
-                svg.card.clearGroup(oDishTroopGroup);
-                svg.card.clearGroup(oDishTacGroup);
-                svg.card.clearGroup(pDishTroopGroup);
-                svg.card.clearGroup(pDishTacGroup);
-                for(let i=1;i<10;i++){
-                    let id= svg.toId(ID_FlagTroop,i,true);
-                    svg.card.clearGroup(document.getElementById(id));
-                    id= svg.toId(ID_FlagTroop,i,false);
-                    svg.card.clearGroup(document.getElementById(id));
-                    id= svg.toId(ID_FlagTac,i,true);
-                    svg.card.clearGroup(document.getElementById(id));
-                    id= svg.toId(ID_FlagTac,i,false);
-                    svg.card.clearGroup(document.getElementById(id));
-                }
-                svg.card.clearGroup(pHandGroup);
-                svg.card.clearGroup(oHandGroup);
-                deckTacTspan.textContent=""+TAC_NO;
-                deckTroopTspan.textContent=""+TROOP_NO;
-            };
-            svg.hand.moveToFlagPlayer=function(flagX){
-                let c=svg.hand.selected;
-                let cardix=svg.fromId(c.id).no;
-                let flagGroup;
-                if (flagX.parentNode){
-                    let flagIdObj=svg.fromId(flagX.id);
-                    if (cardix===TC_Mud||cardix===TC_Fog){
-                        if(flagIdObj.type===ID_FlagTac){
-                            flagGroup=flagX;
-                        }else{
-                            flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagIdObj.no,true));
-                        }
-                    }else{
-                        if(flagIdObj.type===ID_FlagTroop){
-                            flagGroup=flagX;
-                        }else{
-                            flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagIdObj.no,true));
-                        }
-                    }
+            }
+            if(moves!==0){
+                moveCard(fromCard,-moves);
+                if (before){
+                    pHandGroup.insertBefore(fromCard,toCard);
                 }else{
-                    if (cardix===TC_Mud||cardix===TC_Fog){
-                        flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagX));
+                    if (toCard.nextElementSibling){
+                        pHandGroup.insertBefore(fromCard,toCard.nextElementSibling);
                     }else{
-                        flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagX));
+                        pHandGroup.appendChild(fromCard);
                     }
                 }
-                svg.hand.unSelect();
-                svg.card.leave(c,true);
-                svg.card.set(flagGroup,c,false);
-            };
-            svg.hand.moveToFlagOpp=function(cardNo,flagNo){
-                let flagGroup;
-                if (cardNo===TC_Mud||cardNo===TC_Fog){
-                    flagGroup=document.getElementById(svg.toId(ID_FlagTac,flagNo,false));
+            }
+        };
+        exp.hand.move=hand.move;
+
+        hand.moveToDishPlayer=function(){
+            let c=hand.selected;
+            hand.unSelect();
+            card.leave(c,true);
+            card.moveToDish(c,true);
+        };
+        exp.hand.moveToDishPlayer=hand.moveToDishPlayer;
+        hand.removeOpp=function(cardNo){
+            let cards=oHandGroup.getElementsByTagName("g");
+            let color;
+            if (card.isTac(cardNo)){
+                color=backTacColor;
+            }else{
+                color=backTroopColor;
+            }
+            for(let i=cards.length-1;i>=0;i--){
+                if(cards[i].getElementsByTagName("rect")[1].style.stroke===color){
+                    oHandGroup.removeChild(cards[i]);
+                    break;
                 }else{
-                    flagGroup=document.getElementById(svg.toId(ID_FlagTroop,flagNo,false));
+                    let newX,newY;
+                    let cc=cards[i];
+                    newX=cards[i].transform.baseVal.getItem(0).matrix.e-hand.vSpace;
+                    newY=cards[i].transform.baseVal.getItem(0).matrix.f;
+                    cards[i].transform.baseVal.getItem(0).setTranslate(newX,newY);
                 }
-                svg.hand.removeOpp(cardNo);
-                let c=svg.hand.createCard(cardNo);
-                svg.card.set(flagGroup,c,false);
-            };
-            svg.hand.removePlayer=function(cardGroup){
-                cardGroup.parentNode.removeChild(cardGroup);
-            };
-            svg.hand.moveToDeckPlayer=function(){
-                let cc=svg.hand.selected;
-                svg.hand.unSelect();
-                if (svg.fromId(cc.id).no>TROOP_NO){
-                    deckTacTspan.textContent=""+(parseInt(deckTacTspan.textContent)+1);
+            }
+        };
+
+        hand.moveToDishOpp=function(cardNo){
+            hand.removeOpp(cardNo);
+            let c=hand.createCard(cardNo);
+            card.moveToDish(c,false);
+        };
+        exp.hand.moveToDishOpp=hand.moveToDishOpp;
+        let oDishTacGroup=document.getElementById("oDishTacGroup");
+        let oDishTroopGroup=document.getElementById("oDishTroopGroup");
+        card.moveToDish=function(cardGroup,player){
+            let v=id.fromName(cardGroup.id).no;
+            if(player===undefined){//work only for flag
+                player=id.fromName(cardGroup.parentNode.id).player;
+            }
+            let dishGroup;
+            if (player){
+                if(card.isTac(v)){
+                    dishGroup=pDishTacGroup;
                 }else{
-                    deckTroopTspan.textContent=""+(parseInt(deckTroopTspan.textContent)+1);
+                    dishGroup=pDishTroopGroup;
                 }
-                svg.card.leave(cc,true);
-                svg.hand.removePlayer(cc,true);
-            };
-            svg.hand.moveToDeckOpp=function(tac){
-                if (tac){
-                    svg.hand.removeOpp(TROOP_NO+1);
-                    deckTacTspan.textContent=""+(parseInt(deckTacTspan.textContent)+1);
+            }else{
+                if(card.isTac(v)){
+                    dishGroup=oDishTacGroup;
                 }else{
-                    svg.hand.removeOpp(TROOP_NO);
-                    deckTroopTspan.textContent=""+(parseInt(deckTroopTspan.textContent)+1);
+                    dishGroup=oDishTroopGroup;
                 }
-            };
-            let battlelineSvg=document.getElementById("battlelineSvg");
-            svg.click.zone={};
-            svg.click.hitElems=function(event){ 
-                let m = battlelineSvg.getScreenCTM();
+            }
+            card.set(dishGroup,cardGroup,false);
+        };
+        card.clear=function(){
+            card.clearGroup(oDishTroopGroup);
+            card.clearGroup(oDishTacGroup);
+            card.clearGroup(pDishTroopGroup);
+            card.clearGroup(pDishTacGroup);
+            for(let i=1;i<10;i++){
+                let idName= id.typeToName(ID_FlagTroop,i,true);
+                card.clearGroup(document.getElementById(idName));
+                idName= id.typeToName(ID_FlagTroop,i,false);
+                card.clearGroup(document.getElementById(idName));
+                idName= id.typeToName(ID_FlagTac,i,true);
+                card.clearGroup(document.getElementById(idName));
+                idName= id.typeToName(ID_FlagTac,i,false);
+                card.clearGroup(document.getElementById(idName));
+            }
+            card.clearGroup(pHandGroup);
+            card.clearGroup(oHandGroup);
+            deckTacTspan.textContent=""+TAC_NO;
+            deckTroopTspan.textContent=""+TROOP_NO;
+        };
+
+        hand.moveToFlagPlayer=function(flagX){
+            let c=hand.selected;
+            let cardix=id.fromName(c.id).no;
+            let flagGroup;
+            if (flagX.parentNode){
+                let flagIdObj=id.fromName(flagX.id);
+                if (cardix===TC_Mud||cardix===TC_Fog){
+                    if(flagIdObj.type===ID_FlagTac){
+                        flagGroup=flagX;
+                    }else{
+                        flagGroup=document.getElementById(id.typeToName(ID_FlagTac,flagIdObj.no,true));
+                    }
+                }else{
+                    if(flagIdObj.type===ID_FlagTroop){
+                        flagGroup=flagX;
+                    }else{
+                        flagGroup=document.getElementById(id.typeToName(ID_FlagTroop,flagIdObj.no,true));
+                    }
+                }
+            }else{
+                if (cardix===TC_Mud||cardix===TC_Fog){
+                    flagGroup=document.getElementById(id.typeToName(ID_FlagTac,flagX));
+                }else{
+                    flagGroup=document.getElementById(id.typeToName(ID_FlagTroop,flagX));
+                }
+            }
+            hand.unSelect();
+            card.leave(c,true);
+            card.set(flagGroup,c,false);
+        };
+        exp.hand.moveToFlagPlayer=hand.moveToFlagPlayer;
+
+        hand.moveToFlagOpp=function(cardNo,flagNo){
+            let flagGroup;
+            if (cardNo===TC_Mud||cardNo===TC_Fog){
+                flagGroup=document.getElementById(id.typeToName(ID_FlagTac,flagNo,false));
+            }else{
+                flagGroup=document.getElementById(id.typeToName(ID_FlagTroop,flagNo,false));
+            }
+            hand.removeOpp(cardNo);
+            let c=hand.createCard(cardNo);
+            card.set(flagGroup,c,false);
+        };
+        exp.hand.moveToFlagOpp=hand.moveToFlagOpp;
+        hand.removePlayer=function(cardGroup){
+            cardGroup.parentNode.removeChild(cardGroup);
+        };
+
+        hand.moveToDeckPlayer=function(){
+            let cc=hand.selected;
+            hand.unSelect();
+            if (card.isTac(id.fromName(cc.id).no)){
+                deckTacTspan.textContent=""+(parseInt(deckTacTspan.textContent)+1);
+            }else{
+                deckTroopTspan.textContent=""+(parseInt(deckTroopTspan.textContent)+1);
+            }
+            card.leave(cc,true);
+            hand.removePlayer(cc,true);
+        };
+        exp.hand.moveToDeckPlayer=hand.moveToDeckPlayer;
+
+        hand.moveToDeckOpp=function(tac){
+            if (tac){
+                hand.removeOpp(TROOP_NO+1);
+                deckTacTspan.textContent=""+(parseInt(deckTacTspan.textContent)+1);
+            }else{
+                hand.removeOpp(TROOP_NO);
+                deckTroopTspan.textContent=""+(parseInt(deckTroopTspan.textContent)+1);
+            }
+        };
+        exp.hand.moveToDeckOpp=hand.moveToDeckOpp;
+        let battlelineSvg=document.getElementById("battlelineSvg");
+        click.zone={};
+        click.hitElems=function(event){
+            let m = battlelineSvg.getScreenCTM();
+            let point = battlelineSvg.createSVGPoint();
+            point.x = event.clientX;
+            point.y = event.clientY;
+            point = point.matrixTransform(m.inverse());
+
+            let res=click.zone.handHit(point.x,point.y);
+            if (res.length===0){
+                res=click.zone.deckHit(point.x,point.y);
+            }
+            if(res.length===0){
+                res=click.zone.flagHit(point.x,point.y,true);
+            }
+            if(res.length===0){
+                res=click.zone.flagHit(point.x,point.y,false);
+            }
+            if(res.length===0){
+                res=click.zone.coneHit(point.x,point.y);
+            }
+            if(res.length===0){
+                res=click.zone.dishHit(point.x,point.y);
+            }
+            return res;
+        };
+        click.deaFlagSet=new Set();
+        click.deactivateFlag=function(flagNo){
+            click.deaFlagSet.add(flagNo);
+        };
+        click.resetDeactivate=function(){
+            click.deaFlagSet.clear();
+        };
+        let pHandRec=pHandGroup.getElementsByTagName("rect")[0];
+        let frameStroke=pHandRec.style.strokeWidth/2;
+        let pHandArea=new Area(pHandRec.x.baseVal.value+frameStroke,
+                               pHandRec.x.baseVal.value-frameStroke+pHandRec.width.baseVal.value,
+                               pHandRec.y.baseVal.value+frameStroke-hand.hSpace,
+                               pHandRec.y.baseVal.value-frameStroke+pHandRec.height.baseVal.value
+                              );
+        click.zone.handHit=function(x,y){
+            let res=[];
+            if (pHandArea.hit(x,y)){
+                res=card.hit(pHandGroup,x,y);
+            }
+            return res;
+        };
+        let pF1Troop=document.getElementById("pF1TroopGroup");
+        let pF1TroopRec=pF1Troop.getElementsByTagName("rect")[0];
+        let pF9Tac=document.getElementById("pF9TacGroup");
+        let pF9TacRec=pF9Tac.getElementsByTagName("rect")[0];
+        let pFlagArea=new Area(pF1TroopRec.x.baseVal.value+frameStroke,
+                               pF9TacRec.x.baseVal.value-frameStroke+pF9TacRec.width.baseVal.value,
+                               pF1TroopRec.y.baseVal.value+frameStroke,
+                               pF9TacRec.y.baseVal.value-frameStroke+pF9TacRec.height.baseVal.value
+                              );
+        let oppMatrix=document.getElementById("oppGroup").transform.baseVal.getItem(0).matrix;
+        click.zone.flagHit=function(x,y,player){
+            let res=[];
+            if (!player){
                 let point = battlelineSvg.createSVGPoint();
-                point.x = event.clientX;
-                point.y = event.clientY;
-                point = point.matrixTransform(m.inverse());
-
-                let res=svg.click.zone.handHit(point.x,point.y);
-                if (res.length===0){
-                    res=svg.click.zone.deckHit(point.x,point.y);
-                }
-                if(res.length===0){
-                    res=svg.click.zone.flagHit(point.x,point.y,true);
-                }
-                if(res.length===0){
-                    res=svg.click.zone.flagHit(point.x,point.y,false);
-                }
-                if(res.length===0){
-                    res=svg.click.zone.coneHit(point.x,point.y);
-                }
-                if(res.length===0){
-                    res=svg.click.zone.dishHit(point.x,point.y);
-                }
-                return res;
-            };
-            svg.click.deaFlagSet=new Set();
-            svg.click.deactivateFlag=function(flagNo){
-                svg.click.deaFlagSet.add(flagNo);
-            };
-            svg.click.resetDeactivate=function(){
-                svg.click.deaFlagSet.clear();
-            };
-            let pHandRec=pHandGroup.getElementsByTagName("rect")[0];
-            let frameStroke=pHandRec.style.strokeWidth/2;
-            let pHandArea=new Area(pHandRec.x.baseVal.value+frameStroke,
-                                   pHandRec.x.baseVal.value-frameStroke+pHandRec.width.baseVal.value,
-                                   pHandRec.y.baseVal.value+frameStroke-svg.hand.hSpace,
-                                   pHandRec.y.baseVal.value-frameStroke+pHandRec.height.baseVal.value
-                                  );
-            svg.click.zone.handHit=function(x,y){
-                let res=[];
-                if (pHandArea.hit(x,y)){
-                    res=svg.card.hit(pHandGroup,x,y);
-                }
-                return res;
-            };
-            let pF1Troop=document.getElementById("pF1TroopGroup");
-            let pF1TroopRec=pF1Troop.getElementsByTagName("rect")[0];
-            let pF9Tac=document.getElementById("pF9TacGroup");
-            let pF9TacRec=pF9Tac.getElementsByTagName("rect")[0];
-            let pFlagArea=new Area(pF1TroopRec.x.baseVal.value+frameStroke,
-                                   pF9TacRec.x.baseVal.value-frameStroke+pF9TacRec.width.baseVal.value,
-                                   pF1TroopRec.y.baseVal.value+frameStroke,
-                                   pF9TacRec.y.baseVal.value-frameStroke+pF9TacRec.height.baseVal.value
-                                  );
-            let oppMatrix=document.getElementById("oppGroup").transform.baseVal.getItem(0).matrix;
-            svg.click.zone.flagHit=function(x,y,player){
-                let res=[];
+                point.x = x;
+                point.y = y;
+                point = point.matrixTransform(oppMatrix.inverse());
+                x=point.x;
+                y=point.y;
+            }
+            function hitGroup(group,x,y){
+                let hit=false;
+                let rect=group.getElementsByTagName("rect")[0];
                 if (!player){
+                    let m=group.transform.baseVal.getItem(0).matrix;
                     let point = battlelineSvg.createSVGPoint();
                     point.x = x;
                     point.y = y;
-                    point = point.matrixTransform(oppMatrix.inverse());
+                    point = point.matrixTransform(m.inverse());
                     x=point.x;
                     y=point.y;
                 }
-                function hitGroup(group,x,y){
-                    let hit=false;
-                    let rect=group.getElementsByTagName("rect")[0];
-                    if (!player){
-                        let m=group.transform.baseVal.getItem(0).matrix;
-                        let point = battlelineSvg.createSVGPoint();
-                        point.x = x;
-                        point.y = y;
-                        point = point.matrixTransform(m.inverse());
-                        x=point.x;
-                        y=point.y;
-                    }
-                    let y0=rect.y.baseVal.value;
-                    let y1=rect.y.baseVal.value+rect.height.baseVal.value;
-                    let x0=rect.x.baseVal.value;
-                    let x1=rect.x.baseVal.value+rect.width.baseVal.value;
-                    let area=new Area(x0,x1,y0,y1);
-                    if( area.hit(x,y)){
-                        hit=true;
-                    }
-                    return hit;
+                let y0=rect.y.baseVal.value;
+                let y1=rect.y.baseVal.value+rect.height.baseVal.value;
+                let x0=rect.x.baseVal.value;
+                let x1=rect.x.baseVal.value+rect.width.baseVal.value;
+                let area=new Area(x0,x1,y0,y1);
+                if( area.hit(x,y)){
+                    hit=true;
                 }
-                if (pFlagArea.hit(x,y)){
-                    for(let i=1;i<10;i++){
-                        let troopGroup=document.getElementById(svg.toId(ID_FlagTroop,i,player));
-                        res=svg.card.hit(troopGroup,x,y);
-                        if (res.length===0){
-                            let tacGroup=document.getElementById(svg.toId(ID_FlagTac,i,player));
-                            res=svg.card.hit(tacGroup,x,y);
-                            if (res.length>0){
-                                res[res.length]=tacGroup;
-                                break;
-                            }
-                            if (hitGroup(troopGroup,x,y)){
-                                res[res.length]=troopGroup;
-                                break;
-                            }
-                            if (hitGroup(tacGroup,x,y)){
-                                res[res.length]=tacGroup;
-                                break;
-                            }
-                        }else{
+                return hit;
+            }
+            if (pFlagArea.hit(x,y)){
+                for(let i=1;i<10;i++){
+                    let troopGroup=document.getElementById(id.typeToName(ID_FlagTroop,i,player));
+                    res=card.hit(troopGroup,x,y);
+                    if (res.length===0){
+                        let tacGroup=document.getElementById(id.typeToName(ID_FlagTac,i,player));
+                        res=card.hit(tacGroup,x,y);
+                        if (res.length>0){
+                            res[res.length]=tacGroup;
+                            break;
+                        }
+                        if (hitGroup(troopGroup,x,y)){
                             res[res.length]=troopGroup;
                             break;
                         }
+                        if (hitGroup(tacGroup,x,y)){
+                            res[res.length]=tacGroup;
+                            break;
+                        }
+                    }else{
+                        res[res.length]=troopGroup;
+                        break;
                     }
                 }
-                return res;
-            };
-            let deckTacGroup=document.getElementById("deckTacGroup");
-            let deckTroopGroup=document.getElementById("deckTroopGroup");
-            svg.click.zone.deckHit=function(x,y){
-                let res=[];
-                let troopArea=new Area(backTroopRect.x.baseVal.value,
-                                       backTroopRect.x.baseVal.value+backTroopRect.width.baseVal.value,
-                                       backTroopRect.y.baseVal.value,
-                                       backTroopRect.y.baseVal.value+backTroopRect.width.baseVal.value
-                                      );
-                if(troopArea.hit(x,y)){
-                    res[0]=deckTroopGroup;
-                }else{
-                    let tacArea=new Area(backTacRect.x.baseVal.value,
-                                         backTacRect.x.baseVal.value+backTacRect.width.baseVal.value,
-                                         backTacRect.y.baseVal.value,
-                                         backTacRect.y.baseVal.value+backTacRect.width.baseVal.value
-                                        );
-                    if(tacArea.hit(x,y)){
-                        res[0]=deckTacGroup;
-                    }
+            }
+            return res;
+        };
+        let deckTacGroup=document.getElementById("deckTacGroup");
+        let deckTroopGroup=document.getElementById("deckTroopGroup");
+        click.zone.deckHit=function(x,y){
+            let res=[];
+            let troopArea=new Area(backTroopRect.x.baseVal.value,
+                                   backTroopRect.x.baseVal.value+backTroopRect.width.baseVal.value,
+                                   backTroopRect.y.baseVal.value,
+                                   backTroopRect.y.baseVal.value+backTroopRect.width.baseVal.value
+                                  );
+            if(troopArea.hit(x,y)){
+                res[0]=deckTroopGroup;
+            }else{
+                let tacArea=new Area(backTacRect.x.baseVal.value,
+                                     backTacRect.x.baseVal.value+backTacRect.width.baseVal.value,
+                                     backTacRect.y.baseVal.value,
+                                     backTacRect.y.baseVal.value+backTacRect.width.baseVal.value
+                                    );
+                if(tacArea.hit(x,y)){
+                    res[0]=deckTacGroup;
                 }
-                return res;
-            };
-            let pDishTacRect=pDishTacGroup.getElementsByTagName("rect")[0];
-            let pDishTroopRect=pDishTroopGroup.getElementsByTagName("rect")[0];
-            svg.click.zone.dishHit=function(x,y){
-                let res=[];
-                let troopArea=new Area(pDishTroopRect.x.baseVal.value,
-                                       pDishTroopRect.x.baseVal.value+pDishTroopRect.width.baseVal.value,
-                                       pDishTroopRect.y.baseVal.value,
-                                       pDishTroopRect.y.baseVal.value+pDishTroopRect.width.baseVal.value
-                                      );
-                if(troopArea.hit(x,y)){
-                    res[0]=pDishTroopGroup;
-                }else{
-                    let tacArea=new Area(pDishTacRect.x.baseVal.value,
-                                         pDishTacRect.x.baseVal.value+pDishTacRect.width.baseVal.value,
-                                         pDishTacRect.y.baseVal.value,
-                                         pDishTacRect.y.baseVal.value+pDishTacRect.width.baseVal.value
-                                        );
-                    if(tacArea.hit(x,y)){
-                        res[0]=pDishTacGroup;
-                    }
+            }
+            return res;
+        };
+        let pDishTacRect=pDishTacGroup.getElementsByTagName("rect")[0];
+        let pDishTroopRect=pDishTroopGroup.getElementsByTagName("rect")[0];
+        click.zone.dishHit=function(x,y){
+            let res=[];
+            let troopArea=new Area(pDishTroopRect.x.baseVal.value,
+                                   pDishTroopRect.x.baseVal.value+pDishTroopRect.width.baseVal.value,
+                                   pDishTroopRect.y.baseVal.value,
+                                   pDishTroopRect.y.baseVal.value+pDishTroopRect.width.baseVal.value
+                                  );
+            if(troopArea.hit(x,y)){
+                res[0]=pDishTroopGroup;
+            }else{
+                let tacArea=new Area(pDishTacRect.x.baseVal.value,
+                                     pDishTacRect.x.baseVal.value+pDishTacRect.width.baseVal.value,
+                                     pDishTacRect.y.baseVal.value,
+                                     pDishTacRect.y.baseVal.value+pDishTacRect.width.baseVal.value
+                                    );
+                if(tacArea.hit(x,y)){
+                    res[0]=pDishTacGroup;
                 }
-                return res;
-            };
-            let firstCone=document.getElementById("k1Path");
-            let lastCone=document.getElementById("k9Path");
-            let coneR=firstCone.r.baseVal.value+parseFloat(firstCone.style.strokeWidth);
-            let coneArea=new Area(firstCone.cx.baseVal.value-coneR,
-                                  lastCone.cx.baseVal.value+coneR,
-                                  firstCone.cy.baseVal.value-coneR,
-                                  lastCone.cy.baseVal.value+coneR
-                                 );
-            svg.click.zone.coneHit=function(x,y){
-                let res=[];
-                if(coneArea.hit(x,y)){
-                    for (let i=1;i<10;i++){
-                        if(!svg.click.deaFlagSet.has(i)){
-                            let coneElm= document.getElementById(svg.toId(ID_Cone,i));
-                            let r=coneElm.r.baseVal.value+parseFloat(coneElm.style.strokeWidth);
-                            let coneArea=new Area(coneElm.cx.baseVal.value-r,
-                                                  coneElm.cx.baseVal.value+r,
-                                                  coneElm.cy.baseVal.value-r,
-                                                  coneElm.cy.baseVal.value+r
-                                                 );
-                            if (coneArea.hit(x,y)){
-                                res[0]=coneElm;
-                            }
+            }
+            return res;
+        };
+        let firstCone=document.getElementById("k1Path");
+        let lastCone=document.getElementById("k9Path");
+        let coneR=firstCone.r.baseVal.value+parseFloat(firstCone.style.strokeWidth);
+        let coneArea=new Area(firstCone.cx.baseVal.value-coneR,
+                              lastCone.cx.baseVal.value+coneR,
+                              firstCone.cy.baseVal.value-coneR,
+                              lastCone.cy.baseVal.value+coneR
+                             );
+        click.zone.coneHit=function(x,y){
+            let res=[];
+            if(coneArea.hit(x,y)){
+                for (let i=1;i<10;i++){
+                    if(!click.deaFlagSet.has(i)){
+                        let coneElm= document.getElementById(id.typeToName(ID_Cone,i));
+                        let r=coneElm.r.baseVal.value+parseFloat(coneElm.style.strokeWidth);
+                        let coneArea=new Area(coneElm.cx.baseVal.value-r,
+                                              coneElm.cx.baseVal.value+r,
+                                              coneElm.cy.baseVal.value-r,
+                                              coneElm.cy.baseVal.value+r
+                                             );
+                        if (coneArea.hit(x,y)){
+                            res[0]=coneElm;
                         }
                     }
                 }
-                return res;
-            };
-
-            battlelineSvg.onclick=function (event){
-                let elms=svg.click.hitElems(event);
-                let centerClick=event.which===2;//right click is context menu
-                if (elms.length>0){
-                    svg.itemClicked(elms,centerClick);
-                }
-            };
-        };//init
-        return svg;
-    }
-    svg=battSvg();
-    table.buttonGetId=function(event){
-        let row=event.target.parentNode.parentNode;
-        return parseInt(row.cells[0].textContent);
-    };
-    table.getFieldIx=function(linkField,headers,useId){
-        for (let i=0;i<headers.length; i++){
-            let field;
-            if (useId){
-                field=headers[i].id;
-            }else{
-                field=headers[i].getAttribute("tc-link");
             }
-            if (field===linkField){
-                return i;
-            }
-        }
-        return -1;
-    };
-    //table.getFieldsIx find field indexes assume all fields match
-    table.getFieldsIx=function(linkFields,headers,useId){
-        let res=[];
-        for (let lf of linkFields){
-            for (let i=0;i<headers.length; i++){
-                let field;
-                if (useId){
-                    field=headers[i].id;
-                }else{
-                    field=headers[i].getAttribute("tc-link");
-                }
-                if (lf===field){
-                    res.push(i);
-                    break;
-                }
-            }
-        }
-        if (res.length!==linkFields.length){
-            console.log("Missing field");
-        }
-        return res;
-    };
-    table.invites.recieved=function(invite){
-        if(invite.Rejected){
-            let name=table.invites.delete(invite.ReceiverId,true);
-            if(name){
-                msg.recieved({Message:name+" declined your invitation."});
-            }
-        }else{
-            table.invites.replace(invite.InvitorId,invite.InvitorName,false);
-        }
-    };
-    function actionBuilder(aType){
-        let res={ActType:aType};
-        res.id=function(id){
-            res.Id=id;
             return res;
         };
-        res.move=function(cardix,flagix){
-            this.Move=[cardix,flagix];
-            return this;
+        function itemClicked(elems,centerClick){
         };
-        res.mess=function(msg){
-            this.Mess=msg;
-            return this;
+        exp.itemClicked=itemClicked;
+        battlelineSvg.onclick=function (event){
+            let elms=click.hitElems(event);
+            let centerClick=event.which===2;//right click is context menu
+            if (elms.length>0){
+                exp.itemClicked(elms,centerClick);
+            }
         };
-        res.build=function(){
-            let act={ActType:this.ActType};
-            if (this.Id){
-                act.Id=this.Id;
-            }
-            if (this.Move){
-                act.Move=this.Move;
-            }
-            if (this.Mess){
-                act.Mess=this.Mess;
-            }
-            return act;
-        };
-        return res;
+        return exp;
     }
+
     function getCookies(document){
         let res=new Map();
         let cookies=document.cookie;
@@ -1004,581 +965,816 @@ var batt={};
         }
         return res;
     }
-    game.ends=function(){
-        game.turn.current=null;
-        game.turn.isMyTurn=false;
-        let act=actionBuilder(ACT_LIST).build();
-        ws.conn.send(JSON.stringify(act));
-    };
-    game.showMove=function(moveView){
-        game.cone.validixs.clear();
-        let move=moveView.Move;
-        if (moveView.Mover){
-            if (move.JsonType==="MoveClaimView"){
-               if (move.Claimed.length!==move.Claim.length){
-                    for(let i=0;i<move.Claim.length;i++){
-                        let found=false;
-                        for(let j=0;j<move.Claimed.length;j++){
-                            if (move.Claim[i]===move.Claimed[j]){
-                                found=true;
-                                break;
+    function createGame(document,ws,svg,msg){
+        const TURN_FLAG = 0;
+	      const TURN_HAND = 1;
+	      //TURN_SCOUT2 player picks second of tree scout cards.
+	      const TURN_SCOUT2 = 2;
+	      //TURN_SCOUT2 player picks last of tree scout cards.
+	      const TURN_SCOUT1 = 3;
+	      //TURN_SCOUTR player return 3 cards to decks.
+	      const TURN_SCOUTR = 4;
+	      const TURN_DECK   = 5;
+	      const TURN_FINISH = 6;
+	      const TURN_QUIT   = 7;//TODO move to game
+
+	      const DECK_TAC   = 1;//TODO move to game
+	      const DECK_TROOP = 2;
+
+
+        let exp={};
+        let turn={};
+        turn.current=null;
+        let cone={};
+        cone.clickedixs=new Set();
+        cone.validixs=new Set();
+
+        let scoutReturnTacixs=[];
+        let scoutReturnTroopixs=[];
+
+        function ends(){
+            turn.current=null;
+            turn.isMyTurn=false;
+            ws.actionBuilder(ws.ACT_LIST).send();
+        };
+        function isPlaying(){
+            return turn.current!==null;
+        }
+        exp.isPlaying=isPlaying;
+        function showMove(moveView){
+            cone.validixs.clear();
+            let move=moveView.Move;
+            if (moveView.Mover){
+                if (move.JsonType==="MoveClaimView"){
+                    if (move.Claimed.length!==move.Claim.length){
+                        for(let i=0;i<move.Claim.length;i++){
+                            let found=false;
+                            for(let j=0;j<move.Claimed.length;j++){
+                                if (move.Claim[i]===move.Claimed[j]){
+                                    found=true;
+                                    break;
+                                }
+                            }
+                            if (!found){
+                                svg.cone.pos(move.Claim[i]+1,1);//reset cone
                             }
                         }
-                        if (!found){
-                            svg.cone.pos(move.Claim[i]+1,1);//reset cone
+                        function exTxt(cardixs){
+                            let txt="";
+                            if (cardixs){//we do not always calculate a example
+                                for(let i=0;i<cardixs.length;i++){
+                                    if (cardixs[i]!==0){
+                                        if (svg.card.isTac(cardixs[i])){
+                                            txt=txt+svg.card.tacName;
+                                        }else{
+                                            txt=txt+svg.card.colorName(cardixs[i]);
+                                            txt=txt+" ";
+                                            txt=txt+svg.card.troopValue(cardixs[i]);
+                                        }
+                                        txt=txt+", ";
+                                    }
+                                }
+                                txt=txt.substr(0,txt.length-2);
+                            }
+
+                            return txt;
                         }
-                    }
-                    msg.recieved({Message:move.Info}); 
-                }
-                if (move.Win){
-                    msg.recieved({Message:"Congratulation you won the game."});
-                }
-            }else if (moveView.DeltCardix!==0){
-                if (svg.hand.selected){
-                    svg.hand.unSelect();
-                }
-               svg.hand.drawPlayer(moveView.DeltCardix);
-            }else if(move.JsonType==="MoveQuit"){
-                msg.recieved({Message:"You have lost the game by giving up."});
-            }else if(move.JsonType==="MoveRedeployView"){
-                if(move.RedeployDishixs.length>0){
-                    for(let i=0;i<move.RedeployDishixs.length;i++){
-                        svg.flag.cardToDish(move.RedeployDishixs[i]);
-                    }
-                }
-            }
-        }else{
-            //Move bat.Move and Card int
-            switch (move.JsonType){
-            case "MoveInit":
-                for (let i=0;i<move.Hand.length;i++){
-                    svg.hand.drawPlayer(move.Hand[i]);
-                    svg.hand.drawOpp(true);
-                }
-                break;
-            case "MoveInitPos":
-                let pos=move.Pos;
-                for (let i;i<pos.Flags.length;i++){
-                    let flag=pos.Flags[i];
-                    if (flag.OppFlag){
-                        svg.cone.pos(i+1,0);
-                    }else if(flag.NeuFlag){
-                        svg.cone.pos(i+1,1);
-                    }else if(flag.PlayFlag){
-                        svg.cone.pos(i+1,2);
-                    }
-                    for (let j=0;j<flag.OppTroops.length;j++){
-                        svg.hand.drawOpp(true);
-                        svg.hand.moveToFlagOpp(flag.OppTroops[j],i+1);
-                    }
-                    for (let j=0;j<flag.OppEnvs.length;j++){
-                        svg.hand.drawOpp(false);
-                        svg.hand.moveToFlagOpp(flag.OppEnvs[j],i+1);
-                    }
-                    for (let j=0;j<flag.PlayTroops.length;j++){
-                        svg.hand.drawPlayer(flag.PlayTroops[j]);
-                        svg.hand.moveToFlagPlayer(i+1);
-                    }
-                    for (let j=0;j<flag.PlayEnvs.length;j++){
-                       svg.hand.drawPlayer(flag.PlayEnvs[j]);
-                       svg.hand.moveToFlagPlayer(i+1);
-                    }
-                }
-                for (let i;i<pos.OppDishTroops.length;i++){
-                    let cardNo=pos.OppDishTroops[i];
-                    svg.hand.drawOpp(true);
-                    svg.hand.moveToDishOpp(cardNo);
-                }
-                for (let i;i<pos.OppDishTacs.length;i++){
-                    let cardNo=pos.OppDishTacs[i];
-                    svg.hand.drawOpp(false);
-                    svg.hand.moveToDishOpp(cardNo);
-                }
-                for (let i;i<pos.DishTroops.length;i++){
-                    let cardNo=pos.DishTroops[i];
-                    svg.hand.drawPlayer(cardNo);
-                    svg.hand.moveToDishPlayer();
-                }
-                for (let i;i<pos.DishTacs.length;i++){
-                    let cardNo=pos.DishTacs[i];
-                    svg.hand.drawPlayer(cardNo);
-                    svg.hand.moveToDishPlayer();
-                }
-                for (let i;i<pos.OppHand.length;i++){
-                    svg.hand.drawOpp(pos.OppHand[i]);
-                }
-                for (let i;i<pos.Hand.length;i++){
-                    let cardNo=pos.Hand[i];
-                    svg.hand.drawOpp(cardNo);
-                    svg.hand.unSelect();
-                }
-                break;
-            case "MoveCardFlag":
-                svg.hand.moveToFlagOpp(moveView.MoveCardix,move.Flagix+1);
-                break;
-            case "MoveDeck":
-                svg.hand.drawOpp(move.Deck===DECK_TROOP);
-                break;
-            case "MoveClaimView":
-                if (move.Claimed.length>0){
-                    for(let i=0;i<move.Claimed.length;i++){
-                        svg.cone.pos(move.Claimed[i]+1,0);
+
+                        let txt="";
+                        let ex="";
+                        for(let flagix in move.FailMap){
+                            txt=txt+"Claim failed for flag: "+(parseInt(flagix)+1);
+                            txt=txt+"\n";
+                            ex=exTxt(move.FailMap[flagix]);
+                            if (ex!==""){
+                                txt=txt+"For example: "+ex;
+                                txt=txt+"\n";
+                            }
+                        }
+                        msg.recieved({Message:txt.substr(0,txt.length-1)});
                     }
                     if (move.Win){
-                        msg.recieved({Message:"Sorry you you lost the game."});
+                        msg.recieved({Message:"Congratulation you won the game."});
                     }
-                }
-                break;
-            case "MoveDeserter":
-                svg.hand.moveToDishOpp(moveView.MoveCardix);
-                svg.flag.cardToDish(move.Card);
-                break;
-            case "MoveScoutReturnView":
-                svg.hand.moveToDishOpp(TC_Scout);
-                if (move.Tac>0){
-                    for (let i=0;i<move.Tac;i++){
-                        svg.hand.moveToDeckOpp(true);
+                }else if (moveView.DeltCardix!==0){
+                    if (svg.hand.selected()){
+                        svg.hand.unSelect();
                     }
-                }
-                if (move.Troop>0){
-                    for (let i=0;i<move.Troop;i++){
-                        svg.hand.moveToDeckOpp(false);
-                    }
-                }
-                msg.recieved({Message:"Opponent return "+move.Tac+" tactic cards and "+move.Troop+" troop cards."});
-                break;
-            case "MoveTraitor":
-                svg.hand.moveToDishOpp(moveView.MoveCardix);
-                if (move.InFlag>=0){
-                    svg.flag.cardToFlag(move.OutCard,move.InFlag+1,false);
-                }else{
-                    svg.flag.cardToDish(move.OutCard);
-                }
-                break;
-            case "MoveRedeployView":
-                svg.hand.moveToDishOpp(moveView.MoveCardix);
-                if (move.Move.InFlag>=0){
-                    svg.flag.cardToFlag(move.Move.OutCard,move.Move.InFlag+1,false);
-                }else{
-                    svg.flag.cardToDish(move.Move.OutCard);
-                }
-                if(move.RedeployDishixs.length>0){
-                    for(let i=0;i<move.RedeployDishixs.length;i++){
-                        svg.flag.cardToDish(move.RedeployDishixs[i]);
-                    }
-                }
-                break;
-            case "MovePass":
-                msg.recieved({Message:"Your opponent chose not to play a card."});
-                break;
-            case "MoveQuit":
-                msg.recieved({Message:"Congratulation your opponent have given up."});
-                break;
-            default:
-                console.log("Unsupported move: "+move.JsonType);
-
-            }
-        }
-    };
-    game.cone.clear=function(){
-        game.cone.clickedixs.clear();
-        game.cone.validixs.clear();
-    };
-    game.clear=function(){
-        game.cone.clear();
-        game.turn.clear();
-        svg.card.clear();
-        svg.cone.clear();
-        svg.hand.selected=null;
-        svg.flag.cardSelected=null;
-        game.scoutReturnTroopixs=[];
-        game.scoutReturnTacixs=[];
-    };
-    game.move=function(moveView){
-        if (game.turn.current===null){
-            table.invites.clear();
-            game.clear();
-        }else{
-            game.turn.oldState=game.turn.current.State;
-        }
-        game.turn.current=moveView;
-        game.turn.isMyTurn=game.turn.update(game.turn.current);
-        game.showMove(moveView);
-    };
-    game.onClickedCard=function(clickedFlagElm,clickedCardElm,clickedDishElm){
-        function moveToFlag(turn,cardix,flagElm){
-            let flagIdObj=svg.fromId(flagElm.id);
-            let flagNo=flagIdObj.no;
-            if (flagIdObj.player){
-                let moves=turn.MovesHand[""+cardix];
-                if (moves){
-                    for(let i=0;i<moves.length;i++){
-                        if (moves[i].Flagix===flagNo-1){
-                            svg.hand.moveToFlagPlayer(flagElm);
-                            game.turn.isMyTurn=false;
-                            let act=actionBuilder(ACT_MOVE).move(cardix,i).build();
-                            ws.conn.send(JSON.stringify(act));
-                            break;
+                    svg.hand.drawPlayer(moveView.DeltCardix);
+                }else if(move.JsonType==="MoveQuit"){
+                    msg.recieved({Message:"You have lost the game by giving up."});
+                }else if(move.JsonType==="MoveRedeployView"){
+                    if(move.RedeployDishixs.length>0){
+                        for(let i=0;i<move.RedeployDishixs.length;i++){
+                            svg.flag.cardToDish(move.RedeployDishixs[i]);
                         }
                     }
                 }
-            }
-        }
-        if(game.turn.isMyTurn&&svg.hand.selected!==null&&game.turn.current.State===TURN_HAND){
-            let player;
-            let clickedFlagix;
-            if (clickedFlagElm){
-                let flagIdObj=svg.fromId(clickedFlagElm.id);
-                player=flagIdObj.player;
-                clickedFlagix=flagIdObj.no-1;
             }else{
-                player=svg.fromId(clickedDishElm.id).player;
-                clickedFlagix=-1;
-            }
-            let selectedHandCardix=svg.fromId(svg.hand.selected.id).no;
-            let turn=game.turn.current;
-            if (selectedHandCardix>TROOP_NO){//TAC
-                switch (selectedHandCardix){
-                case TC_123:
-                case TC_8:
-                case TC_Fog:
-                case TC_Mud:
-                case TC_Alexander:
-                case TC_Darius:
-                    moveToFlag(turn,selectedHandCardix,clickedFlagElm);
+                //Move bat.Move and Card int
+                switch (move.JsonType){
+                case "MoveInit":
+                    for (let i=0;i<move.Hand.length;i++){
+                        svg.hand.drawPlayer(move.Hand[i]);
+                        svg.hand.drawOpp(true);
+                    }
                     break;
-                case TC_Deserter:
-                    if (clickedCardElm&&!player){
-                        let clickedCardix=svg.fromId(clickedCardElm.id).no;
-                        let dmoves=turn.MovesHand[""+selectedHandCardix];
-                        for(let i=0;i<dmoves.length;i++){
-                            if (dmoves[i].Card===clickedCardix){
-                                svg.hand.moveToDishPlayer();
-                                svg.flag.cardToDish(clickedCardix);
-                                game.turn.isMyTurn=false;
-                                let act=actionBuilder(ACT_MOVE).move(selectedHandCardix,i).build();
-                                ws.conn.send(JSON.stringify(act));
+                case "MoveInitPos":
+                    let pos=move.Pos;
+                    for (let i;i<pos.Flags.length;i++){
+                        let flag=pos.Flags[i];
+                        if (flag.OppFlag){
+                            svg.cone.pos(i+1,0);
+                        }else if(flag.NeuFlag){
+                            svg.cone.pos(i+1,1);
+                        }else if(flag.PlayFlag){
+                            svg.cone.pos(i+1,2);
+                        }
+                        for (let j=0;j<flag.OppTroops.length;j++){
+                            svg.hand.drawOpp(true);
+                            svg.hand.moveToFlagOpp(flag.OppTroops[j],i+1);
+                        }
+                        for (let j=0;j<flag.OppEnvs.length;j++){
+                            svg.hand.drawOpp(false);
+                            svg.hand.moveToFlagOpp(flag.OppEnvs[j],i+1);
+                        }
+                        for (let j=0;j<flag.PlayTroops.length;j++){
+                            svg.hand.drawPlayer(flag.PlayTroops[j]);
+                            svg.hand.moveToFlagPlayer(i+1);
+                        }
+                        for (let j=0;j<flag.PlayEnvs.length;j++){
+                            svg.hand.drawPlayer(flag.PlayEnvs[j]);
+                            svg.hand.moveToFlagPlayer(i+1);
+                        }
+                    }
+                    for (let i;i<pos.OppDishTroops.length;i++){
+                        let cardNo=pos.OppDishTroops[i];
+                        svg.hand.drawOpp(true);
+                        svg.hand.moveToDishOpp(cardNo);
+                    }
+                    for (let i;i<pos.OppDishTacs.length;i++){
+                        let cardNo=pos.OppDishTacs[i];
+                        svg.hand.drawOpp(false);
+                        svg.hand.moveToDishOpp(cardNo);
+                    }
+                    for (let i;i<pos.DishTroops.length;i++){
+                        let cardNo=pos.DishTroops[i];
+                        svg.hand.drawPlayer(cardNo);
+                        svg.hand.moveToDishPlayer();
+                    }
+                    for (let i;i<pos.DishTacs.length;i++){
+                        let cardNo=pos.DishTacs[i];
+                        svg.hand.drawPlayer(cardNo);
+                        svg.hand.moveToDishPlayer();
+                    }
+                    for (let i;i<pos.OppHand.length;i++){
+                        svg.hand.drawOpp(pos.OppHand[i]);
+                    }
+                    for (let i;i<pos.Hand.length;i++){
+                        let cardNo=pos.Hand[i];
+                        svg.hand.drawOpp(cardNo);
+                        svg.hand.unSelect();
+                    }
+                    break;
+                case "MoveCardFlag":
+                    svg.hand.moveToFlagOpp(moveView.MoveCardix,move.Flagix+1);
+                    break;
+                case "MoveDeck":
+                    svg.hand.drawOpp(move.Deck===DECK_TROOP);
+                    break;
+                case "MoveClaimView":
+                    if (move.Claimed.length>0){
+                        for(let i=0;i<move.Claimed.length;i++){
+                            svg.cone.pos(move.Claimed[i]+1,0);
+                        }
+                        if (move.Win){
+                            msg.recieved({Message:"Sorry you you lost the game."});
+                        }
+                    }
+                    break;
+                case "MoveDeserter":
+                    svg.hand.moveToDishOpp(moveView.MoveCardix);
+                    svg.flag.cardToDish(move.Card);
+                    break;
+                case "MoveScoutReturnView":
+                    svg.hand.moveToDishOpp(svg.card.TC_Scout);
+                    if (move.Tac>0){
+                        for (let i=0;i<move.Tac;i++){
+                            svg.hand.moveToDeckOpp(true);
+                        }
+                    }
+                    if (move.Troop>0){
+                        for (let i=0;i<move.Troop;i++){
+                            svg.hand.moveToDeckOpp(false);
+                        }
+                    }
+                    msg.recieved({Message:"Opponent return "+move.Tac+" tactic cards and "+move.Troop+" troop cards."});
+                    break;
+                case "MoveTraitor":
+                    svg.hand.moveToDishOpp(moveView.MoveCardix);
+                    if (move.InFlag>=0){
+                        svg.flag.cardToFlag(move.OutCard,move.InFlag+1,false);
+                    }else{
+                        svg.flag.cardToDish(move.OutCard);
+                    }
+                    break;
+                case "MoveRedeployView":
+                    svg.hand.moveToDishOpp(moveView.MoveCardix);
+                    if (move.Move.InFlag>=0){
+                        svg.flag.cardToFlag(move.Move.OutCard,move.Move.InFlag+1,false);
+                    }else{
+                        svg.flag.cardToDish(move.Move.OutCard);
+                    }
+                    if(move.RedeployDishixs.length>0){
+                        for(let i=0;i<move.RedeployDishixs.length;i++){
+                            svg.flag.cardToDish(move.RedeployDishixs[i]);
+                        }
+                    }
+                    break;
+                case "MovePass":
+                    msg.recieved({Message:"Your opponent chose not to play a card."});
+                    break;
+                case "MoveQuit":
+                    msg.recieved({Message:"Congratulation your opponent have given up."});
+                    break;
+                default:
+                    console.log("Unsupported move: "+move.JsonType);
+
+                }
+            }
+        };
+        cone.clear=function(){
+            cone.clickedixs.clear();
+            cone.validixs.clear();
+        };
+        function clear(){
+            cone.clear();
+            turn.clear();
+            svg.clear();
+            scoutReturnTroopixs=[];
+            scoutReturnTacixs=[];
+        };
+        exp.clear=clear;
+        function move(moveView){
+            turn.isMyTurn=turn.update(moveView);
+            showMove(moveView);
+        };
+        exp.move=move;
+        function onClickedCard(clickedFlagElm,clickedCardElm,clickedDishElm){
+            function moveToFlag(cardix,flagElm){
+                let flagIdObj=svg.id.fromName(flagElm.id);
+                let flagNo=flagIdObj.no;
+                if (flagIdObj.player){
+                    let moves=turn.getHandMove(cardix);
+                    if (moves){
+                        for(let i=0;i<moves.length;i++){
+                            if (moves[i].Flagix===flagNo-1){
+                                svg.hand.moveToFlagPlayer(flagElm);
+                                turn.isMyTurn=false;
+                                ws.actionBuilder(ws.ACT_MOVE).move(cardix,i).send();
                                 break;
                             }
                         }
                     }
-                    break;
-                case TC_Redeploy:
-                    if (player){
-                        if (!svg.flag.cardSelected){
-                            if (clickedCardElm){
-                                svg.flag.cardSelect(clickedCardElm);
-                            }
-                        }else{
-                            if (clickedCardElm &&svg.flag.cardSelected.id===clickedCardElm.id){
-                                svg.flag.cardUnSelect();
-                            }else{
-                                let selectedFlagCardix=svg.fromId(svg.flag.cardSelected.id).no;
-                                let rmoves=turn.MovesHand[""+selectedHandCardix];
-                                for(let i=0;i<rmoves.length;i++){
-                                    if (rmoves[i].OutCard===selectedFlagCardix&&rmoves[i].InFlag===clickedFlagix){
-                                        svg.hand.moveToDishPlayer();
-                                        game.turn.isMyTurn=false;
-                                        let act= actionBuilder(ACT_MOVE).move(selectedHandCardix,i).build();
-                                        if(clickedFlagix!==-1){
-                                            svg.flag.cardToFlagPlayer(clickedFlagElm);
-                                        }else{
-                                            svg.flag.cardUnSelect();
-                                            svg.flag.cardToDish(selectedFlagCardix);
-                                        }
-                                        ws.conn.send(JSON.stringify(act));
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    break;
-                case TC_Traitor:
-                    if (player){
-                        if (svg.flag.cardSelected){
-                            let selectedFlagCardix=svg.fromId(svg.flag.cardSelected.id).no;
-                            let tmoves=turn.MovesHand[""+selectedHandCardix];
-                            for(let i=0;i<tmoves.length;i++){
-                                if (tmoves[i].OutCard===selectedFlagCardix&&tmoves[i].InFlag===clickedFlagix){
-                                    svg.hand.moveToDishPlayer();
-                                    game.turn.isMyTurn=false;
-                                    let act= actionBuilder(ACT_MOVE).move(selectedHandCardix,i).build();
-                                    svg.flag.cardToFlagPlayer(clickedFlagElm);
-                                    ws.conn.send(JSON.stringify(act));
-                                    break;
-                                }
-                            }
-                        }
-                    }else{//clicked on opp flag
-                        if (!svg.flag.cardSelected){
-                            if (clickedCardElm){
-                                svg.flag.cardSelect(clickedCardElm);
-                            }
-                        }else{
-                            if (clickedCardElm &&svg.flag.cardSelected.id===clickedCardElm.id){
-                                svg.flag.cardUnSelect();
-                            }
-                        }
-                    }
-                    break;
                 }
-            }else{//TROOP
-                moveToFlag(turn,selectedHandCardix,clickedFlagElm);
             }
-        }
-    };
-    game.onClickedDeck=function(deckElm,idType){
-        if(game.turn.isMyTurn){
-            let deck;
-            if (idType===ID_DeckTac){
-                deck=DECK_TAC;
-            }else{
-                deck=DECK_TROOP;
-            }
-            if (game.turn.current.State===TURN_SCOUT1||
-                game.turn.current.State===TURN_SCOUT2||
-                game.turn.current.State===TURN_DECK){
-                let moves=game.turn.current.Moves;
-                for(let i=0;i<moves.length;i++){
-                    if (moves[i].Deck===deck){
-                        game.turn.isMyTurn=false;
-                        let act= actionBuilder(ACT_MOVE).move(0,i).build();
-                        ws.conn.send(JSON.stringify(act));
-                        break;
-                    }
-                }
-            }else if (game.turn.current.State===TURN_HAND && svg.hand.selected &&
-                      svg.fromId(svg.hand.selected.id).no===TC_Scout){
-                let moves=game.turn.current.MovesHand[""+TC_Scout];
-                for(let i=0;i<moves.length;i++){
-                    if (moves[i].Deck===deck){
-                        svg.hand.moveToDishPlayer();
-                        game.turn.isMyTurn=false;
-                        let act= actionBuilder(ACT_MOVE).move(TC_Scout,i).build();
-                        ws.conn.send(JSON.stringify(act));
-                        break;
-                    }
-                }
-            }else if(game.turn.current.State===TURN_SCOUTR && svg.hand.selected){
-                let selectedHandCardix=svg.fromId(svg.hand.selected.id).no;
-                let handCount;
-                if( selectedHandCardix>TROOP_NO){
-                    if(deck===DECK_TAC){
-                        game.scoutReturnTacixs.push(selectedHandCardix) ;
-                        svg.hand.moveToDeckPlayer();
-                    }
+            if(turn.isMyTurn&&svg.hand.selected()!==null&&turn.getState()===TURN_HAND){
+                let player;
+                let clickedFlagix;
+                if (clickedFlagElm){
+                    let flagIdObj=svg.id.fromName(clickedFlagElm.id);
+                    player=flagIdObj.player;
+                    clickedFlagix=flagIdObj.no-1;
                 }else{
-                    if(deck===DECK_TROOP){
-                        game.scoutReturnTroopixs.push(selectedHandCardix) ;
-                        svg.hand.moveToDeckPlayer();
-                    }
+                    player=svg.id.fromName(clickedDishElm.id).player;
+                    clickedFlagix=-1;
                 }
-                let moves=game.turn.current.Moves;
-                for(let i=0;i<moves.length;i++){
-                    let tacEqual=false;
-                    if(moves[i].Tac){
-                        if(moves[i].Tac.length===game.scoutReturnTacixs.length){
-                            tacEqual=true;
-                            for(let j=0;j<moves[i].Tac.length;j++){
-                                if(game.scoutReturnTacixs[j]!==moves[i].Tac[j]){
-                                    tacEqual=false;
+                let selectedHandCardix=svg.id.fromName(svg.hand.selected().id).no;
+                if (svg.card.isTac(selectedHandCardix)){
+                    switch (selectedHandCardix){
+                    case svg.card.TC_123:
+                    case svg.card.TC_8:
+                    case svg.card.TC_Fog:
+                    case svg.card.TC_Mud:
+                    case svg.card.TC_Alexander:
+                    case svg.card.TC_Darius:
+                        moveToFlag(selectedHandCardix,clickedFlagElm);
+                        break;
+                    case svg.card.TC_Deserter:
+                        if (clickedCardElm&&!player){
+                            let clickedCardix=svg.id.fromName(clickedCardElm.id).no;
+                            let dmoves=turn.getHandMove(selectedHandCardix);
+                            for(let i=0;i<dmoves.length;i++){
+                                if (dmoves[i].Card===clickedCardix){
+                                    svg.hand.moveToDishPlayer();
+                                    svg.flag.cardToDish(clickedCardix);
+                                    turn.isMyTurn=false;
+                                    ws.actionBuilder(ws.ACT_MOVE).move(selectedHandCardix,i).send();
                                     break;
                                 }
                             }
                         }
-                    }else{
-                        if(game.scoutReturnTacixs.length===0){
-                            tacEqual=true;
+                        break;
+                    case svg.card.TC_Redeploy:
+                        if (player){
+                            if (!svg.flag.cardSelected()){
+                                if (clickedCardElm){
+                                    svg.flag.cardSelect(clickedCardElm);
+                                }
+                            }else{
+                                if (clickedCardElm &&svg.flag.cardSelected().id===clickedCardElm.id){
+                                    svg.flag.cardUnSelect();
+                                }else{
+                                    let selectedFlagCardix=svg.id.fromName(svg.flag.cardSelected().id).no;
+                                    let rmoves=turn.getHandMove(selectedHandCardix);
+                                    for(let i=0;i<rmoves.length;i++){
+                                        if (rmoves[i].OutCard===selectedFlagCardix&&rmoves[i].InFlag===clickedFlagix){
+                                            svg.hand.moveToDishPlayer();
+                                            turn.isMyTurn=false;
+                                            ws.actionBuilder(ws.ACT_MOVE).move(selectedHandCardix,i).send();
+                                            if(clickedFlagix!==-1){
+                                                svg.flag.cardToFlagPlayer(clickedFlagElm);
+                                            }else{
+                                                svg.flag.cardUnSelect();
+                                                svg.flag.cardToDish(selectedFlagCardix);
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    }
-                    if(tacEqual){
-                        let equal=false;
-                        if(moves[i].Troop){
-                            if(moves[i].Troop.length===game.scoutReturnTroopixs.length){
-                                equal=true;
-                                for(let j=0;j<moves[i].Troop.length;j++){
-                                    if(game.scoutReturnTroopixs[j]!==moves[i].Troop[j]){
-                                        equal=false;
+                        break;
+                    case svg.card.TC_Traitor:
+                        if (player){
+                            if (svg.flag.cardSelected()){
+                                let selectedFlagCardix=svg.id.fromName(svg.flag.cardSelected().id).no;
+                                let tmoves=turn.getHandMove(selectedHandCardix);
+                                for(let i=0;i<tmoves.length;i++){
+                                    if (tmoves[i].OutCard===selectedFlagCardix&&tmoves[i].InFlag===clickedFlagix){
+                                        svg.hand.moveToDishPlayer();
+                                        turn.isMyTurn=false;
+                                        ws.actionBuilder(ws.ACT_MOVE).move(selectedHandCardix,i).send();
+                                        svg.flag.cardToFlagPlayer(clickedFlagElm);
                                         break;
                                     }
                                 }
                             }
-                        }else{
-                            if(game.scoutReturnTroopixs.length===0){
-                                equal=true;
+                        }else{//clicked on opp flag
+                            if (!svg.flag.cardSelected()){
+                                if (clickedCardElm && !svg.card.isTac(svg.id.fromName(clickedCardElm.id).no)){
+                                    svg.flag.cardSelect(clickedCardElm);
+                                }
+                            }else{
+                                if (clickedCardElm &&svg.flag.cardSelected().id===clickedCardElm.id){
+                                    svg.flag.cardUnSelect();
+                                }
                             }
                         }
-                        if (equal){
-                            game.turn.isMyTurn=false;
-                            let act= actionBuilder(ACT_MOVE).move(0,i).build();
-                            ws.conn.send(JSON.stringify(act));
-                            game.scoutReturnTroopixs=[];
-                            game.scoutReturnTacixs=[];
+                        break;
+                    }
+                }else{//TROOP
+                    moveToFlag(selectedHandCardix,clickedFlagElm);
+                }
+            }
+        };
+        function onClickedDeck(deckElm,idType){
+            if(turn.isMyTurn){
+                let deck;
+                if (idType===svg.id.ID_DeckTac){
+                    deck=DECK_TAC;
+                }else{
+                    deck=DECK_TROOP;
+                }
+                if (turn.getState()===TURN_SCOUT1||
+                    turn.getState()===TURN_SCOUT2||
+                    turn.getState()===TURN_DECK){
+                    let moves=turn.getMoves();
+                    for(let i=0;i<moves.length;i++){
+                        if (moves[i].Deck===deck){
+                            turn.isMyTurn=false;
+                            ws.actionBuilder(ws.ACT_MOVE).move(0,i).send();
                             break;
                         }
                     }
-                }
-
-            }
-        }
-    };
-    game.onClickedCone= function(coneElm,idObj){
-        //TODO maybe add unSelect
-        if (game.turn.isMyTurn&&game.turn.current.State===TURN_FLAG){
-            if (game.cone.validixs.size===0){
-                let moves=game.turn.current.Moves;
-                let validixs;
-                let max=0;
-                for (let i=0;i<moves.length;i++){
-                    if (moves[i].Flags.length>max){
-                        max=moves[i].Flags.length;
-                        validixs=moves[i].Flags;
+                }else if (turn.getState()===TURN_HAND && svg.hand.selected() &&
+                          svg.id.fromName(svg.hand.selected().id).no===svg.card.TC_Scout){
+                    let moves=turn.getHandMove(svg.card.TC_Scout);
+                    for(let i=0;i<moves.length;i++){
+                        if (moves[i].Deck===deck){
+                            svg.hand.moveToDishPlayer();
+                            turn.isMyTurn=false;
+                            ws.actionBuilder(ws.ACT_MOVE).move(svg.card.TC_Scout,i).send();
+                            break;
+                        }
                     }
-                }
-                game.cone.validixs=new Set(validixs);
-            }
-            let ix=idObj.no-1;
-            if (game.cone.validixs.has(ix)){
-                game.cone.clickedixs.add(ix);
-                svg.cone.pos(coneElm,2);
-            }
-        }
-    };
-    svg.itemClicked=function(elems,centerClick){
-        let idObj=svg.fromId(elems[0].id);
-        switch (idObj.type){
-        case ID_Card:
-            let clickedCardElm=elems[0];
-            let parentIdObj=svg.fromId(clickedCardElm.parentNode.id);
-            if(parentIdObj.type===ID_Hand&&parentIdObj.player){
-                if(svg.hand.selected){
-                    if(svg.hand.selected.id===clickedCardElm.id){
-                        svg.hand.unSelect();
-                        if (svg.flag.cardSelected){
-                            svg.flag.cardUnSelect();
+                }else if(turn.getState()===TURN_SCOUTR && svg.hand.selected()){
+                    let selectedHandCardix=svg.id.fromName(svg.hand.selected().id).no;
+                    let handCount;
+                    if(svg.card.isTac(selectedHandCardix)){
+                        if(deck===DECK_TAC){
+                            scoutReturnTacixs.push(selectedHandCardix) ;
+                            svg.hand.moveToDeckPlayer();
                         }
                     }else{
-                        svg.hand.move(clickedCardElm,!centerClick);
+                        if(deck===DECK_TROOP){
+                            scoutReturnTroopixs.push(selectedHandCardix) ;
+                            svg.hand.moveToDeckPlayer();
+                        }
                     }
-                }else{
-                    svg.hand.select(clickedCardElm);
-                }
-            }else{//Flag
-                game.onClickedCard(elems[1],clickedCardElm,null);
-            }
-            break;
-        case ID_DeckTroop:
-        case ID_DeckTac:
-            game.onClickedDeck(elems[0],idObj.type);
-            break;
-        case ID_FlagTroop:
-        case ID_FlagTac:
-            game.onClickedCard(elems[0],null,null);
-            break;
-        case ID_Cone:
-            game.onClickedCone(elems[0],idObj);
-            break;
-        case ID_DishTroop,ID_DishTac:
-            game.onClickedCard(null,null,elems[0]);
-            break;
-        }
+                    let moves=turn.getMoves();
+                    for(let i=0;i<moves.length;i++){
+                        let tacEqual=false;
+                        if(moves[i].Tac){
+                            if(moves[i].Tac.length===scoutReturnTacixs.length){
+                                tacEqual=true;
+                                for(let j=0;j<moves[i].Tac.length;j++){
+                                    if(scoutReturnTacixs[j]!==moves[i].Tac[j]){
+                                        tacEqual=false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }else{
+                            if(scoutReturnTacixs.length===0){
+                                tacEqual=true;
+                            }
+                        }
+                        if(tacEqual){
+                            let equal=false;
+                            if(moves[i].Troop){
+                                if(moves[i].Troop.length===scoutReturnTroopixs.length){
+                                    equal=true;
+                                    for(let j=0;j<moves[i].Troop.length;j++){
+                                        if(scoutReturnTroopixs[j]!==moves[i].Troop[j]){
+                                            equal=false;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }else{
+                                if(scoutReturnTroopixs.length===0){
+                                    equal=true;
+                                }
+                            }
+                            if (equal){
+                                turn.isMyTurn=false;
+                                ws.actionBuilder(ws.ACT_MOVE).move(0,i).send();
+                                scoutReturnTroopixs=[];
+                                scoutReturnTacixs=[];
+                                break;
+                            }
+                        }
+                    }
 
-    };
-    window.onload=function(){
+                }
+            }
+        };
+        function onClickedCone(coneElm,idObj){
+            //TODO maybe add unSelect and move to clone
+            if (turn.isMyTurn&&turn.getState()===TURN_FLAG){
+                if (cone.validixs.size===0){
+                    let moves=turn.getMoves();
+                    let validixs;
+                    let max=0;
+                    for (let i=0;i<moves.length;i++){
+                        if (moves[i].Flags.length>max){
+                            max=moves[i].Flags.length;
+                            validixs=moves[i].Flags;
+                        }
+                    }
+                    cone.validixs=new Set(validixs);
+                }
+                let ix=idObj.no-1;
+                if (cone.validixs.has(ix)){
+                    cone.clickedixs.add(ix);
+                    svg.cone.pos(coneElm,2);
+                }
+            }
+        };
+        let turnPlayerCell=document.getElementById("turn-player-cell");
+        let turnPlayerCellClear=turnPlayerCell.textContent;
+        let turnTypeCell=document.getElementById("turn-type-cell");
+        let turnTypeCellClear=turnTypeCell.textContent;
+        let turnDoneButton=document.getElementById("turn-done-button");
+        turnDoneButton.onclick=function(){
+            if (turn.isMyTurn){
+                if(turn.getState()===TURN_FLAG){
+                    let moves=turn.getMoves();
+                    let equal=false;
+                    for(let i=0;i<moves.length;i++){
+                        if (moves[i].Flags.length===cone.clickedixs.size){
+                            equal=true;
+                            for(let j=0;j<moves[i].Flags.length;j++){
+                                if (!cone.clickedixs.has(moves[i].Flags[j])){
+                                    equal=false;
+                                    break;
+                                }
+                            }
+                            if(equal){
+                                turn.isMyTurn=false;
+                                cone.clickedixs.clear();
+                                ws.actionBuilder(ws.ACT_MOVE).move(0,i).send();
+                                break;
+                            }
+                        }
+                    }
+                    if (!equal){
+                        console.log("No legal move was found this should not happen");
+                    }
+                }else if(turn.current.MovePass){
+                    turn.isMyTurn=false;
+                    ws.actionBuilder(ws.ACT_MOVE).move(0,-1).send();
+                }
+            }
+
+        };
+        document.getElementById("stop-giveup-button").onclick=function(){
+            if (isPlaying&&!turn.gaveup){
+                ws.actionBuilder(ws.ACT_QUIT).send();
+                if (turn.isMyTurn){
+                    turn.isMyTurn=false;
+                }
+                turn.gaveup=true;
+            }
+        };
+        turn.update=function(moveView){
+            if (!isPlaying()){
+                clear();
+            }else{
+                turn.oldState=moveView.State;
+            }
+            turn.current=moveView;
+            let myturn=false;
+            if (moveView.MyTurn){
+                turnPlayerCell.textContent="Your Move";
+                if(!turn.gaveup){
+                    myturn=true;
+                }
+            }else{
+                turnPlayerCell.textContent="Opponent Move";
+            }
+            let txt;
+            switch (moveView.State){
+            case TURN_FLAG:
+                txt="Claim Flags";
+                break;
+            case TURN_HAND:
+                txt="Play a Card";
+                break;
+            case TURN_SCOUTR:
+                txt="Return a Cards to Deck";
+                break;
+            case TURN_QUIT:
+            case TURN_FINISH:
+                myturn=false;
+                txt="Game is Over";
+                ends();
+                break;
+            case TURN_DECK:
+            case TURN_SCOUT1:
+            case TURN_SCOUT2:
+                txt="Draw a Card";
+                break;
+            }
+            turnTypeCell.textContent=txt;
+            if  (myturn){
+                if (moveView.MovePass){
+                    turnDoneButton.disabled=false;
+                }else{
+                    if (moveView.State!==TURN_FLAG){
+                        turnDoneButton.disabled=true;
+                    }else{
+                        turnDoneButton.disabled=false;
+                    }
+                }
+            }else{
+                turnDoneButton.disabled=true;
+            }
+            return myturn;
+        };
+        turn.getState=function(){
+            return turn.current.State;
+        };
+        turn.getHandMove=function(cardix){
+            let res=[];
+            cardix=""+cardix;
+            if (cardix in turn.current.MovesHand){
+                res= turn.current.MovesHand[cardix];
+            }
+            return res;
+        };
+        turn.getMoves=function(){
+            return turn.current.Moves;
+        };
+        turn.clear=function(){
+            turn.current=null;
+            turn.isMyTurn=false;
+            turn.gaveup=false;
+            turn.oldState=-1;
+            turnDoneButton.disabled=true;
+            turnTypeCell.textContent=turnTypeCellClear;
+            turnPlayerCell.textContent=turnPlayerCellClear;
+        };
+        svg.itemClicked=function(elems,centerClick){
+            let idObj=svg.id.fromName(elems[0].id);
+            switch (idObj.type){
+            case svg.id.ID_Card:
+                let clickedCardElm=elems[0];
+                let parentIdObj=svg.id.fromName(clickedCardElm.parentNode.id);
+                if(parentIdObj.type===svg.id.ID_Hand&&parentIdObj.player){
+                    if(svg.hand.selected()){
+                        if(svg.hand.selected().id===clickedCardElm.id){
+                            svg.hand.unSelect();
+                            if (svg.flag.cardSelected()){
+                                svg.flag.cardUnSelect();
+                            }
+                        }else{
+                            svg.hand.move(clickedCardElm,!centerClick);
+                        }
+                    }else{
+                        svg.hand.select(clickedCardElm);
+                    }
+                }else{//Flag
+                    onClickedCard(elems[1],clickedCardElm,null);
+                }
+                break;
+            case svg.id.ID_DeckTroop:
+            case svg.id.ID_DeckTac:
+                onClickedDeck(elems[0],idObj.type);
+                break;
+            case svg.id.ID_FlagTroop:
+            case svg.id.ID_FlagTac:
+                onClickedCard(elems[0],null,null);
+                break;
+            case svg.id.ID_Cone:
+                onClickedCone(elems[0],idObj);
+                break;
+            case svg.id.ID_DishTroop:
+            case svg.id.ID_DishTac:
+                onClickedCard(null,null,elems[0]);
+                break;
+            }
+
+        };
+        return exp;
+    }
+    function createMsg(document,ws){
+        let exp={};
+
+        let msgTextArea = document.getElementById("message-text");
+        let infoTextArea = document.getElementById("info-text");
+        let messageSelect=document.getElementById("message-select");
+
+        function recieved(m){
+            let txt;
+            if (m.Name){
+                 txt=m.Name+" -> "+m.Message+"\n";
+            }else{
+                txt="Info: "+m.Message+"\n";
+            }
+            infoTextArea.value=txt+infoTextArea.value;
+        }
+        exp.recieved=recieved;
+        function playerUpdate(pMap){
+            let options=messageSelect.options;
+            if (options.length>1){
+                let removeIx=[];
+                for(let i=1;i<options.length;i++){
+                    if (!pMap[options[i].value]){
+                        removeIx[removeIx.length]=i;
+                    }
+                };
+                if (removeIx.length>0){
+                    for(let i=removeIx.length-1;i>=0;i--){
+                        messageSelect.remove(removeIx[i]);
+                    }
+                }
+            }
+        }
+        exp.playerUpdate=playerUpdate;
+        function addPlayer(value,name){
+            let opt=document.createElement("OPTION");
+            opt.value=value;
+            opt.text= name;
+            messageSelect.add(opt);
+            messageSelect.selectedIndex=messageSelect.length-1;
+        }
+        exp.addPlayer=addPlayer;
+        function send(){
+            if (messageSelect.value!=="0"){
+                let message=msgTextArea.value;
+                let idNo= parseInt(messageSelect.value);
+                ws.actionBuilder(ws.ACT_MESS).id(idNo).mess(message).send();
+                msgTextArea.value="";
+                let name =messageSelect.options[messageSelect.selectedIndex].text;
+                let txt=name+" <- "+message+"\n";
+                infoTextArea.value=txt+infoTextArea.value;
+            }
+        }
+        document.getElementById("send-button").onclick=send;
+
+        return exp;
+    }
+    function createTable(document,msg,ws,game,cookies){
         const IV_From="From";
         const IV_To="To";
-        id.name=getCookies(document)["name"];
-        svg.init(document);
-        ws.conn=new WebSocket("ws://game.rezder.com:8181/in/gamews");
-        ws.conn.onclose=function(event){
-            console.log(event.code);
-            console.log(event.reason);
-            console.log(event.wasClean);
-            if(!event.wasClean){
-                let txt="Lost connection to server.\n"+event.reason;
-                msg.recieved({Message:txt});
-            }
-            game.clear();
-        };
-        ws.conn.onerror=function(event){
-            console.log(event.code);
-            console.log(event.reason);
-            console.log(event.wasClean);
-        };
-        ws.conn.onmessage=function(event){
-            const JT_Mess   = 1;
-	          const JT_Invite = 2;
-	          const JT_Move   = 3;
-            const JT_BenchMove = 4;
-	          const JT_List   = 5;
-            const JT_CloseCon=6;
-            //TODO clean up consolelog
-            let json=JSON.parse(event.data);
-            console.log(json);
-            switch (json.JsonType){
-            case JT_List:
-                table.players.update(json.Data);
-                break;
-            case JT_Mess:
-                msg.recieved(json.Data);
-                break;
-            case JT_Invite:
-                table.invites.recieved(json.Data);
-                break;
-            case JT_Move:
-                game.move(json.Data);
-                break;
-            case JT_CloseCon:
-                msg.recieved({Message:json.Data});
-                break;
-            }
+        let exp={};
+        let invites={};
+        exp.invites={};
+        let players={};
+        exp.players={};
 
+        function getFieldIx(linkField,headers,useId){
+            for (let i=0;i<headers.length; i++){
+                let field;
+                if (useId){
+                    field=headers[i].id;
+                }else{
+                    field=headers[i].getAttribute("tc-link");
+                }
+                if (field===linkField){
+                    return i;
+                }
+            }
+            return -1;
+        }
+        //table.getFieldsIx find field indexes assume all fields match
+        function getFieldsIx(linkFields,headers,useId){
+            let res=[];
+            for (let lf of linkFields){
+                for (let i=0;i<headers.length; i++){
+                    let field;
+                    if (useId){
+                        field=headers[i].id;
+                    }else{
+                        field=headers[i].getAttribute("tc-link");
+                    }
+                    if (lf===field){
+                        res.push(i);
+                        break;
+                    }
+                }
+            }
+            if (res.length!==linkFields.length){
+                console.log("Missing field");
+            }
+            return res;
+        }
+        invites.recieved=function(invite){
+            if(invite.Rejected){
+                let name=invites.delete(invite.ReceiverId,true);
+                if(name){
+                    msg.recieved({Message:name+" declined your invitation."});
+                }
+            }else{
+                invites.replace(invite.InvitorId,invite.InvitorName,false);
+            }
         };
+        exp.invites.recieved=invites.recieved;
+
         let iTable=document.getElementById("invites-table");
         let iTableHeaders=iTable.getElementsByTagName("th");
-
-        table.invites.onRetractButton=function(event){
+        invites.onRetractButton=function(event){
             let row=event.target.parentNode.parentNode;
-            let idix=table.getFieldIx("ith-id",iTableHeaders,true);
-            let id=parseInt(row.cells[idix].textContent);
+            let idix=getFieldIx("ith-id",iTableHeaders,true);
+            let idNo=parseInt(row.cells[idix].textContent);
             iTable.deleteRow(row.rowIndex);
-            let act=actionBuilder(ACT_INVRETRACT).id(id).build();
-            ws.conn.send(JSON.stringify(act));
+            ws.actionBuilder(ws.ACT_INVRETRACT).id(idNo).send();
         };
-        table.invites.onAcceptButton=function(event){
-            if(game.turn.current===null){
+        invites.onAcceptButton=function(event){
+            if(!game.isPlaying()){
                 let row=event.target.parentNode.parentNode;
-                let idix=table.getFieldIx("ith-id",iTableHeaders,true);
-                let id=parseInt(row.cells[idix].textContent);
-                let act=actionBuilder(ACT_INVACCEPT).id(id).build();
+                let idix=getFieldIx("ith-id",iTableHeaders,true);
+                let idNo=parseInt(row.cells[idix].textContent);
+                ws.actionBuilder(ws.ACT_INVACCEPT).id(idNo).send();
                 iTable.deleteRow(row.rowIndex);
-                ws.conn.send(JSON.stringify(act));
             }
         };
-        table.invites.onDeclineButton=function(event){
+        invites.onDeclineButton=function(event){
             let row=event.target.parentNode.parentNode;
-            let idix=table.getFieldIx("ith-id",iTableHeaders,true);
-            let id=parseInt(row.cells[idix].textContent);
-            let act=actionBuilder(ACT_INVDECLINE).id(id).build();
+            let idix=getFieldIx("ith-id",iTableHeaders,true);
+            let idNo=parseInt(row.cells[idix].textContent);
+            ws.actionBuilder(ws.ACT_INVDECLINE).id(idNo).send();
             iTable.deleteRow(row.rowIndex);
-            ws.conn.send(JSON.stringify(act));
         };
-        table.invites.clear=function(){
+        invites.clear=function(){
             for (let i=iTable.rows.length-1;i>0;i--){
                 iTable.deleteRow(iTable.rows[i].rowIndex);
             }
         };
-        table.invites.delete=function(id,send){
+        exp.invites.clear=invites.clear;
+
+        invites.delete=function(idNo,send){
             let from=IV_From;
             if (send){
                 from=IV_To;
             }
             let name="";
-            let [idix,nameix,fromix]=table.getFieldsIx(["ith-id","ith-name","ith-from"],iTableHeaders,true);
+            let [idix,nameix,fromix]=getFieldsIx(["ith-id","ith-name","ith-from"],iTableHeaders,true);
             for (let i=1;i<iTable.rows.length;i++){
                 let row =iTable.rows[i];
-                if(row.cells[idix].textContent===id.toString()&&row.cells[fromix].textContent===from){
+                if(row.cells[idix].textContent===idNo.toString()&&row.cells[fromix].textContent===from){
                     iTable.deleteRow(row.rowIndex);
                     name=row.cells[nameix].textContent;
                     break;
@@ -1586,7 +1782,7 @@ var batt={};
             }
             return name;
         };
-        table.invites.add=function(id,name,send){
+        invites.add=function(idNo,name,send){
             let newRow=iTable.insertRow(-1);// -1 is add
             for (let i=0;i<iTableHeaders.length; i++){
                 let fieldId=iTableHeaders[i].id;
@@ -1594,7 +1790,7 @@ var batt={};
                 let newTxtNode;
                 switch (fieldId){
                 case "ith-id":
-                    newTxtNode=document.createTextNode(id);
+                    newTxtNode=document.createTextNode(idNo);
                     cell.appendChild(newTxtNode);
                     break;
                 case "ith-from":
@@ -1612,7 +1808,7 @@ var batt={};
                 case "ith-retract":
                     if (send){
                         let btn = document.createElement("BUTTON");
-                        btn.onclick=table.invites.onRetractButton;
+                        btn.onclick=invites.onRetractButton;
                         newTxtNode=document.createTextNode("Retract");
                         btn.appendChild(newTxtNode);
                         cell.appendChild(btn);
@@ -1621,7 +1817,7 @@ var batt={};
                 case "ith-accept":
                     if(!send){ 
                         let btn = document.createElement("BUTTON");
-                        btn.onclick=table.invites.onAcceptButton;
+                        btn.onclick=invites.onAcceptButton;
                         btn.appendChild(document.createTextNode("Accept"));
                         cell.appendChild(btn);
                     }
@@ -1629,7 +1825,7 @@ var batt={};
                 case "ith-decline":
                     if(!send){
                         let btn = document.createElement("BUTTON");
-                        btn.onclick=table.invites.onDeclineButton;
+                        btn.onclick=invites.onDeclineButton;
                         btn.appendChild(document.createTextNode("Decline"));
                         cell.appendChild(btn);
                     }
@@ -1637,55 +1833,40 @@ var batt={};
                 }//select
             }//for
         };
-        table.invites.contain=function(id,send){
+        invites.contain=function(idNo,send){
             let ix=0;
-            let [idix,fromix]=table.getFieldsIx(["ith-id","ith-from"],iTableHeaders,true);
+            let [idix,fromix]=getFieldsIx(["ith-id","ith-from"],iTableHeaders,true);
             let from=IV_From;
             if (send){
                 from=IV_To;
             }
             for (let i=1;i<iTable.rows.length;i++){
                 let row =iTable.rows[i];
-                if(row.cells[idix].textContent===id.toString()&&row.cells[fromix].textContent===from){
+                if(row.cells[idix].textContent===idNo.toString()&&row.cells[fromix].textContent===from){
                     ix=i;
                     break;
                 }
             }
             return ix;
         };
-        table.invites.replace=function(id,name,send){
-            table.invites.delete(id,send);
-            table.invites.add(id,name,send);
+        invites.replace=function(idNo,name,send){
+            invites.delete(idNo,send);
+            invites.add(idNo,name,send);
         };
 
         let pTable=document.getElementById("players-table");
         let pTbodyEmpty=pTable.getElementsByTagName("tbody")[0].cloneNode(true);
         let pTableHeaders=pTbodyEmpty.getElementsByTagName("th");
-        let messageSelect=document.getElementById("message-select");
         document.getElementById("update-button").onclick=function(){
-            let act=actionBuilder(ACT_LIST).build();
-            ws.conn.send(JSON.stringify(act));
+            ws.actionBuilder(ws.ACT_LIST).send();
         };
-        table.players.update=function(pMap){
-            let options=messageSelect.options;
-            if (options.length>2){
-                let removeIx=[];
-                for(let i=1;i<options.length;i++){
-                    if (!pMap[options[i].value]){
-                        removeIx[removeIx.length]=options[i];
-                    }
-                };
-                if (removeIx.length>0){
-                    for(let i=removeIx.length-1;i>=0;i--){
-                        messageSelect.remove(removeIx[i]);
-                    }
-                }
-            }
+        players.update=function(pMap){
+            msg.playerUpdate(pMap);
             if(iTable.rows.length>1){
                 let idix=table.getFieldIx("ith-id",iTableHeaders,true);
                 for (let i=iTable.rows.length-1;i>0;i--){
-                    let id=iTable.rows[i].cells[idix].textContent;
-                    if(!pMap[id]){
+                    let idNo=iTable.rows[i].cells[idix].textContent;
+                    if(!pMap[idNo]){
                         iTable.deleteRow(i);
                     }
                 }
@@ -1708,30 +1889,28 @@ var batt={};
                         let newTxtNode=document.createTextNode(p[field]);
                         cell.appendChild(newTxtNode);
                     }else{
-                        if (p.Name!==id.name){
-                            if (pTableHeaders[i].id==="pt-inv-butt"&&!p.OppName&&game.turn.current===null){
+                        if (p.Name!==cookies.name){
+                            if (pTableHeaders[i].id==="pt-inv-butt"&&!p.OppName&&!game.isPlaying()){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");
                                 btn.onclick=function(event){
-                                    if (game.turn.current===null){
+                                    if (!game.isPlaying()){
                                         let cells=event.target.parentNode.parentNode.cells;
-                                        let [idix,nameix]=table.getFieldsIx(["Id","Name"],pTableHeaders);
-                                        let id=parseInt(cells[idix].textContent);
+                                        let [idix,nameix]=getFieldsIx(["Id","Name"],pTableHeaders);
+                                        let idNo=parseInt(cells[idix].textContent);
                                         let name=cells[nameix].textContent;
                                         let send=true;
-                                        if (table.invites.contain(id,send)===0){//0 is header so we do
-                                            table.invites.add(id,name,send);    //not use -1
-                                            let act=actionBuilder(ACT_INVITE).id(id).build();
-                                            ws.conn.send(JSON.stringify(act));
+                                        if (invites.contain(idNo,send)===0){//0 is header so we do
+                                            invites.add(idNo,name,send);    //not use -1
+                                            ws.actionBuilder(ws.ACT_INVITE).id(idNo).send();
                                         }
                                     }else{
-                                        let act=actionBuilder(ACT_LIST).build();
-                                        ws.conn.send(JSON.stringify(act));
+                                        ws.actionBuilder(ws.ACT_LIST).send();
                                     }
                                 };
                                 let newTxtNode=document.createTextNode("I");
-                                 btn.appendChild(newTxtNode);
-                                 cell.appendChild(btn);
+                                btn.appendChild(newTxtNode);
+                                cell.appendChild(btn);
                             }else if(pTableHeaders[i].id==="pt-watch-butt"&&p.OppName){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");
@@ -1743,12 +1922,8 @@ var batt={};
                                 let btn = document.createElement("BUTTON");
                                 btn.onclick=function(event){
                                     let cells=event.target.parentNode.parentNode.cells;
-                                    let [idix,nameix]=table.getFieldsIx(["Id","Name"],pTableHeaders);
-                                    let opt=document.createElement("OPTION");
-                                    opt.value=cells[idix].textContent;
-                                    opt.text= cells[nameix].textContent;
-                                    messageSelect.add(opt);
-                                    messageSelect.selectedIndex=messageSelect.length-1;
+                                    let [idix,nameix]=getFieldsIx(["Id","Name"],pTableHeaders);
+                                    msg.addPlayer(cells[idix].textContent,cells[nameix].textContent);
                                 };
                                 let newTxtNode=document.createTextNode("M");
                                 btn.appendChild(newTxtNode);
@@ -1759,134 +1934,126 @@ var batt={};
                 }
             }
         };
-        let msgTextArea = document.getElementById("message-text");
-        let infoTextArea = document.getElementById("info-text");
-        msg.recieved=function(m){
-            let txt;
-            if (m.Name){
-                 txt=m.Name+" -> "+m.Message+"\n";
-            }else{
-                txt="Info: "+m.Message+"\n";
-            }
-            infoTextArea.value=txt+infoTextArea.value;
-        };
-        msg.send=function(){
-            if (messageSelect.value!=="0"){
-                let message=msgTextArea.value;
-                let id= parseInt(messageSelect.value);
-                let act =actionBuilder(ACT_MESS).id(id).mess(message).build();
-                ws.conn.send(JSON.stringify(act));
-                msgTextArea.value="";
-                let name =messageSelect.options[messageSelect.selectedIndex].text;
-                let txt=name+" <- "+message+"\n";
-                infoTextArea.value=txt+infoTextArea.value;
-            }
-        };
-        document.getElementById("send-button").onclick=msg.send;
+        exp.players.update=players.update;
+        return exp;
+    }
+    function createWs(){
+        let exp={};
+        let conn=new WebSocket("ws://game.rezder.com:8181/in/gamews");
 
-        let turnPlayerCell=document.getElementById("turn-player-cell");
-        let turnPlayerCellClear=turnPlayerCell.textContent;
-        let turnTypeCell=document.getElementById("turn-type-cell");
-        let turnTypeCellClear=turnTypeCell.textContent;
-        let turnDoneButton=document.getElementById("turn-done-button");
-        turnDoneButton.onclick=function(){
-            if (game.turn.isMyTurn){
-                if(game.turn.current.State===TURN_FLAG){
-                    let moves=game.turn.current.Moves;
-                    let equal=false;
-                    for(let i=0;i<moves.length;i++){
-                        if (moves[i].Flags.length===game.cone.clickedixs.size){
-                            equal=true;
-                            for(let j=0;j<moves[i].Flags.length;j++){
-                                if (!game.cone.clickedixs.has(moves[i].Flags[j])){
-                                    equal=false;
-                                    break;
-                                }
-                            }
-                            if(equal){
-                                game.turn.isMyTurn=false;
-                                game.cone.clickedixs.clear();
-                                let act= actionBuilder(ACT_MOVE).move(0,i).build();
-                                ws.conn.send(JSON.stringify(act));
-                                break;
-                            }
-                        }
-                    }
-                    if (!equal){
-                        console.log("No legal move was found this should not happen");
-                    }
-                }
-            }
+        exp.ACT_MESS       = 1;
+	      exp.ACT_INVITE     = 2;
+	      exp.ACT_INVACCEPT  = 3;
+	      exp.ACT_INVDECLINE = 4;
+        exp.ACT_INVRETRACT = 5;
+	      exp.ACT_MOVE       = 6;
+	      exp.ACT_QUIT       = 7;
+	      exp.ACT_WATCH      = 8;
+	      exp.ACT_WATCHSTOP  = 9;
+	      exp.ACT_LIST       = 10;
 
-        };
-        document.getElementById("stop-giveup-button").onclick=function(){
-            if (game.turn.current&&!game.turn.gaveup){
-                let act=actionBuilder(ACT_QUIT).build();
-                ws.conn.send(JSON.stringify(act));
-                if (game.turn.isMyTurn){
-                    game.turn.isMyTurn=false;
+        function actionBuilder(aType){//TODO what about this 
+            let res={ActType:aType};
+            res.id=function(idNo){
+                res.Id=idNo;
+                return res;
+            };
+            res.move=function(cardix,flagix){
+                this.Move=[cardix,flagix];
+                return this;
+            };
+            res.mess=function(msg){
+                this.Mess=msg;
+                return this;
+            };
+            res.send=function(){
+                let act=this.build();
+                conn.send(JSON.stringify(act));
+            };
+            function build(){
+                let act={ActType:this.ActType};
+                if (this.Id){
+                    act.Id=this.Id;
                 }
-                game.turn.gaveup=true;
-            }
-        };
-        game.turn.update=function(turn){
-            let myturn=false;
-            if (turn.MyTurn){
-                turnPlayerCell.textContent="Your Move";
-                if(!game.turn.gaveup){
-                    myturn=true;
+                if (this.Move){
+                    act.Move=this.Move;
                 }
-            }else{
-                turnPlayerCell.textContent="Opponent Move";
-            }
-            let txt;
-            switch (turn.State){
-            case TURN_FLAG:
-                txt="Claim Flags";
-                break;
-            case TURN_HAND:
-                txt="Play a Card";
-                break;
-            case TURN_SCOUTR:
-                txt="Return a Cards to Deck";
-                break;
-            case TURN_QUIT:
-            case TURN_FINISH:
-                myturn=false;
-                txt="Game is Over";
-                game.ends();
-                break;
-            case TURN_DECK:
-            case TURN_SCOUT1:
-            case TURN_SCOUT2:
-                txt="Draw a Card";
-                break;
-            }
-            turnTypeCell.textContent=txt;
-            if  (myturn){
-                if (turn.MovesPass){
-                    turnDoneButton.disabled=false;
-                }else{
-                    if (turn.State!==TURN_FLAG){
-                        turnDoneButton.disabled=true;
-                    }else{
-                        turnDoneButton.disabled=false;
-                    }
+                if (this.Mess){
+                    act.Mess=this.Mess;
                 }
-            }else{
-                turnDoneButton.disabled=true;
+                return act;
             }
-            return myturn;
-        };
-        game.turn.clear=function(){
-            game.turn.current=null;
-            game.turn.isMyTurn=false;
-            game.turn.gaveup=false;
-            game.turn.oldState=-1;
-            turnDoneButton.disabled=true;
-            turnTypeCell.textContent=turnTypeCellClear;
-            turnPlayerCell.textContent=turnPlayerCellClear;
-        };
+            res.build=build;
+            return res;
+        }
+        exp.actionBuilder=actionBuilder;
+
+        function send(act){
+            conn.send(JSON.stringify(act));
+        }
+        exp.send=send;
+
+        function addListener(table,msg,game){
+            conn.onclose=function(event){
+                console.log(event.code);
+                console.log(event.reason);
+                console.log(event.wasClean);
+                if(!event.wasClean){
+                    let txt="Lost connection to server.\n"+event.reason;
+                    msg.recieved({Message:txt});
+                }
+                game.clear();
+            };
+            conn.onerror=function(event){
+                console.log(event.code);
+                console.log(event.reason);
+                console.log(event.wasClean);
+            };
+            conn.onmessage=function(event){
+                const JT_Mess   = 1;
+	              const JT_Invite = 2;
+	              const JT_Move   = 3;
+                const JT_BenchMove = 4;
+	              const JT_List   = 5;
+                const JT_CloseCon=6;
+                const JT_ClearList=7;
+                //TODO clean up consolelog
+                let json=JSON.parse(event.data);
+                console.log(json);
+                switch (json.JsonType){
+                case JT_List:
+                    table.players.update(json.Data);
+                    break;
+                case JT_Mess:
+                    msg.recieved(json.Data);
+                    break;
+                case JT_Invite:
+                    table.invites.recieved(json.Data);
+                    break;
+                case JT_Move:
+                    game.move(json.Data);
+                    break;
+                case JT_CloseCon:
+                    msg.recieved({Message:json.Data});
+                    break;
+                case JT_ClearList:
+                    table.invites.clear();
+                }
+            };
+        }
+        exp.addListener=addListener;
+        return exp;
+    }
+    window.onload=function(){
+
+        let cookies={};
+        cookies.name=getCookies(document)["name"];
+        let svg=createSvg(document);
+        let ws=createWs();
+        let msg=createMsg(document,ws);
+        let game=createGame(document,ws,svg,msg);
+        let table=createTable(document,msg,ws,game,cookies);
+        ws.addListener(table,msg,game);
 
         //TODO delete test begin
         svg.hand.drawOpp(true);
@@ -1907,7 +2074,7 @@ var batt={};
         svg.hand.moveToDishPlayer();
         svg.hand.drawPlayer(59);
         svg.hand.moveToFlagPlayer(document.getElementById("pF1TroopGroup"));
-        svg.hand.drawPlayer(TC_Mud);
+        svg.hand.drawPlayer(svg.card.TC_Mud);
         svg.hand.moveToFlagPlayer(document.getElementById("pF1TacGroup"));
         svg.hand.moveToDishOpp(58);
         svg.hand.moveToFlagOpp(57,1);
@@ -1932,8 +2099,7 @@ var batt={};
         svg.cone.pos(2,0);
         svg.cone.pos(1,2);
         svg.cone.pos(3,1);
-        svg.click.zone.coneHit(225,350);
-        window.setTimeout(game.clear,10000);
+        window.setTimeout(game.clear,5000);
         // delete test end
     }; //onload
 

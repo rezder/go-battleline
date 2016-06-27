@@ -3,21 +3,27 @@ package battleline
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func TestGameSave(t *testing.T) {
+	fileNamePos := "test/savePos.gob"
 	fileName := "test/save.gob"
 	game := New([2]int{1, 2})
 	game.Start(1)
+	filePos, errPos := os.Create(fileNamePos)
 	file, err := os.Create(fileName)
 	//f,err:=os.Open(fileName)
 	GobRegistor()
-	if err == nil {
-		err = Save(game, file)
+	if err == nil && errPos == nil {
+		err = Save(game, file, false)
+		errPos = Save(game, filePos, true)
 		file.Close()
+		filePos.Close()
 		if err != nil {
 			t.Errorf("Save game file error. File :%v, Error: %v", fileName, err.Error())
 		} else {
@@ -26,12 +32,26 @@ func TestGameSave(t *testing.T) {
 			if err != nil {
 				t.Errorf("Load game file error. File :%v, Error: %v", fileName, err.Error())
 			} else {
+				t.Logf("Comparing game in file: %v", fileName)
 				compGames(game, loadGame, t)
 				os.Remove(fileName)
 			}
 		}
+		if errPos != nil {
+			t.Errorf("Save game file error. File :%v, Error: %v", fileNamePos, errPos.Error())
+		} else {
+			filePos, err = os.Open(fileNamePos)
+			loadGamePos, err := Load(filePos)
+			if err != nil {
+				t.Errorf("Load game file error. File :%v, Error: %v", fileNamePos, err.Error())
+			} else {
+				t.Logf("Comparing game in file: %v", fileNamePos)
+				compGames(game, loadGamePos, t)
+				os.Remove(fileNamePos)
+			}
+		}
 	} else {
-		t.Errorf("Create file error. File :%v, Error: %v", fileName, err.Error())
+		t.Errorf("Create file error. Files :%v,%v Error: %v", fileName, fileNamePos, err.Error())
 	}
 }
 func TestDecodeGame(t *testing.T) {
@@ -63,172 +83,16 @@ func compGames(save *Game, load *Game, t *testing.T) {
 	if !save.Pos.Turn.Equal(&load.Pos.Turn) {
 		t.Logf("turn:\n%v\n load turn:\n%v", save.Pos.Turn, load.Pos.Turn)
 		t.Error("Save and load turn not equal")
-	} else if !save.Pos.Equal(&load.Pos) {
+	} else if !save.Pos.Equal(load.Pos) {
 		t.Logf("Pos.Hands:\n%v\n, load pos.Hands:\n%v", save.Pos.Hands, load.Pos.Hands)
 		t.Error("Save and load pos not equal")
 	} else if !save.Equal(load) {
-		t.Logf("Before:\n%v\n", *save)
-		t.Logf("After:\n%v", *load)
+		t.Logf("Before game: %v", save)
+		t.Logf("After game: %v", load)
 		t.Error("Save and load game not equal")
 	}
 }
-func TestGame(t *testing.T) {
-	fileNameInit := "test/initgame.gob"
-	fileNameEnd := "test/endgame.gob"
 
-	/*tmp := New( [2]int{1, 2})
-	tmp.Start(1)
-	GobRegistor()
-	saveGame(fileNameInit, tmp)
-	*/
-
-	fileInit, err := os.Open(fileNameInit)
-	if err == nil {
-		defer fileInit.Close()
-		GobRegistor()
-		game, err := Load(fileInit)
-		fileInit.Close()
-		if err != nil {
-			t.Errorf("Load game file error. File :%v, Error: %v", fileNameInit, err.Error())
-		} else {
-			var move Move
-			move = *NewMoveCardFlag(2)
-			game.MoveHand(59, game.Pos.GetMoveix(59, move)) //59,3
-			move = *NewMoveDeck(DECK_TROOP)
-			game.Move(game.Pos.GetMoveix(0, move)) //0,1
-
-			moveHandDeck(game, 40, 2, DECK_TROOP)  //0
-			moveHandDeck(game, 2, 8, DECK_TROOP)   //1
-			moveHandDeck(game, 3, 8, DECK_TROOP)   //0
-			moveHandDeck(game, 42, 8, DECK_TROOP)  //1
-			moveHandDeck(game, 15, 7, DECK_TROOP)  //0
-			moveHandDeck(game, 60, 2, DECK_TROOP)  //1
-			moveHandDeck(game, 39, 2, DECK_TROOP)  //0
-			moveHandDeck(game, 16, 7, DECK_TROOP)  //1
-			moveHandDeck(game, 20, 5, DECK_TROOP)  //0
-			moveHandDeck(game, 46, 7, DECK_TROOP)  //1
-			moveHandDeck(game, 13, 7, DECK_TROOP)  //0
-			moveHandDeck(game, 33, 5, DECK_TAC)    //1
-			moveHandDeck(game, 14, 7, DECK_TROOP)  //0 Formation
-			moveHandDeck(game, 32, 5, DECK_TROOP)  //1
-			move = *NewMoveClaim([]int{7})         //0
-			game.Move(game.Pos.GetMoveix(0, move)) //0
-			moveHandDeck(game, 53, 8, DECK_TROOP)  //0
-			moveHandDeck(game, 9, 6, DECK_TROOP)   //1
-			moveHandDeck(game, 29, 6, DECK_TROOP)  //0
-			moveHandDeck(game, 25, 0, DECK_TROOP)  //1
-			moveHandDeck(game, 30, 6, DECK_TAC)    //0
-			moveHandDeck(game, 27, 0, DECK_TAC)    //1
-			moveHandDeck(game, 44, 4, DECK_TROOP)  //0
-			moveHandDeck(game, 5, 1, DECK_TROOP)   //1
-			moveHandDeck(game, 18, 5, DECK_TROOP)  //0
-			moveHandDeck(game, 22, 8, DECK_TROOP)  //1
-			moveHandDeck(game, 43, 8, DECK_TROOP)  //0
-			playerClaimFlag(game, 8)               // failed claim
-			moveHandDeck(game, 10, 6, DECK_TROOP)  //1
-			playerClaimFlag(game, 8)               //0
-			moveHandDeck(game, 24, 4, DECK_TROOP)  //0
-			moveHandDeck(game, 70, 6, DECK_TROOP)  //1
-			//Deserter 62
-			move = *NewMoveDeserter(6, 70) // 0
-			game.MoveHand(62, game.Pos.GetMoveix(62, move))
-			move = *NewMoveDeck(DECK_TAC)
-			game.Move(game.Pos.GetMoveix(0, move)) //0
-			moveHandDeck(game, 51, 3, DECK_TAC)    //1
-			moveHandDeck(game, 34, 3, DECK_TROOP)  //0
-			moveHandDeck(game, 6, 1, DECK_TROOP)   //1
-			moveHandDeck(game, 4, 4, DECK_TROOP)   //0
-			moveHandDeck(game, 7, 1, DECK_TROOP)   //1
-			playerClaimFlag(game, -1)              // No claim 0
-			moveHandDeck(game, 28, 6, DECK_TROOP)  //0
-			playerClaimFlag(game, -1)              // No claim 1
-			//Fog
-			moveHandDeck(game, 66, 6, DECK_TROOP)  //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 36, 3, DECK_TROOP)  //0
-			playerClaimFlag(game, -1)              //1
-			moveHandDeck(game, 49, 6, DECK_TROOP)  //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 1, 0, DECK_TAC)     //0
-			move = *NewMoveClaim([]int{1, 6})      // claim two get one//1
-			game.Move(game.Pos.GetMoveix(0, move)) //1
-			moveHandDeck(game, 21, 3, DECK_TROOP)  //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 57, 1, DECK_TAC)    //0
-			playerClaimFlag(game, -1)              //1
-			moveHandDeck(game, 58, 2, DECK_TROOP)  //1
-			playerClaimFlag(game, -1)              //0
-			//Mud
-			moveHandDeck(game, 65, 1, DECK_TROOP) //0
-			playerClaimFlag(game, 2)              //1
-			moveHandDeck(game, 48, 1, DECK_TROOP) //1
-			playerClaimFlag(game, -1)             //0
-			//scout
-			move = *NewMoveDeck(DECK_TROOP) //0
-			game.MoveHand(64, game.Pos.GetMoveix(64, move))
-			move = *NewMoveDeck(DECK_TROOP)
-			game.Move(game.Pos.GetMoveix(-1, move))
-			move = *NewMoveDeck(DECK_TROOP)
-			game.Move(game.Pos.GetMoveix(-1, move))
-			move = *NewMoveScoutReturn([]int{67}, []int{11})
-			game.Move(game.Pos.GetMoveix(-1, move))
-			playerClaimFlag(game, 1)               // fail 1
-			moveHandDeck(game, 41, 3, DECK_TAC)    //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 19, 5, DECK_TROOP)  //0
-			playerClaimFlag(game, 1)               // 1
-			moveHandDeck(game, 26, 0, DECK_TAC)    //1
-			move = *NewMoveClaim([]int{4, 5})      // claim two get one//0
-			game.Move(game.Pos.GetMoveix(0, move)) //0
-			moveHandDeck(game, 11, 0, DECK_TROOP)  //0
-			playerClaimFlag(game, 0)               // 1
-			moveHandDeck(game, 55, 4, DECK_TROOP)  //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 47, 1, DECK_TROOP)  //0
-			playerClaimFlag(game, -1)              // 1
-			moveHandDeck(game, 54, 4, DECK_TROOP)  //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 17, 1, DECK_TROOP)  //0
-			playerClaimFlag(game, -1)              // 1
-			moveHandDeck(game, 56, 4, DECK_TAC)    //1
-			playerClaimFlag(game, -1)              //0
-			moveHandDeck(game, 38, 3, DECK_TAC)    //0
-			move = *NewMoveClaim([]int{3, 4})      //1 claim two get  two and win
-			game.Move(game.Pos.GetMoveix(0, move)) //1
-
-			_ = fmt.Sprintf("Move pos: %v\n", game.Pos) // Do not want to delete fmt
-
-			/*fmt.Printf("Move pos: %v\n", game.Pos)
-			fmt.Printf("Flag 6: %v\n", game.Pos.Flags[7].Players[0])
-			fmt.Printf("Flag 9: %v\n", game.Pos.Flags[8].Players[1])
-			fmt.Printf("Flag 7: %v\n", game.Pos.Flags[6].Players[1])
-			fmt.Printf("Flag 2: %v\n", game.Pos.Flags[1].Players[1])
-			fmt.Printf("Moves player 0: %v\n", game.Pos.MovesHand[62])
-			fmt.Printf("MovesHands: %v\n", game.Pos.MovesHand)
-			fmt.Printf("Moves: %v\n", game.Pos.Moves)
-			fmt.Printf("Tac Deck: %v\n", game.Pos.DeckTac)
-			*/
-
-			//saveGame(fileNameEnd, game)
-
-			fileEnd, err := os.Open(fileNameEnd)
-			defer fileEnd.Close()
-			if err == nil {
-				gameEnd, err := Load(fileEnd)
-				if err != nil {
-					t.Errorf("Error loading file :%v. Error:%v", fileNameEnd, err.Error())
-				} else {
-					compGames(game, gameEnd, t)
-				}
-			} else {
-				t.Errorf("Error open file :%v. Error:%v", fileNameEnd, err.Error())
-			}
-
-		}
-	} else {
-		t.Errorf("Open file error. File :%v, Error: %v", fileNameInit, err.Error())
-	}
-}
 func playerClaimFlag(game *Game, flag int) {
 	var move Move
 	if flag == -1 {
@@ -252,135 +116,132 @@ func saveGame(fileName string, game *Game) (err error) {
 	file, err := os.Create(fileName)
 	if err == nil {
 		GobRegistor()
-		err = Save(game, file)
+		err = Save(game, file, true)
 		file.Close()
 	}
 	return err
 }
-func TestGameTraitor(t *testing.T) {
-	fileNameInit := "test/initgametraitor.gob"
-	fileNameEnd := "test/endgametraitor.gob"
 
-	fileInit, err := os.Open(fileNameInit)
+type TestPos struct {
+	Pos map[int]*GamePos
+}
+
+func (pos *TestPos) Save(file *os.File) (err error) {
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(pos)
+	return err
+}
+
+func TestGames(t *testing.T) {
+	GobRegistor()
+	dirName := "test"
+	fileMap := make(map[string]bool)
+	newGames := make([]string, 0, 0)
+	files, err := ioutil.ReadDir(dirName)
 	if err == nil {
-		defer fileInit.Close()
-		GobRegistor()
-		game, err := Load(fileInit)
-		fileInit.Close()
-		if err != nil {
-			t.Errorf("Load game file error. File :%v, Error: %v", fileNameInit, err.Error())
-		} else {
-			var move Move
-			moveHandDeck(game, 50, 3, DECK_TROOP) //1
-			moveHandDeck(game, 48, 3, DECK_TROOP) //0
-			moveHandDeck(game, 58, 5, DECK_TROOP) //1
-			moveHandDeck(game, 47, 3, DECK_TROOP) //0
-			moveHandDeck(game, 57, 5, DECK_TAC)   //1
-			moveHandDeck(game, 46, 3, DECK_TAC)   //0
-			//Redeploy
-			move = *NewMoveRedeploy(3, 50, 4)               //1
-			game.MoveHand(63, game.Pos.GetMoveix(63, move)) //1
-			move = *NewMoveDeck(DECK_TROOP)                 //1
-			game.Move(game.Pos.GetMoveix(0, move))          //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 19, 2, DECK_TROOP)           //0
-			moveHandDeck(game, 10, 4, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 38, 4, DECK_TROOP)           //0
-			moveHandDeck(game, 56, 5, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 11, 0, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 41, 0, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 36, 4, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 21, 0, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 12, 0, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 27, 6, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 8, 6, DECK_TROOP)            //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 1, 0, DECK_TROOP)            //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 6, 6, DECK_TROOP)            //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 17, 6, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 32, 8, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 37, 6, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			//traitor
-			move = *NewMoveTraitor(6, 37, 4)                //0
-			game.MoveHand(61, game.Pos.GetMoveix(61, move)) //0
-			move = *NewMoveDeck(DECK_TROOP)                 //0
-			game.Move(game.Pos.GetMoveix(0, move))          //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 13, 8, DECK_TROOP)           //1
-			playerClaimFlag(game, 4)                        //0
-			moveHandDeck(game, 33, 8, DECK_TAC)             //0
-			playerClaimFlag(game, 0)                        //1
-			moveHandDeck(game, 15, 7, DECK_TROOP)           //1
-			playerClaimFlag(game, 3)                        //0 fail
-			moveHandDeck(game, 49, 2, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 35, 7, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 59, 2, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 45, 7, DECK_TAC)             //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 23, 7, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 18, 8, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 29, 5, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 34, 3, DECK_TAC)             //1
-			playerClaimFlag(game, 3)                        //0
-			moveHandDeck(game, 24, 7, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 5, 2, DECK_TROOP)            //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 30, 5, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 60, 1, DECK_TROOP)           //1
-			playerClaimFlag(game, -1)                       //0
-			moveHandDeck(game, 28, 5, DECK_TROOP)           //0
-			playerClaimFlag(game, -1)                       //1
-			moveHandDeck(game, 40, 1, DECK_TROOP)           //1
-			playerClaimFlag(game, 5)                        //0 win with 3
-			//fmt.Printf("Move pos: %v\n", game.Pos)
-			//fmt.Printf("Flag 6: %v\n", game.Pos.Flags[7].Players[0])
-			//fmt.Printf("Flag 9: %v\n", game.Pos.Flags[8].Play:ers[1])
-			//fmt.Printf("Flag 7: %v\n", game.Pos.Flags[6].Players[1])
-			//fmt.Printf("Flag 2: %v\n", game.Pos.Flags[1].Players[1])
-			//fmt.Printf("Moves player 0: %v\n", game.Pos.MovesHand[62])
-			//fmt.Printf("Turn player:%v\n", game.Pos.Player)
-			//fmt.Printf("Hand 0:%v,Hand 1:%v\n", game.Pos.Hands[0], game.Pos.Hands[1])
-			//fmt.Printf("MovesHands: %v\n", game.Pos.MovesHand)
-			//fmt.Printf("Moves: %v\n", game.Pos.Moves)
-			//fmt.Printf("Tac Deck: %v\n", game.Pos.DeckTac)
-			//fmt.Printf("Troop Deck: %v\n", game.Pos.DeckTroop)
-
-			//saveGame(fileNameEnd, game)
-
-			fileEnd, err := os.Open(fileNameEnd)
-			defer fileEnd.Close()
+		for _, fileInfo := range files {
+			if strings.Contains(fileInfo.Name(), "pos") {
+				fileMap[fileInfo.Name()] = true
+			}
+		}
+		for _, fileInfo := range files {
+			if !strings.Contains(fileInfo.Name(), "pos") {
+				if !fileMap["pos"+fileInfo.Name()] {
+					newGames = append(newGames, fileInfo.Name())
+				}
+			}
+		}
+		createGameTest(fileMap, newGames, dirName, t)
+		for fileName, _ := range fileMap {
+			file, err := os.Open(filepath.Join(dirName, fileName[3:]))
+			defer file.Close()
 			if err == nil {
-				gameEnd, err := Load(fileEnd)
-				if err != nil {
-					t.Errorf("Error loading file :%v. Error:%v", fileNameEnd, err.Error())
+				game, err := Load(file)
+				if err == nil {
+					posFile, err := os.Open(filepath.Join(dirName, fileName))
+					defer posFile.Close()
+					decoder := gob.NewDecoder(posFile)
+					testPos := *new(TestPos)
+					err = decoder.Decode(&testPos)
+					if err == nil {
+						gameMoveLoop(game, func(gamePos *GamePos, move int) {
+							pos, found := testPos.Pos[move]
+							if found {
+								if !game.Pos.Equal(pos) {
+									t.Errorf("Move: %v failed in file: %v", move, fileName)
+								}
+							}
+						})
+					}
 				} else {
-					compGames(game, gameEnd, t)
+					t.Errorf("Error loading file: %v. Error: %v", fileName, err)
 				}
 			} else {
-				t.Errorf("Error open file :%v. Error:%v", fileNameEnd, err.Error())
+				t.Errorf("Error testing file: %v. Error: %v", fileName, err)
 			}
+		}
+	} else {
+		t.Errorf("Error listing directory: %v. Error: %v", dirName, err)
+	}
+}
+func gameMoveLoop(game *Game, posFunc func(*GamePos, int)) {
+	game.Pos = NewGamePos()
+	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
+	game.Pos.DeckTac = *game.InitDeckTac.Copy()
+	deal(&game.Pos.Hands, &game.Pos.DeckTroop)
+	game.Pos.Turn.start(game.Starter, game.Pos.Hands[game.Starter], &game.Pos.Flags,
+		&game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
+	for i, move := range game.Moves {
+		if move[0] == -1 && move[1] == -1 {
+			game.Quit(game.Pos.Player)
+		} else if move[0] == 0 && move[0] == -1 {
+			game.Pass()
+		} else if move[0] > 0 {
+			game.MoveHand(move[0], move[1])
+		} else {
+			game.Move(move[1])
+		}
+		posFunc(game.Pos, i)
+	}
+}
+func createPos(game *Game) (testPos *TestPos) {
+	testPos = new(TestPos)
+	testPos.Pos = make(map[int]*GamePos)
 
+	gameMoveLoop(game, func(gamePos *GamePos, move int) {
+		testPos.Pos[move] = gamePos.Copy()
+	})
+
+	return testPos
+}
+func createGameTest(fileMap map[string]bool, newGames []string, dirName string, t *testing.T) {
+	for _, fileName := range newGames {
+		file, err := os.Open(filepath.Join(dirName, fileName))
+		defer file.Close()
+		if err == nil {
+			game, err := Load(file)
+			if err == nil {
+				Save(game, file, false)
+				t.Logf("File: %v\nGame Pos:%v\nDeck:%v", fileName, game.Pos, game.InitDeckTroop)
+				testPos := createPos(game)
+				fileNamePos := ("pos" + fileName)
+				posFile, err := os.Create(filepath.Join(dirName, fileNamePos))
+				defer posFile.Close()
+				if err == nil {
+					err = testPos.Save(posFile)
+					if err == nil {
+						fileMap[fileNamePos] = true
+					} else {
+						t.Errorf("Error saving file: %v. Error: %v", fileName, err)
+					}
+				} else {
+					t.Errorf("Error creating file: %v. Error: %v", fileName, err)
+				}
+			} else {
+				t.Errorf("Error loading file: %v. Error: %v", fileName, err)
+			}
+		} else {
+			t.Errorf("Error opening file: %v. Error: %v", fileName, err)
 		}
 	}
 }

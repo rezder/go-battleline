@@ -8,7 +8,11 @@ import (
 
 //Start tables server.
 //doneCh closing this channel will close down the tables server.
-func Start(startGameChCl *StartGameChCl, pubList *pub.List, doneCh chan struct{}) {
+func Start(startGameChCl *StartGameChCl, pubList *pub.List, doneCh chan struct{},
+	save bool, saveDir string, errCh chan<- error) {
+	if save {
+		bat.GobRegistor() //may not be necessary if game.Pos is nil
+	}
 	finishTableCh := make(chan [2]int)
 	startCh := startGameChCl.Channel
 	var done bool
@@ -40,11 +44,13 @@ Loop:
 						delete(oldGames, gameId(start.PlayerIds))
 						if game.PlayerIds != start.PlayerIds {
 							start.PlayerIds = [2]int{start.PlayerIds[1], start.PlayerIds[0]}
-							start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1], start.PlayerChs[0]}
+							start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1],
+								start.PlayerChs[0]}
 						}
 					}
 					watch := pub.NewWatchChCl()
-					go table(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh)
+					go table(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh, save,
+						saveDir, errCh)
 					games[start.PlayerIds[0]] = NewGameData(start.PlayerIds[1], watch)
 					games[start.PlayerIds[1]] = NewGameData(start.PlayerIds[0], watch)
 					publish(games, pubList)

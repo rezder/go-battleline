@@ -66,8 +66,11 @@ func New() (flag *Flag) {
 }
 func (flag *Flag) Copy() (c *Flag) {
 	c = new(Flag)
-	c.Players[0] = &*flag.Players[0]
-	c.Players[1] = &*flag.Players[1]
+	cp := *flag.Players[0]
+	c.Players[0] = &cp
+	cp1 := *flag.Players[1]
+	c.Players[1] = &cp1
+
 	return c
 }
 
@@ -197,7 +200,7 @@ func remove_Mud(player *Player, opp *Player) (mudix int) {
 	var maxs int = 1
 	var troops []int
 	for i, v := range player.Troops {
-		troops = make([]int, 4)
+		troops = make([]int, 4) //copy
 		copy(troops, player.Troops[:])
 		troops[i] = 0
 		formation, strength := eval(troops, player.Env[:], opp.Env[:])
@@ -342,7 +345,7 @@ func eval(troops []int, env1s []int, env2s []int) (formation *cards.Formation, s
 
 // evalEnv evaluate the environment tactic cards.
 func evalEnv(env1s []int, env2s []int) (mud bool, fog bool) {
-	envs := make([]int, 4)
+	envs := make([]int, 0, 4)
 	envs = append(envs, env1s...)
 	envs = append(envs, env2s...)
 	for _, card := range envs {
@@ -953,7 +956,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 
 				if !ok {
 					playedCards := played(opPlayer.Troops[:])
-					opCards := make([]int, 4)
+					opCards := make([]int, 4) // copy
 					copy(opCards, opPlayer.Troops[:])
 					sortInt(opCards)
 					simNoCards := 3 - playedCards
@@ -962,7 +965,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 						simNoCards = simNoCards + 1
 						simPlayedCards = 4
 					}
-					simCards := make([]int, 4)
+					simCards := make([]int, 4) //copy
 					switch simNoCards {
 					case 1:
 						ok = true

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	saveFlag := flag.Bool("save", false, "Save games.")
+	saveDirFlag := flag.String("savedir", "temp", "Save game directory")
+	flag.Parse()
 	errCh := make(chan error, 10)
 	finErrCh := make(chan struct{})
 	go errServer(errCh, finErrCh)
@@ -28,7 +32,7 @@ func main() {
 	}
 	newGameServer := games.New(errCh)
 
-	newGameServer.Start()
+	newGameServer.Start(*saveFlag, *saveDirFlag)
 	clients := html.NewClients(newGameServer) //TODO load from file
 	finHtmlCh := make(chan struct{})
 	go html.Start(errCh, netListener, clients, finHtmlCh)

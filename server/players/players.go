@@ -27,6 +27,7 @@ const (
 	JT_BenchMove = 4
 	JT_List      = 5
 	JT_CloseCon  = 6
+	JT_ClearList = 7
 
 	WRTBUFF_SIZE = 10
 	WRTBUFF_LIM  = 8
@@ -320,6 +321,7 @@ func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *p
 			gameState.respCh = move.MoveCh
 			gameState.lastMove = move
 			clearInvites(receivedInvites, sendInvites, playerId)
+			sendCh <- ClearInvites("All invites was clear as game starts.")
 			sendCh <- move
 			updReadList = pubList.Read()
 			sendCh <- updReadList
@@ -462,7 +464,8 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}) {
 			if act.Move[0] == 0 && act.Move[1] == -1 {
 				valid = true
 			}
-		} else if lastMove.MovesHand != nil {
+		}
+		if lastMove.MovesHand != nil {
 			handmoves, found := lastMove.MovesHand[strconv.Itoa(act.Move[0])]
 			if found && act.Move[1] >= 0 && act.Move[1] < len(handmoves) {
 				valid = true
@@ -736,6 +739,9 @@ func clearInvites(receivedInvites map[int]*pub.Invite, sendInvites map[int]*pub.
 // CloseCon close connection signal to netWrite.
 type CloseCon string
 
+// Clear invites signal
+type ClearInvites string
+
 // netWrite keep reading until overflow/broken line or done message is send.
 // overflow/broken line disable the write to net but keeps draining the pipe.
 func netWrite(ws *websocket.Conn, dataCh <-chan interface{}, errCh chan<- error, brokenConn chan struct{}) {
@@ -780,6 +786,8 @@ func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
 		jdata.JsonType = JT_BenchMove
 	case CloseCon:
 		jdata.JsonType = JT_CloseCon
+	case ClearInvites:
+		jdata.JsonType = JT_ClearList
 	default:
 		fmt.Printf("Message not implemented yet: %v\n", data)
 

@@ -2,11 +2,11 @@ package battleline
 
 import (
 	"encoding/gob"
-	"fmt"
 	"os"
 	"rezder.com/game/card/battleline/cards"
 	"rezder.com/game/card/battleline/flag"
 	"rezder.com/game/card/deck"
+	"strconv"
 )
 
 const (
@@ -15,17 +15,18 @@ const (
 )
 
 type Game struct {
-	PlayerIds [2]int
-	Pos       GamePos
-	PosInit   GamePos
-	Moves     [][2]int
+	PlayerIds     [2]int
+	Pos           *GamePos
+	InitDeckTac   deck.Deck
+	InitDeckTroop deck.Deck
+	Starter       int
+	Moves         [][2]int
 }
 
 func New(playerIds [2]int) (game *Game) {
 	game = new(Game)
 	game.PlayerIds = playerIds
-	game.Pos = *NewGamePos()
-
+	game.Pos = NewGamePos()
 	return game
 }
 func (game *Game) Equal(other *Game) (equal bool) {
@@ -35,7 +36,10 @@ func (game *Game) Equal(other *Game) (equal bool) {
 		if game == other {
 			equal = true
 		} else if other.PlayerIds == game.PlayerIds &&
-			other.PosInit.Equal(&game.PosInit) && other.Pos.Equal(&game.Pos) {
+			other.Starter == game.Starter &&
+			other.InitDeckTroop.Equal(&game.InitDeckTroop) &&
+			other.InitDeckTac.Equal(&game.InitDeckTac) &&
+			other.Pos.Equal(game.Pos) {
 			equal = true
 			for i, v := range other.Moves {
 				if v != game.Moves[i] {
@@ -47,11 +51,32 @@ func (game *Game) Equal(other *Game) (equal bool) {
 	}
 	return equal
 }
+func (game *Game) calcPos() {
+	game.Pos = NewGamePos()
+	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
+	game.Pos.DeckTac = *game.InitDeckTac.Copy()
+	deal(&game.Pos.Hands, &game.Pos.DeckTroop)
+	game.Pos.Turn.start(game.Starter, game.Pos.Hands[game.Starter], &game.Pos.Flags,
+		&game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
+	for _, move := range game.Moves {
+		if move[0] == -1 && move[0] == -1 {
+			game.Quit(game.Pos.Player)
+		} else if move[0] == 0 && move[1] == -1 {
+			game.Pass()
+		} else if move[0] > 0 {
+			game.MoveHand(move[0], move[1])
+		} else {
+			game.Move(move[1])
+		}
+	}
+}
 func (game *Game) Start(starter int) {
-	pos := &game.Pos
+	pos := game.Pos
+	game.Starter = starter
+	game.InitDeckTroop = *pos.DeckTroop.Copy()
+	game.InitDeckTac = *pos.DeckTac.Copy()
 	deal(&pos.Hands, &pos.DeckTroop)
 	pos.Turn.start(starter, pos.Hands[starter], &pos.Flags, &pos.DeckTac, &pos.DeckTroop, &pos.Dishs)
-	game.PosInit = *game.Pos.Copy()
 	game.Moves = make([][2]int, 0)
 }
 
@@ -67,22 +92,22 @@ func (game *Game) Quit(playerix int) {
 func (game *Game) Pass() {
 	if game.Pos.MovePass {
 		game.Pos.Info = ""
-		game.addMove(-1, -1)
+		game.addMove(0, -1)
 		game.Pos.next(false, &game.Pos.Hands, &game.Pos.Flags, &game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
 	} else {
 		panic("Calling pass when not possible")
 	}
 }
-func (game *Game) Move(move int) (dealtix int) {
-	game.addMove(-1, move)
-	pos := &game.Pos //Update
+func (game *Game) Move(move int) (dealtix int, claimFailMap map[string][]int) {
+	game.addMove(0, move)
+	pos := game.Pos //Update
 	pos.Info = ""
 	switch pos.State {
 
 	case TURN_FLAG:
 		moveC, ok := pos.Moves[move].(MoveClaim)
 		if ok {
-			pos.Info = moveClaimFlag(pos.Player, moveC.Flags, &pos.Flags, &pos.Hands, &pos.DeckTroop)
+			claimFailMap = moveClaimFlag(pos.Player, moveC.Flags, &pos.Flags, &pos.Hands, &pos.DeckTroop)
 		} else {
 			panic("There should be only claim moves")
 		}
@@ -108,7 +133,7 @@ func (game *Game) Move(move int) (dealtix int) {
 		panic("Unexpected turn state")
 	}
 	pos.next(false, &pos.Hands, &pos.Flags, &pos.DeckTac, &pos.DeckTroop, &pos.Dishs)
-	return dealtix
+	return dealtix, claimFailMap
 }
 
 //moveScoutReturn make the return from scout.
@@ -138,15 +163,16 @@ func moveScoutRet(move *MoveScoutReturn, deckTack *deck.Deck, deckTroop *deck.De
 //claims is the flag indexs that should be claimed if possible.
 //#flags
 func moveClaimFlag(playerix int, claimixs []int, flags *[FLAGS]*flag.Flag, hands *[2]*Hand,
-	deckTroop *deck.Deck) (info string) {
+	deckTroop *deck.Deck) (claimFailMap map[string][]int) {
 	unPlayCards := simTroops(deckTroop, hands[0].Troops, hands[1].Troops)
+	claimFailMap = make(map[string][]int)
 	for _, claim := range claimixs {
-		ok, ex := flags[claim].ClaimFlag(playerix, unPlayCards)
+		ok, ex := flags[claim].ClaimFlag(playerix, unPlayCards) //ex contain 0
 		if !ok {
-			info = fmt.Sprintf("Claiming flag %v failed. Example: %v", claim, ex) // TODO make  with card information nicer
+			claimFailMap[strconv.Itoa(claim)] = ex //json like strings
 		}
 	}
-	return info
+	return claimFailMap
 }
 
 //moveDeck make select deck move.
@@ -167,7 +193,7 @@ func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Han
 
 func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, redeployixs []int) {
 	game.addMove(cardix, moveix)
-	pos := &game.Pos //Update
+	pos := game.Pos //Update
 	pos.Info = ""
 	scout := false
 	var err error
@@ -255,7 +281,7 @@ func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int, dishs
 	return err
 }
 
-type GamePos struct { //TODO make deep copy all map slice, interface or pointers need special treatment
+type GamePos struct {
 	Flags     [FLAGS]*flag.Flag
 	Dishs     [2]*Dish
 	Hands     [2]*Hand
@@ -322,7 +348,6 @@ func (pos *GamePos) Copy() (c *GamePos) {
 	for i := range pos.Flags {
 		c.Flags[i] = pos.Flags[i].Copy()
 	}
-	c.Flags = pos.Flags
 	c.Dishs[0] = pos.Dishs[0].Copy()
 	c.Dishs[1] = pos.Dishs[1].Copy()
 	c.Hands[0] = pos.Hands[0].Copy()
@@ -409,17 +434,29 @@ func GobRegistor() {
 	gob.Register(MoveScoutReturn{})
 	gob.Register(MoveTraitor{})
 }
-func Save(game *Game, file *os.File) (err error) {
-	encoder := gob.NewEncoder(file)
-	err = encoder.Encode(game)
+func Save(game *Game, file *os.File, savePos bool) (err error) {
+	if !savePos {
+		pos := game.Pos
+		game.Pos = nil
+		encoder := gob.NewEncoder(file)
+		err = encoder.Encode(game)
+		game.Pos = pos
+	} else {
+		encoder := gob.NewEncoder(file)
+		err = encoder.Encode(game)
+	}
 	return err
 }
 func Load(file *os.File) (game *Game, err error) {
-	gob.Register(MoveCardFlag{})
 	decoder := gob.NewDecoder(file)
-	var g Game = *New([2]int{1, 2})
+	var g Game = *new(Game)
 
 	err = decoder.Decode(&g)
-	game = &g
+	if err == nil {
+		game = &g
+		if game.Pos == nil {
+			game.calcPos()
+		}
+	}
 	return game, err
 }

@@ -1762,3 +1762,13 @@ func TestDecoder(t *testing.T) {
 		}
 	}
 }
+func TestCopy(t *testing.T) {
+	flag := New()
+	flag.Set(40, 0)
+	flag.Set(20, 1)
+	flag2 := flag.Copy()
+	flag.Set(10, 1)
+	if flag.Equal(flag2) {
+		t.Error("should be differnt")
+	}
+}

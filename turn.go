@@ -360,7 +360,9 @@ func getTraitorMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 			for flagix, flag := range flags {
 				if !flag.Claimed() && flag.Free()[playerix] {
 					for _, troop := range oppFlag.Troops(opponent(playerix)) {
-						moves = append(moves, *NewMoveTraitor(oppFlagix, troop, flagix))
+						if troop <= cards.TROOP_NO {
+							moves = append(moves, *NewMoveTraitor(oppFlagix, troop, flagix))
+						}
 					}
 				}
 			}
