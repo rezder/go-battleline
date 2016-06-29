@@ -103,9 +103,9 @@
      borderopacity="0.78431373"
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
-     inkscape:zoom="4.0000001"
-     inkscape:cx="457.2711"
-     inkscape:cy="349.75203"
+     inkscape:zoom="1.4142136"
+     inkscape:cx="119.34981"
+     inkscape:cy="289.75203"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -561,7 +561,7 @@
                sodipodi:role="line">1</tspan></text>
         </g>
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#c8c8c8;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-5"
            width="52"
            height="134"
@@ -627,7 +627,7 @@
              height="70"
              width="48"
              id="rect4771-5-5-3-0"
-             style="fill:#ffff00;fill-opacity:1;stroke:#ffffff;stroke-width:4;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+             style="fill:#ffff00;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
           <text
              sodipodi:linespacing="125%"
              id="text4781-3-9-1-43"
@@ -653,7 +653,7 @@
                sodipodi:role="line">1</tspan></text>
         </g>
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-9"
            width="52"
            height="134"

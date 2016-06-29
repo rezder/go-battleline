@@ -4,10 +4,26 @@
           <meta charset="UTF-8">
           <title>Rezder Games</title>
           <script src="http://game.rezder.com:8181/static/battleline.js"></script>
+          <link rel="stylesheet" type="text/css" href="http://game.rezder.com:8181/static/battleline.css">
         </head>
         <body>
+            <h1>Battleline</h1>
+            <div id="info-message-div">
+                <div id="info-div">
+                    <h2>Info</h2>
+                    <textarea id="info-text" class="text-out" rows=15 cols=80 wrap=on readonly></textarea>
+                </div>
+                <div id="message-div">
+                    <h2>Message</h2>
+                    <textarea id="message-text" class="text-in" rows=5 cols=80 wrap=on></textarea>
+                    <br>
+                    <select id="message-select">
+                        <option value="0">-</option>
+                    </select>
+                    <button value="Send" id="send-button">Send</button>
+                </div>
+            </div>
             <div id="game">
-                <h1>Battleline</h1>
                <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -295,7 +311,7 @@
       <g
          id="pF1TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="pF1TroopRect"
            width="52"
            height="134"
@@ -306,7 +322,7 @@
       <g
          id="pF1TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8"
            width="52"
            height="94"
@@ -317,7 +333,7 @@
       <g
          id="pF2TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-5"
            width="52"
            height="134"
@@ -328,7 +344,7 @@
       <g
          id="pF4TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-3"
            width="52"
            height="134"
@@ -339,7 +355,7 @@
       <g
          id="pF3TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-9"
            width="52"
            height="134"
@@ -350,7 +366,7 @@
       <g
          id="pF5TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-1"
            width="52"
            height="134"
@@ -361,7 +377,7 @@
       <g
          id="pF6TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-82"
            width="52"
            height="134"
@@ -372,7 +388,7 @@
       <g
          id="pF7TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-38"
            width="52"
            height="134"
@@ -383,7 +399,7 @@
       <g
          id="pF8TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-7"
            width="52"
            height="134"
@@ -394,7 +410,7 @@
       <g
          id="pF9TroopGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-0"
            width="52"
            height="134"
@@ -405,7 +421,7 @@
       <g
          id="pF2TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-5"
            width="52"
            height="94"
@@ -416,7 +432,7 @@
       <g
          id="pF3TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-2"
            width="52"
            height="94"
@@ -427,7 +443,7 @@
       <g
          id="pF4TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-0"
            width="52"
            height="94"
@@ -438,7 +454,7 @@
       <g
          id="pF5TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-9"
            width="52"
            height="94"
@@ -449,7 +465,7 @@
       <g
          id="pF6TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-3"
            width="52"
            height="94"
@@ -460,7 +476,7 @@
       <g
          id="pF7TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-32"
            width="52"
            height="94"
@@ -471,7 +487,7 @@
       <g
          id="pF9TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="pF9TacRect"
            width="52"
            height="94"
@@ -482,7 +498,7 @@
       <g
          id="pF8TacGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-09"
            width="52"
            height="94"
@@ -563,7 +579,7 @@
                y="-811">10</tspan></text>
         </g>
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-1"
            width="52"
            height="114"
@@ -609,7 +625,7 @@
                y="-575">Alexander</tspan></text>
         </g>
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-12"
            width="52"
            height="154"
@@ -620,11 +636,11 @@
       <g
          id="pHandGroup">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="pHandRect"
            width="260"
            height="74"
-           x="246.5"
+           x="219"
            y="625"
            ry="4.5" />
       </g>
@@ -637,7 +653,7 @@
          id="oF1TroopGroup"
          transform="matrix(-1,0,0,1,200,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-4"
            width="52"
            height="134"
@@ -649,7 +665,7 @@
          id="oF1TacGroup"
          transform="matrix(-1,0,0,1,200,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="oF1TacRect"
            width="52"
            height="94"
@@ -661,7 +677,7 @@
          id="oF2TroopGroup"
          transform="matrix(-1,0,0,1,325,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-5-9"
            width="52"
            height="134"
@@ -673,7 +689,7 @@
          id="oF4TroopGroup"
          transform="matrix(-1,0,0,1,575,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-3-4"
            width="52"
            height="134"
@@ -685,7 +701,7 @@
          id="oF3TroopGroup"
          transform="matrix(-1,0,0,1,450,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-9-9"
            width="52"
            height="134"
@@ -697,7 +713,7 @@
          id="oF5TroopGroup"
          transform="matrix(-1,0,0,1,700,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-1-2"
            width="52"
            height="134"
@@ -709,7 +725,7 @@
          id="oF6TroopGroup"
          transform="matrix(-1,0,0,1,825,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-82-0"
            width="52"
            height="134"
@@ -721,7 +737,7 @@
          id="oF7TroopGroup"
          transform="matrix(-1,0,0,1,950,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-38-7"
            width="52"
            height="134"
@@ -733,7 +749,7 @@
          id="oF8TroopGroup"
          transform="matrix(-1,0,0,1,1075,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-7-5"
            width="52"
            height="134"
@@ -745,7 +761,7 @@
          id="oF9TroopGroup"
          transform="matrix(-1,0,0,1,1200,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="oF9TroopRect"
            width="52"
            height="134"
@@ -757,7 +773,7 @@
          id="oF2TacGroup"
          transform="matrix(-1,0,0,1,325,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-5-1"
            width="52"
            height="94"
@@ -769,7 +785,7 @@
          id="oF3TacGroup"
          transform="matrix(-1,0,0,1,450,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-2-1"
            width="52"
            height="94"
@@ -781,7 +797,7 @@
          id="oF4TacGroup"
          transform="matrix(-1,0,0,1,575,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-0-5"
            width="52"
            height="94"
@@ -793,7 +809,7 @@
          id="oF5TacGroup"
          transform="matrix(-1,0,0,1,700,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-9-7"
            width="52"
            height="94"
@@ -805,7 +821,7 @@
          id="oF6TacGroup"
          transform="matrix(-1,0,0,1,825,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-3-0"
            width="52"
            height="94"
@@ -817,7 +833,7 @@
          id="oF7TacGroup"
          transform="matrix(-1,0,0,1,950,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-32-2"
            width="52"
            height="94"
@@ -829,7 +845,7 @@
          id="oF9TacGroup"
          transform="matrix(-1,0,0,1,1200,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-5"
            width="52"
            height="94"
@@ -841,7 +857,7 @@
          id="oF8TacGroup"
          transform="matrix(-1,0,0,1,1075,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-09-4"
            width="52"
            height="94"
@@ -853,7 +869,7 @@
          id="oDishTroopGroup"
          transform="matrix(-1,0,0,1,64,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-1-6"
            width="52"
            height="114"
@@ -865,7 +881,7 @@
          id="oDishTacGroup"
          transform="matrix(-1,0,0,1,1338,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-12-9"
            width="52"
            height="154"
@@ -875,13 +891,13 @@
       </g>
       <g
          id="oHandGroup"
-         transform="matrix(-1,0,0,1,753,0)">
+         transform="matrix(-1,0,0,1,700,0)">
         <rect
-           style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:none;fill-opacity:1;stroke:#e0e0e0;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-6-4"
            width="260"
            height="74"
-           x="246.5"
+           x="219"
            y="625"
            ry="4.5" />
       </g>
@@ -889,24 +905,27 @@
   </g>
                </svg>
                <div id="game-buttons">
-                   <button id="stop-watching-button">Stop Watching</button>
-                   <button id="stop-playing-button">Stop Playing</button>
-                   <button id="stop-giveup-button">Give Up</button>
+                   <textarea id="turn-text" class="text-out" rows=1 cols=80 readonly></textarea>
+                   <button type="button" id="claim-button" disabled>Claim</button>
+                   <button type="button" id="pass-button" disabled>Pass</button>
+                   <button id="stop-playing-button" disabled>Stop</button>
+                   <button id="stop-giveup-button" disabled>Give Up</button>
                </div>
-               <div id="game-turn">
-                   <table>
-                       <tr>
-                           <th class="textCenter" colspan="3">Turn</th>
-                       </tr>
-                       <tr>
-                           <td id="turn-player-cell">-------</td>
-                           <td id="turn-type-cell">-------------</td>
-                           <td>
-                               <button type="button" id="turn-done-button" disabled>Done</button>
-                           </td>
-                       </tr>
-                   </table>
-               </div>
+            </div>
+            <div id="invites-div">
+                <h2>Invites</h2>
+                <table id="invites-table">
+                    <col class="tc-hide">
+                    <tr>
+                        <th id="ith-id">Id</th>
+                        <th id="ith-from">From/To</th>
+                        <th id="ith-name">Player</th>
+                        <th id="ith-accept">Accept</th>
+                        <th id="ith-decline">Decline</th>
+                        <th id="ith-retract">Retract</th>
+
+                    </tr>
+                </table>
             </div>
             <div id="players-div">
                 <h2>Players</h2>
@@ -924,33 +943,6 @@
                     </tbody>
                 </table>
                 <button id="update-button">Update</button>
-            </div>
-            <div id="info-div">
-                <h2>Info</h2>
-                <textarea id="info-text" class="text-out"rows=10 cols=80 wrap=on readonly></textarea>
-            </div>
-            <div id="message-div">
-                <h2>Message</h2>
-                <textarea id="message-text" class="text-in" rows=5 cols=80 wrap=on></textarea>
-                <select id="message-select">
-                    <option value="0">-</option>
-                </select>
-                <button value="Send" id="send-button">Send</button>
-            </div>
-            <div id="invites-div">
-                <h2>Invites</h2>
-                <table id="invites-table">
-                    <col class="tc-hide">
-                    <tr>
-                        <th id="ith-id">Id</th>
-                        <th id="ith-from">From/To</th>
-                        <th id="ith-name">Player</th>
-                        <th id="ith-accept">Accept</th>
-                        <th id="ith-decline">Decline</th>
-                        <th id="ith-retract">Retract</th>
-
-                    </tr>
-                </table>
             </div>
         </body> 
       </html>

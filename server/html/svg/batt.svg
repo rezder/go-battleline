@@ -104,8 +104,8 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="1.4142136"
-     inkscape:cx="293.17477"
-     inkscape:cy="323.43646"
+     inkscape:cx="197.00825"
+     inkscape:cy="448.83114"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -617,7 +617,7 @@
            id="pHandRect"
            width="260"
            height="74"
-           x="246.5"
+           x="219"
            y="625"
            ry="4.5" />
       </g>
@@ -868,13 +868,13 @@
       </g>
       <g
          id="oHandGroup"
-         transform="matrix(-1,0,0,1,753,0)">
+         transform="matrix(-1,0,0,1,700,0)">
         <rect
            style="fill:none;fill-opacity:1;stroke:#ffff00;stroke-width:2;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect4771-5-5-3-1-5-8-90-6-4"
            width="260"
            height="74"
-           x="246.5"
+           x="219"
            y="625"
            ry="4.5" />
       </g>

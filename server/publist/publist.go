@@ -75,7 +75,7 @@ func (list *List) update() {
 		data.Message = v.Message
 		gdata, gFound = list.games[key]
 		if gFound {
-			opp, oppFound = list.players[data.Opp] // opponent may have left
+			opp, oppFound = list.players[gdata.Opp] // opponent may have left
 			if oppFound {
 				data.Opp = gdata.Opp
 				data.OppName = opp.Name

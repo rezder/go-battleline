@@ -976,9 +976,9 @@ var batt={};
 	      const TURN_SCOUTR = 4;
 	      const TURN_DECK   = 5;
 	      const TURN_FINISH = 6;
-	      const TURN_QUIT   = 7;//TODO move to game
+	      const TURN_QUIT   = 7;
 
-	      const DECK_TAC   = 1;//TODO move to game
+	      const DECK_TAC   = 1;
 	      const DECK_TROOP = 2;
 
 
@@ -992,11 +992,6 @@ var batt={};
         let scoutReturnTacixs=[];
         let scoutReturnTroopixs=[];
 
-        function ends(){
-            turn.current=null;
-            turn.isMyTurn=false;
-            ws.actionBuilder(ws.ACT_LIST).send();
-        };
         function isPlaying(){
             return turn.current!==null;
         }
@@ -1452,12 +1447,12 @@ var batt={};
                 }
             }
         };
-        let turnPlayerCell=document.getElementById("turn-player-cell");
-        let turnPlayerCellClear=turnPlayerCell.textContent;
-        let turnTypeCell=document.getElementById("turn-type-cell");
-        let turnTypeCellClear=turnTypeCell.textContent;
-        let turnDoneButton=document.getElementById("turn-done-button");
-        turnDoneButton.onclick=function(){
+        let claimButton =document.getElementById("claim-button");
+        let passButton=document.getElementById("pass-button");
+        let turnTextArea=document.getElementById("turn-text");
+
+
+        claimButton.onclick=function(){
             if (turn.isMyTurn){
                 if(turn.getState()===TURN_FLAG){
                     let moves=turn.getMoves();
@@ -1482,74 +1477,86 @@ var batt={};
                     if (!equal){
                         console.log("No legal move was found this should not happen");
                     }
-                }else if(turn.current.MovePass){
-                    turn.isMyTurn=false;
-                    ws.actionBuilder(ws.ACT_MOVE).move(0,-1).send();
                 }
             }
-
         };
-        document.getElementById("stop-giveup-button").onclick=function(){
+        passButton.onclick=function(){
+            if(turn.current.MovePass){
+                turn.isMyTurn=false;
+                ws.actionBuilder(ws.ACT_MOVE).move(0,-1).send();
+            }
+        };
+        let giveupButton=document.getElementById("stop-giveup-button");
+        giveupButton.onclick=function(){
             if (isPlaying&&!turn.gaveup){
                 ws.actionBuilder(ws.ACT_QUIT).send();
                 if (turn.isMyTurn){
                     turn.isMyTurn=false;
                 }
                 turn.gaveup=true;
+                giveupButton.disabled=true;
             }
+        };
+        function ends(){
+            turn.current=null;
+            turn.isMyTurn=false;
+            giveupButton.disabled=true;
+            ws.actionBuilder(ws.ACT_LIST).send();
         };
         turn.update=function(moveView){
             if (!isPlaying()){
                 clear();
+                giveupButton.disabled=false;
             }else{
                 turn.oldState=moveView.State;
             }
             turn.current=moveView;
             let myturn=false;
+            let turnText="";
             if (moveView.MyTurn){
-                turnPlayerCell.textContent="Your Move";
+                turnText="Your Move: ";
                 if(!turn.gaveup){
                     myturn=true;
                 }
             }else{
-                turnPlayerCell.textContent="Opponent Move";
+                turnText="Opponent Move: ";
             }
-            let txt;
             switch (moveView.State){
             case TURN_FLAG:
-                txt="Claim Flags";
+                turnText=turnText+"Claim Flags";
                 break;
             case TURN_HAND:
-                txt="Play a Card";
+                turnText=turnText+"Play a Card";
                 break;
             case TURN_SCOUTR:
-                txt="Return a Cards to Deck";
+                 turnText=turnText+"Return a Cards to Deck";
                 break;
             case TURN_QUIT:
             case TURN_FINISH:
                 myturn=false;
-                txt="Game is Over";
+                turnText="Game is Over";
                 ends();
                 break;
             case TURN_DECK:
             case TURN_SCOUT1:
             case TURN_SCOUT2:
-                txt="Draw a Card";
+                turnText=turnText+"Draw a Card";
                 break;
             }
-            turnTypeCell.textContent=txt;
+            turnTextArea.textContent= turnText;
             if  (myturn){
                 if (moveView.MovePass){
-                    turnDoneButton.disabled=false;
+                    passButton.disabled=false;
                 }else{
                     if (moveView.State!==TURN_FLAG){
-                        turnDoneButton.disabled=true;
+                        claimButton.disabled=true;
                     }else{
-                        turnDoneButton.disabled=false;
+                        claimButton.disabled=false;
                     }
                 }
             }else{
-                turnDoneButton.disabled=true;
+                claimButton.disabled=true;
+                passButton.disabled=true;
             }
             return myturn;
         };
@@ -1572,9 +1579,10 @@ var batt={};
             turn.isMyTurn=false;
             turn.gaveup=false;
             turn.oldState=-1;
-            turnDoneButton.disabled=true;
-            turnTypeCell.textContent=turnTypeCellClear;
-            turnPlayerCell.textContent=turnPlayerCellClear;
+            claimButton.disabled=true;
+            passButton.disabled=true;
+            giveupButton.disabled=true;
+            turnTextArea.textContent="";
         };
         svg.itemClicked=function(elems,centerClick){
             let idObj=svg.id.fromName(elems[0].id);
@@ -1928,7 +1936,11 @@ var batt={};
                                 let newTxtNode=document.createTextNode("M");
                                 btn.appendChild(newTxtNode);
                                 cell.appendChild(btn);
+                            }else{
+                                newRow.insertCell(-1);
                             }
+                        }else{
+                            newRow.insertCell(-1);
                         }
                     }
                 }
@@ -1952,7 +1964,7 @@ var batt={};
 	      exp.ACT_WATCHSTOP  = 9;
 	      exp.ACT_LIST       = 10;
 
-        function actionBuilder(aType){//TODO what about this 
+        function actionBuilder(aType){
             let res={ActType:aType};
             res.id=function(idNo){
                 res.Id=idNo;

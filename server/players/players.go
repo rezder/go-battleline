@@ -833,7 +833,6 @@ type Action struct {
 
 func NewAction() (a *Action) {
 	a = new(Action)
-	a.Id = -1 //TODO id do not thing it is necessary as player start from 1 now
 	a.Move = [2]int{-1, -1}
 	return a
 }
