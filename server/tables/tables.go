@@ -1,29 +1,68 @@
 package tables
 
 import (
+	"encoding/gob"
+	"fmt"
+	"os"
 	bat "rezder.com/game/card/battleline"
 	pub "rezder.com/game/card/battleline/server/publist"
 	"strconv"
 )
 
+const (
+	SAVE_GamesFile = "data/savegames.gob"
+)
+
+type Server struct {
+	save          bool
+	saveDir       string
+	StartGameChCl *StartGameChCl
+	pubList       *pub.List
+	doneCh        chan struct{}
+	errCh         chan<- error
+	saveGames     *SaveGames
+}
+
+func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *Server, err error) {
+	s = new(Server)
+	s.pubList = pubList
+	s.errCh = errCh
+	s.save = save
+	s.saveDir = saveDir
+	s.StartGameChCl = NewStartGameChCl()
+	s.doneCh = make(chan struct{})
+	bat.GobRegistor()
+	s.saveGames, err = loadSaveGames()
+	return s, err
+}
+func (s *Server) Start() {
+	go start(s.StartGameChCl, s.pubList, s.doneCh, s.save, s.saveDir, s.errCh, s.saveGames)
+}
+func (s *Server) Stop() {
+	fmt.Println("Closing start game channel on tables")
+	close(s.StartGameChCl.Close)
+	_ = <-s.doneCh
+	fmt.Println("Receiving done from tables")
+}
+
 //Start tables server.
 //doneCh closing this channel will close down the tables server.
-func Start(startGameChCl *StartGameChCl, pubList *pub.List, doneCh chan struct{},
-	save bool, saveDir string, errCh chan<- error) {
-	if save {
-		bat.GobRegistor() //may not be necessary if game.Pos is nil
-	}
-	finishTableCh := make(chan [2]int)
+func start(startGameChCl *StartGameChCl, pubList *pub.List, doneCh chan struct{},
+	save bool, saveDir string, errCh chan<- error, saveGames *SaveGames) {
+	finishTableCh := make(chan *FinishTableData)
 	startCh := startGameChCl.Channel
 	var done bool
 	games := make(map[int]*pub.GameData)
-	oldGames := make(map[string]*bat.Game) //TODO load it from file
+
 Loop:
 	for {
 		select {
 		case fin := <-finishTableCh:
-			delete(games, fin[0])
-			delete(games, fin[1])
+			delete(games, fin.ids[0])
+			delete(games, fin.ids[1])
+			if fin.game != nil {
+				saveGames.Games[gameId(fin.ids)] = fin.game
+			}
 			if done && len(games) == 0 {
 				break Loop
 			}
@@ -39,9 +78,9 @@ Loop:
 					close(start.PlayerChs[0])
 					close(start.PlayerChs[1])
 				} else {
-					game, old := oldGames[gameId(start.PlayerIds)]
+					game, old := saveGames.Games[gameId(start.PlayerIds)]
 					if old {
-						delete(oldGames, gameId(start.PlayerIds))
+						delete(saveGames.Games, gameId(start.PlayerIds))
 						if game.PlayerIds != start.PlayerIds {
 							start.PlayerIds = [2]int{start.PlayerIds[1], start.PlayerIds[0]}
 							start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1],
@@ -64,8 +103,11 @@ Loop:
 				done = true
 			}
 		}
+	} //loop
+	err := saveGames.save()
+	if err != nil {
+		errCh <- err
 	}
-	//TODO save oldGames to file
 	close(doneCh)
 }
 
@@ -113,4 +155,45 @@ func gameId(players [2]int) (id string) {
 		id = strconv.Itoa(players[1]) + strconv.Itoa(players[0])
 	}
 	return id
+}
+
+type FinishTableData struct {
+	ids  [2]int
+	game *bat.Game
+}
+type SaveGames struct {
+	Games map[string]*bat.Game
+}
+
+func NewSaveGames() (sg *SaveGames) {
+	sg = new(SaveGames)
+	sg.Games = make(map[string]*bat.Game)
+	return sg
+}
+func (games *SaveGames) save() (err error) {
+	file, err := os.Create(SAVE_GamesFile)
+	if err == nil {
+		defer file.Close()
+		encoder := gob.NewEncoder(file)
+		err = encoder.Encode(games)
+	}
+	return err
+}
+func loadSaveGames() (games *SaveGames, err error) {
+	file, err := os.Open(SAVE_GamesFile)
+	if err == nil {
+		defer file.Close()
+		decoder := gob.NewDecoder(file)
+		lg := *NewSaveGames()
+		err = decoder.Decode(&lg)
+		if err == nil {
+			games = &lg
+		}
+	} else {
+		if os.IsNotExist(err) {
+			err = nil
+			games = NewSaveGames() //first start
+		}
+	}
+	return games, err
 }

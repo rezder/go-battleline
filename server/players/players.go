@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"golang.org/x/net/websocket"
 	"io"
+	bat "rezder.com/game/card/battleline"
 	pub "rezder.com/game/card/battleline/server/publist"
 	"rezder.com/game/card/battleline/server/tables"
 	"strconv"
@@ -20,6 +21,7 @@ const (
 	ACT_WATCH      = 8
 	ACT_WATCHSTOP  = 9
 	ACT_LIST       = 10
+	ACT_SAVE       = 11
 
 	JT_Mess      = 1
 	JT_Invite    = 2
@@ -33,8 +35,33 @@ const (
 	WRTBUFF_LIM  = 8
 )
 
-// Start start the players server.
-func Start(joinCh <-chan *Player, pubList *pub.List, startGameChCl *tables.StartGameChCl,
+type Server struct {
+	JoinCh        chan *Player
+	pubList       *pub.List
+	startGameChCl *tables.StartGameChCl
+	finishedCh    chan struct{}
+}
+
+func New(pubList *pub.List, startGameChCl *tables.StartGameChCl) (s *Server) {
+	s = new(Server)
+	s.pubList = pubList
+	s.startGameChCl = startGameChCl
+	s.JoinCh = make(chan *Player)
+	s.finishedCh = make(chan struct{})
+	return s
+}
+func (s *Server) Start() {
+	go start(s.JoinCh, s.pubList, s.startGameChCl, s.finishedCh)
+}
+func (s *Server) Stop() {
+	fmt.Println("Closing players join channel")
+	close(s.JoinCh)
+	_ = <-s.finishedCh
+	fmt.Println("Receiving players finished")
+}
+
+// Start starts the players server.
+func start(joinCh <-chan *Player, pubList *pub.List, startGameChCl *tables.StartGameChCl,
 	finishedCh chan struct{}) {
 	leaveCh := make(chan int)
 	list := make(map[int]*pub.PlayerData)
@@ -57,6 +84,7 @@ Loop:
 				list[p.id] = &pub.PlayerData{p.id, p.name, inviteCh, p.doneComCh, messCh, p.bootCh}
 				publish(list, pubList)
 			} else {
+				done = true
 				if len(list) > 0 {
 					for _, player := range list {
 						close(player.BootCh)
@@ -98,7 +126,7 @@ type Player struct {
 }
 
 func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error,
-	joinCh chan<- *Player) (p *Player) {
+	joinedCh chan<- *Player) (p *Player) {
 	p = new(Player)
 	p.id = id
 	p.name = name
@@ -106,7 +134,7 @@ func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error,
 	p.doneComCh = make(chan struct{})
 	p.errCh = errCh
 	p.bootCh = make(chan struct{})
-	p.joinedCh = joinCh
+	p.joinedCh = joinedCh
 	return p
 }
 
@@ -126,8 +154,9 @@ func (p *Player) joinServer(inviteCh <-chan *pub.Invite, messCh <-chan *pub.MesD
 func (player *Player) Start() {
 	sendCh := make(chan interface{}, WRTBUFF_SIZE)
 	wrtBrookCh := make(chan struct{})
+	wrtDoneCh := make(chan struct{})
 	readList := player.pubList.Read()
-	go netWrite(player.ws, sendCh, player.errCh, wrtBrookCh)
+	go netWrite(player.ws, sendCh, player.errCh, wrtBrookCh, wrtDoneCh)
 
 	c := make(chan *Action, 1)
 	go netRead(player.ws, c, player.doneComCh, player.errCh)
@@ -152,11 +181,11 @@ Loop:
 		select {
 		case <-player.bootCh:
 			handleCloseDown(player.doneComCh, gameState, watchGames, player.id,
-				receivedInvites, sendInvites, sendCh)
+				receivedInvites, sendInvites, sendCh, wrtDoneCh, false)
 			break Loop
 		case <-wrtBrookCh:
 			handleCloseDown(player.doneComCh, gameState, watchGames, player.id,
-				receivedInvites, sendInvites, sendCh)
+				receivedInvites, sendInvites, sendCh, wrtDoneCh, false)
 			break Loop
 		case act, open := <-actChan:
 			if open {
@@ -177,11 +206,17 @@ Loop:
 				case ACT_MOVE:
 					fmt.Printf("handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
 					actMove(act, gameState, sendCh)
-				case ACT_QUIT:
-					if !gameState.hasGame() {
-						sendSysMess(sendCh, "Quitting game with no game active")
+				case ACT_SAVE:
+					if gameState.waitingForClient() || gameState.waitingForServer() {
+						gameState.closeChannel()
 					} else {
-						gameState.giveUp()
+						sendSysMess(sendCh, "Requesting game save with no game active!")
+					}
+				case ACT_QUIT:
+					if gameState.waitingForClient() {
+						gameState.respCh <- [2]int{0, pub.SM_Quit}
+					} else {
+						sendSysMess(sendCh, "Quitting game out of turn is not possible.")
 					}
 				case ACT_WATCH:
 					upd = actWatch(watchGames, act, watchGameCh, player.doneComCh, readList,
@@ -199,7 +234,7 @@ Loop:
 				}
 			} else {
 				handleCloseDown(player.doneComCh, gameState, watchGames, player.id,
-					receivedInvites, sendInvites, sendCh)
+					receivedInvites, sendInvites, sendCh, wrtDoneCh, true)
 				break Loop
 			}
 
@@ -245,27 +280,60 @@ Loop:
 type GameState struct {
 	respCh   chan<- [2]int
 	lastMove *pub.MoveView
-	givingUp bool //chanel closed
+	closed   bool //chanel closed
+	hasMoved bool
 }
 
-func (state *GameState) isSending() bool {
-	return state.respCh != nil && !state.givingUp
+func (state *GameState) waitingForServer() (res bool) {
+	if state.respCh != nil && state.lastMove.State != bat.TURN_FINISH &&
+		state.lastMove.State != bat.TURN_QUIT {
+		if state.lastMove.MyTurn {
+			if state.hasMoved || state.closed {
+				res = true
+			}
+		} else {
+			res = true
+		}
+	}
+	return res
 }
-func (state *GameState) isReceiving() bool {
-	return state.lastMove != nil
-}
-func (state *GameState) hasGame() bool {
-	return state.respCh != nil
+func (state *GameState) waitingForClient() (res bool) {
+	if state.respCh != nil && state.lastMove.State != bat.TURN_FINISH &&
+		state.lastMove.State != bat.TURN_QUIT {
+		if state.lastMove.MyTurn {
+			if !state.hasMoved || !state.closed {
+				res = true
+			}
+		}
+	}
+	return res
 }
 func (state *GameState) removeGame() {
 	state.respCh = nil
 	state.lastMove = nil
-	state.givingUp = false
+	state.closed = false
 }
-func (state *GameState) giveUp() {
-	if state.isSending() {
+func (state *GameState) addGame(respCh chan<- [2]int, move *pub.MoveView) {
+	state.respCh = respCh
+	state.lastMove = move
+}
+func (state *GameState) receiveMove(move *pub.MoveView) {
+	state.lastMove = move
+	state.hasMoved = false
+}
+func (state *GameState) sendMove(move [2]int) {
+	state.hasMoved = true
+	state.respCh <- move
+}
+
+func (state *GameState) hasGame() bool {
+	return state.respCh != nil
+}
+
+func (state *GameState) closeChannel() {
+	if state.waitingForClient() || state.waitingForServer() {
 		close(state.respCh)
-		state.givingUp = true
+		state.closed = true
 	}
 }
 
@@ -318,15 +386,14 @@ func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *p
 		gameState.removeGame()
 	} else {
 		if !gameState.hasGame() { //Init move
-			gameState.respCh = move.MoveCh
-			gameState.lastMove = move
+			gameState.addGame(move.MoveCh, move)
 			clearInvites(receivedInvites, sendInvites, playerId)
 			sendCh <- ClearInvites("All invites was clear as game starts.")
 			sendCh <- move
 			updReadList = pubList.Read()
 			sendCh <- updReadList
 		} else {
-			gameState.lastMove = move
+			gameState.receiveMove(move)
 			sendCh <- move
 		}
 	}
@@ -339,16 +406,18 @@ func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *p
 //# gameState
 func handleCloseDown(doneComCh chan struct{}, gameState *GameState,
 	watchGames map[int]*pub.WatchChCl, playerId int, receivedInvites map[int]*pub.Invite,
-	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}) {
+	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}, wrtDoneCh chan struct{}, playerCloseConn bool) {
 	close(doneComCh)
-	gameState.giveUp()
+	gameState.closeChannel()
 	if len(watchGames) > 0 {
 		for _, ch := range watchGames {
 			stopWatch(ch, playerId)
 		}
 	}
 	clearInvites(receivedInvites, sendInvites, playerId)
-	sendCh <- CloseCon("Server close the connection")
+
+	sendCh <- CloseCon{playerCloseConn, "Server close the connection"}
+	_ = <-wrtDoneCh
 }
 
 //actWatch handle client action watch a game.
@@ -457,11 +526,11 @@ func stopWatch(watchChCl *pub.WatchChCl, playerId int) {
 
 // actMove makes a game move if the move is valid.
 func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}) {
-	if gameState.isSending() {
+	if gameState.waitingForClient() {
 		valid := false
 		lastMove := gameState.lastMove
 		if lastMove.MovesPass {
-			if act.Move[0] == 0 && act.Move[1] == -1 {
+			if act.Move[1] == pub.SM_Pass {
 				valid = true
 			}
 		}
@@ -477,20 +546,15 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}) {
 		}
 		if valid {
 			fmt.Println("Sending move to table")
-			gameState.respCh <- act.Move
+			gameState.sendMove(act.Move)
 		} else {
 			txt := "Illegal Move"
 			sendSysMess(sendCh, txt) //TODO All action error should be loged also
 			//as it could be sign of hacking and it should not be possible to crash!!!
 		}
 	} else {
-		txt := "Making a move with out an active game."
-		if !gameState.givingUp {
-			sendSysMess(sendCh, txt)
-		} else {
-			txt = "To late to make a move you given up."
-			sendSysMess(sendCh, txt)
-		}
+		txt := "Is not your time to move.!"
+		sendSysMess(sendCh, txt)
 	}
 }
 
@@ -737,21 +801,35 @@ func clearInvites(receivedInvites map[int]*pub.Invite, sendInvites map[int]*pub.
 }
 
 // CloseCon close connection signal to netWrite.
-type CloseCon string
+type CloseCon struct {
+	player bool
+	Reason string
+}
 
 // Clear invites signal
 type ClearInvites string
 
 // netWrite keep reading until overflow/broken line or done message is send.
 // overflow/broken line disable the write to net but keeps draining the pipe.
-func netWrite(ws *websocket.Conn, dataCh <-chan interface{}, errCh chan<- error, brokenConn chan struct{}) {
+func netWrite(ws *websocket.Conn, dataCh <-chan interface{}, errCh chan<- error,
+	brokenConn chan struct{}, doneCh chan struct{}) {
 	broke := false
+	serverStop := false
+	playerStop := false
 	stop := false
+	var closeCon CloseCon
 Loop:
 	for {
 		data := <-dataCh
-		_, stop = data.(CloseCon)
-		if !broke {
+		closeCon, stop = data.(CloseCon)
+		if stop {
+			if closeCon.player {
+				playerStop = true
+			} else {
+				serverStop = true
+			}
+		}
+		if !broke && !playerStop {
 			err := websocket.JSON.Send(ws, netWrite_AddJsonType(data))
 			if err != nil {
 				errCh <- err
@@ -761,7 +839,7 @@ Loop:
 					broke = true
 				}
 			}
-			if broke {
+			if broke && !serverStop {
 				close(brokenConn)
 			}
 		}
@@ -769,6 +847,7 @@ Loop:
 			break Loop
 		}
 	}
+	close(doneCh)
 }
 func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
 	jdata = new(pub.JsonData)
@@ -805,12 +884,15 @@ Loop:
 	for {
 		var act Action
 		err := websocket.JSON.Receive(ws, &act)
-		fmt.Println(act)
+		fmt.Printf("Action received: %v, Error: %v\n", act, err)
 		if err == io.EOF {
-
 			break Loop
 		} else if err != nil {
-			errCh <- err
+			select {
+			case <-doneCh:
+			default:
+				errCh <- err
+			}
 			break Loop //maybe to harsh
 		} else {
 			select {
@@ -833,7 +915,7 @@ type Action struct {
 
 func NewAction() (a *Action) {
 	a = new(Action)
-	a.Move = [2]int{-1, -1}
+	a.Move = [2]int{0, pub.SM_None}
 	return a
 }
 

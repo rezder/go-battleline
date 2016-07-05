@@ -12,6 +12,9 @@ import (
 const (
 	FLAGS = 9
 	HAND  = 7
+
+	SM_Pass   = -1
+	SM_Giveup = -2
 )
 
 type Game struct {
@@ -58,15 +61,23 @@ func (game *Game) calcPos() {
 	deal(&game.Pos.Hands, &game.Pos.DeckTroop)
 	game.Pos.Turn.start(game.Starter, game.Pos.Hands[game.Starter], &game.Pos.Flags,
 		&game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
-	for _, move := range game.Moves {
-		if move[0] == -1 && move[0] == -1 {
+	moves := make([][2]int, len(game.Moves))
+	copy(moves, game.Moves)
+	game.Moves = make([][2]int, 0, len(moves))
+	for _, move := range moves {
+		switch {
+		case move[1] == SM_Giveup:
 			game.Quit(game.Pos.Player)
-		} else if move[0] == 0 && move[1] == -1 {
+		case move[1] == SM_Pass:
 			game.Pass()
-		} else if move[0] > 0 {
-			game.MoveHand(move[0], move[1])
-		} else {
-			game.Move(move[1])
+		case move[1] >= 0:
+			if move[0] > 0 {
+				game.MoveHand(move[0], move[1])
+			} else {
+				game.Move(move[1])
+			}
+		default:
+			panic("This should not happen. Move data is corrupt")
 		}
 	}
 }
@@ -87,12 +98,12 @@ func (game *Game) addMove(cardix int, moveix int) {
 func (game *Game) Quit(playerix int) {
 	game.Pos.quit()
 	game.Pos.Info = ""
-	game.addMove(-1, -1)
+	game.addMove(0, SM_Giveup)
 }
 func (game *Game) Pass() {
 	if game.Pos.MovePass {
 		game.Pos.Info = ""
-		game.addMove(0, -1)
+		game.addMove(0, SM_Pass)
 		game.Pos.next(false, &game.Pos.Hands, &game.Pos.Flags, &game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
 	} else {
 		panic("Calling pass when not possible")

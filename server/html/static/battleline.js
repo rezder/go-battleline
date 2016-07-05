@@ -695,9 +695,9 @@ var batt={};
                 }
             }else{
                 if (cardix===TC_Mud||cardix===TC_Fog){
-                    flagGroup=document.getElementById(id.typeToName(ID_FlagTac,flagX));
+                    flagGroup=document.getElementById(id.typeToName(ID_FlagTac,flagX,true));
                 }else{
-                    flagGroup=document.getElementById(id.typeToName(ID_FlagTroop,flagX));
+                    flagGroup=document.getElementById(id.typeToName(ID_FlagTroop,flagX,true));
                 }
             }
             hand.unSelect();
@@ -1076,7 +1076,7 @@ var batt={};
                     break;
                 case "MoveInitPos":
                     let pos=move.Pos;
-                    for (let i;i<pos.Flags.length;i++){
+                    for (let i=0;i<pos.Flags.length;i++){
                         let flag=pos.Flags[i];
                         if (flag.OppFlag){
                             svg.cone.pos(i+1,0);
@@ -1102,32 +1102,32 @@ var batt={};
                             svg.hand.moveToFlagPlayer(i+1);
                         }
                     }
-                    for (let i;i<pos.OppDishTroops.length;i++){
+                    for (let i=0;i<pos.OppDishTroops.length;i++){
                         let cardNo=pos.OppDishTroops[i];
                         svg.hand.drawOpp(true);
                         svg.hand.moveToDishOpp(cardNo);
                     }
-                    for (let i;i<pos.OppDishTacs.length;i++){
+                    for (let i=0;i<pos.OppDishTacs.length;i++){
                         let cardNo=pos.OppDishTacs[i];
                         svg.hand.drawOpp(false);
                         svg.hand.moveToDishOpp(cardNo);
                     }
-                    for (let i;i<pos.DishTroops.length;i++){
+                    for (let i=0;i<pos.DishTroops.length;i++){
                         let cardNo=pos.DishTroops[i];
                         svg.hand.drawPlayer(cardNo);
                         svg.hand.moveToDishPlayer();
                     }
-                    for (let i;i<pos.DishTacs.length;i++){
+                    for (let i=0;i<pos.DishTacs.length;i++){
                         let cardNo=pos.DishTacs[i];
                         svg.hand.drawPlayer(cardNo);
                         svg.hand.moveToDishPlayer();
                     }
-                    for (let i;i<pos.OppHand.length;i++){
+                    for (let i=0;i<pos.OppHand.length;i++){
                         svg.hand.drawOpp(pos.OppHand[i]);
                     }
-                    for (let i;i<pos.Hand.length;i++){
+                    for (let i=0;i<pos.Hand.length;i++){
                         let cardNo=pos.Hand[i];
-                        svg.hand.drawOpp(cardNo);
+                        svg.hand.drawPlayer(cardNo);
                         svg.hand.unSelect();
                     }
                     break;
@@ -1192,6 +1192,9 @@ var batt={};
                 case "MoveQuit":
                     msg.recieved({Message:"Congratulation your opponent have given up."});
                     break;
+                case "MoveSave":
+                    msg.recieved({Message:"Oppent have requested the game to be saved to be continued"});
+                    break;
                 default:
                     console.log("Unsupported move: "+move.JsonType);
 
@@ -1210,11 +1213,7 @@ var batt={};
             scoutReturnTacixs=[];
         };
         exp.clear=clear;
-        function move(moveView){
-            turn.isMyTurn=turn.update(moveView);
-            showMove(moveView);
-        };
-        exp.move=move;
+        
         function onClickedCard(clickedFlagElm,clickedCardElm,clickedDishElm){
             function moveToFlag(cardix,flagElm){
                 let flagIdObj=svg.id.fromName(flagElm.id);
@@ -1447,10 +1446,19 @@ var batt={};
                 }
             }
         };
+        let turnTextArea=document.getElementById("turn-text");
+        function move(moveView){
+            if (moveView.Move.JsonType!=="MoveSave"){
+                turn.isMyTurn=turn.update(moveView);
+            }else{
+                ends();
+                turnTextArea.textContent="Game was saved.";
+            }
+            showMove(moveView);
+        };
+        exp.move=move;
         let claimButton =document.getElementById("claim-button");
         let passButton=document.getElementById("pass-button");
-        let turnTextArea=document.getElementById("turn-text");
-
 
         claimButton.onclick=function(){
             if (turn.isMyTurn){
@@ -1486,14 +1494,22 @@ var batt={};
                 ws.actionBuilder(ws.ACT_MOVE).move(0,-1).send();
             }
         };
-        let giveupButton=document.getElementById("stop-giveup-button");
-        giveupButton.onclick=function(){
-            if (isPlaying&&!turn.gaveup){
-                ws.actionBuilder(ws.ACT_QUIT).send();
+        let stopButton=document.getElementById("stop-button");
+        stopButton.onclick=function(){
+            if (isPlaying&&!turn.stopped){
+                ws.actionBuilder(ws.ACT_SAVE).send();
                 if (turn.isMyTurn){
                     turn.isMyTurn=false;
                 }
-                turn.gaveup=true;
+                turn.stopped=true;
+                stopButton.disabled=true;
+            }
+        };
+        let giveupButton=document.getElementById("giveup-button");
+        giveupButton.onclick=function(){
+            if (turn.isMyTurn){
+                ws.actionBuilder(ws.ACT_QUIT).send();
+                turn.isMyTurn=false;
                 giveupButton.disabled=true;
             }
         };
@@ -1501,12 +1517,15 @@ var batt={};
             turn.current=null;
             turn.isMyTurn=false;
             giveupButton.disabled=true;
+            stopButton.disabled=true;
+            passButton.disabled=true;
+            claimButton.disabled=true;
             ws.actionBuilder(ws.ACT_LIST).send();
         };
         turn.update=function(moveView){
             if (!isPlaying()){
                 clear();
-                giveupButton.disabled=false;
+                stopButton.disabled=false;
             }else{
                 turn.oldState=moveView.State;
             }
@@ -1515,7 +1534,7 @@ var batt={};
             let turnText="";
             if (moveView.MyTurn){
                 turnText="Your Move: ";
-                if(!turn.gaveup){
+                if(!turn.stopped){
                     myturn=true;
                 }
             }else{
@@ -1554,9 +1573,11 @@ var batt={};
                         claimButton.disabled=false;
                     }
                 }
+                giveupButton.disabled=false;
             }else{
                 claimButton.disabled=true;
                 passButton.disabled=true;
+                giveupButton.disabled=true;
             }
             return myturn;
         };
@@ -1577,11 +1598,12 @@ var batt={};
         turn.clear=function(){
             turn.current=null;
             turn.isMyTurn=false;
-            turn.gaveup=false;
+            turn.stopped=false;
             turn.oldState=-1;
             claimButton.disabled=true;
             passButton.disabled=true;
             giveupButton.disabled=true;
+            stopButton.disabled=true;
             turnTextArea.textContent="";
         };
         svg.itemClicked=function(elems,centerClick){
@@ -1951,7 +1973,8 @@ var batt={};
     }
     function createWs(){
         let exp={};
-        let conn=new WebSocket("ws://game.rezder.com:8181/in/gamews");
+        let path="ws://"+location.host+"/in/gamews";
+        let conn=new WebSocket(path);
 
         exp.ACT_MESS       = 1;
 	      exp.ACT_INVITE     = 2;
@@ -1963,6 +1986,7 @@ var batt={};
 	      exp.ACT_WATCH      = 8;
 	      exp.ACT_WATCHSTOP  = 9;
 	      exp.ACT_LIST       = 10;
+        exp.ACT_SAVE       = 11;
 
         function actionBuilder(aType){
             let res={ActType:aType};
@@ -2047,6 +2071,7 @@ var batt={};
                     break;
                 case JT_CloseCon:
                     msg.recieved({Message:json.Data});
+                    conn.close();
                     break;
                 case JT_ClearList:
                     table.invites.clear();

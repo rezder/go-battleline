@@ -191,15 +191,23 @@ func gameMoveLoop(game *Game, posFunc func(*GamePos, int)) {
 	deal(&game.Pos.Hands, &game.Pos.DeckTroop)
 	game.Pos.Turn.start(game.Starter, game.Pos.Hands[game.Starter], &game.Pos.Flags,
 		&game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
-	for i, move := range game.Moves {
-		if move[0] == -1 && move[1] == -1 {
+	moves := make([][2]int, len(game.Moves))
+	copy(moves, game.Moves)
+	game.Moves = make([][2]int, 0, len(moves))
+	for i, move := range moves {
+		switch {
+		case move[1] == SM_Giveup:
 			game.Quit(game.Pos.Player)
-		} else if move[0] == 0 && move[0] == -1 {
+		case move[1] == SM_Pass:
 			game.Pass()
-		} else if move[0] > 0 {
-			game.MoveHand(move[0], move[1])
-		} else {
-			game.Move(move[1])
+		case move[1] >= 0:
+			if move[0] > 0 {
+				game.MoveHand(move[0], move[1])
+			} else {
+				game.Move(move[1])
+			}
+		default:
+			panic("This should not happen. Move data is corrupt")
 		}
 		posFunc(game.Pos, i)
 	}
@@ -217,20 +225,32 @@ func createPos(game *Game) (testPos *TestPos) {
 func createGameTest(fileMap map[string]bool, newGames []string, dirName string, t *testing.T) {
 	for _, fileName := range newGames {
 		file, err := os.Open(filepath.Join(dirName, fileName))
-		defer file.Close()
+		//file, err := os.OpenFile(filepath.Join(dirName, fileName), os.O_RDWR, 0666)
 		if err == nil {
 			game, err := Load(file)
+			file.Close()
 			if err == nil {
-				Save(game, file, false)
-				t.Logf("File: %v\nGame Pos:%v\nDeck:%v", fileName, game.Pos, game.InitDeckTroop)
-				testPos := createPos(game)
-				fileNamePos := ("pos" + fileName)
-				posFile, err := os.Create(filepath.Join(dirName, fileNamePos))
-				defer posFile.Close()
+				//dataConversion(game)
+				file, err = os.Create(filepath.Join(dirName, fileName))
 				if err == nil {
-					err = testPos.Save(posFile)
+					err = Save(game, file, false)
+					file.Close()
 					if err == nil {
-						fileMap[fileNamePos] = true
+						//	t.Logf("File: %v\nGame Pos:%v\nDeck:%v", fileName, game.Pos, game.InitDeckTroop)
+						testPos := createPos(game)
+						fileNamePos := ("pos" + fileName)
+						posFile, err := os.Create(filepath.Join(dirName, fileNamePos))
+						if err == nil {
+							err = testPos.Save(posFile)
+							posFile.Close()
+							if err == nil {
+								fileMap[fileNamePos] = true
+							} else {
+								t.Errorf("Error saving file: %v. Error: %v", fileName, err)
+							}
+						} else {
+							t.Errorf("Error creating file: %v. Error: %v", fileName, err)
+						}
 					} else {
 						t.Errorf("Error saving file: %v. Error: %v", fileName, err)
 					}
@@ -242,6 +262,22 @@ func createGameTest(fileMap map[string]bool, newGames []string, dirName string, 
 			}
 		} else {
 			t.Errorf("Error opening file: %v. Error: %v", fileName, err)
+		}
+	}
+}
+func dataConversion(game *Game) {
+	for i, move := range game.Moves {
+		if move[1] >= 0 {
+			if move[0] == -1 {
+				move[0] = 0
+				game.Moves[i] = move
+			}
+		} else {
+			if move[0] == -1 {
+				move[1] = -2
+				move[0] = 0
+				game.Moves[i] = move
+			}
 		}
 	}
 }

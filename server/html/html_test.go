@@ -2,6 +2,7 @@ package html
 
 import (
 	"bytes"
+	"encoding/gob"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"os"
@@ -35,4 +36,24 @@ func TestParseHtml(t *testing.T) {
 	} else {
 		t.Errorf("Error creating file", err.Error())
 	}
+}
+func TestGobClient(t *testing.T) {
+	c := createClient("Rene", 1, nil)
+	b := new(bytes.Buffer)
+	e := gob.NewEncoder(b)
+	// Encoding the map
+	err := e.Encode(c)
+	if err != nil {
+		t.Errorf("Error encoding: %v", err)
+	}
+
+	var loadC Client
+	d := gob.NewDecoder(b)
+
+	// Decoding the serialized data
+	err = d.Decode(&loadC)
+	if err != nil {
+		t.Errorf("Error decoding: %v", err)
+	}
+
 }

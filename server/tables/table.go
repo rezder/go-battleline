@@ -16,7 +16,7 @@ import (
 //Start a table with a game.
 //If resumeGame is nil a new game is started.
 func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchChCl, resumeGame *bat.Game,
-	finishCh chan<- [2]int, save bool, savedir string, errCh chan<- error) {
+	finishCh chan *FinishTableData, save bool, savedir string, errCh chan<- error) {
 
 	var moveChs [2]chan [2]int
 	moveChs[0] = make(chan [2]int)
@@ -42,10 +42,12 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	var redeploy bat.MoveRedeploy
 	var isRedeploy bool
 	var redeployDishixs []int
+	var isSaveMove = false
 	for {
 		isScout = false
 		isClaim = false
 		isRedeploy = false
+		isSaveMove = false
 		deltCardix = 0
 		claimFailMap = nil
 		mover = game.Pos.Player
@@ -53,12 +55,15 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		moveix, open = <-moveChs[mover]
 		fmt.Printf("Recived move ix:%v from mover ix: %v id:%v\n", moveix, mover, ids[mover])
 		if !open {
+			isSaveMove = true
+			move = *NewMoveSave()
+		} else if moveix[1] == pub.SM_Quit {
 			game.Quit(game.Pos.Player)
 			move = *NewMoveQuit()
-		} else if moveix[0] == 0 && moveix[1] == -1 {
+		} else if moveix[1] == pub.SM_Pass {
 			game.Pass()
 			move = *NewMovePass()
-		} else if moveix[0] != 0 {
+		} else if moveix[0] > 0 {
 			move = game.Pos.MovesHand[moveix[0]][moveix[1]]
 			deltCardix, redeployDishixs = game.MoveHand(moveix[0], moveix[1])
 			redeploy, isRedeploy = move.(bat.MoveRedeploy)
@@ -87,7 +92,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[1], move2)
 		playerChs[1] <- move2
 		benchCh <- moveBench
-		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT {
+		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT || isSaveMove {
 			if save {
 				hour, min, _ := time.Now().Clock()
 				fileName := fmt.Sprintf("game%vvs%v%v%v.gob", ids[0], ids[1], hour, min)
@@ -113,7 +118,12 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	close(playerChs[0])
 	close(playerChs[1])
 	close(benchCh)
-	finishCh <- ids // may be buffered tables will close bench before closing tables
+	finData := new(FinishTableData)
+	finData.ids = ids
+	if isSaveMove {
+		finData.game = game
+	}
+	finishCh <- finData // may be buffered tables will close bench before closing tables
 }
 
 //updateClaim update the MoveClaimView with the succesfully claim flags and the win
@@ -593,6 +603,30 @@ func (m MoveQuit) MoveEqual(other bat.Move) (equal bool) {
 	return equal
 }
 func (m MoveQuit) Copy() (c bat.Move) {
+	c = m
+	return c
+}
+
+//MoveSave the save move.
+type MoveSave struct {
+	JsonType string
+}
+
+func NewMoveSave() *MoveSave {
+	res := new(MoveSave)
+	res.JsonType = "MoveSave"
+	return res
+}
+func (m MoveSave) MoveEqual(other bat.Move) (equal bool) {
+	if other != nil {
+		_, ok := other.(MoveSave)
+		if ok {
+			equal = true
+		}
+	}
+	return equal
+}
+func (m MoveSave) Copy() (c bat.Move) {
 	c = m
 	return c
 }

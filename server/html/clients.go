@@ -1,11 +1,13 @@
 package html
 
 import (
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"math/rand"
+	"os"
 	"rezder.com/game/card/battleline/server/games"
 	"rezder.com/game/card/battleline/server/players"
 	"strconv"
@@ -15,7 +17,8 @@ import (
 
 const (
 	//COST the password time cost, because of future improvement in hardware.
-	COST = 5
+	COST             = 5
+	CLIENTS_FileName = "data/clients.gob"
 )
 
 var (
@@ -31,49 +34,83 @@ type Client struct {
 	Name    string
 	Id      int
 	Pw      []byte
-	disable bool
+	Disable bool
+	mu      *sync.Mutex
+	//Filled when logIn
 	sid     string
 	sidTime time.Time
-	*sync.Mutex
+	//Filled when establish websocket. Just because they login does
+	// not garantie they etstablish a web socket
 	ws *websocket.Conn
 }
 
-func NewClient(name string, id int, pw []byte) (c *Client) {
+func createClient(name string, id int, pw []byte) (c *Client) {
 	c = new(Client)
 	c.Name = name
 	c.Id = id
 	c.Pw = pw
 	c.sid = sessionId()
 	c.sidTime = time.Now()
-	c.Mutex = new(sync.Mutex)
+	c.mu = new(sync.Mutex)
 	return c
 }
 
 //Clients the clients list.
 type Clients struct {
-	*sync.RWMutex
-	Clients map[string]*Client
-	NextId  int
-	Games   *games.Server
+	mu         *sync.RWMutex
+	Clients    map[string]*Client
+	NextId     int
+	gameServer *games.Server
 }
 
 func NewClients(games *games.Server) (c *Clients) {
 	c = new(Clients)
-	c.Games = games
-	c.RWMutex = new(sync.RWMutex)
+	c.gameServer = games
+	c.mu = new(sync.RWMutex)
 	c.Clients = make(map[string]*Client)
 	c.NextId = 1
 	return c
 }
+func loadClients(games *games.Server) (clients *Clients, err error) {
+	file, err := os.Open(CLIENTS_FileName)
+	if err == nil {
+		defer file.Close()
+		decoder := gob.NewDecoder(file)
+		lc := *NewClients(games)
+		err = decoder.Decode(&lc)
+		if err == nil {
+			clients = &lc
+			for _, client := range clients.Clients {
+				client.mu = new(sync.Mutex)
+			}
+		}
+	} else {
+		if os.IsNotExist(err) {
+			err = nil
+			clients = NewClients(games) //first start
+		}
+	}
+	return clients, err
+
+}
+func (clients *Clients) save() (err error) {
+	file, err := os.Create(CLIENTS_FileName)
+	if err == nil {
+		defer file.Close()
+		encoder := gob.NewEncoder(file)
+		err = encoder.Encode(clients)
+	}
+	return err
+}
 
 //logOut logout the client. Two locks are use the map and client.
 func (c *Clients) logOut(name string) {
-	c.RLock()
+	c.mu.RLock()
 	client := c.Clients[name]
-	c.RUnlock()
-	client.Lock()
+	c.mu.RUnlock()
+	client.mu.Lock()
 	clearLogIn(client)
-	client.Unlock()
+	client.mu.Unlock()
 }
 
 //clearLogIn clear the login information. No locks used.
@@ -87,10 +124,10 @@ func clearLogIn(client *Client) {
 //if set to nil all http server will return game server down.
 //lock is used.
 func (c *Clients) SetGameServer(games *games.Server) (oldGames *games.Server) {
-	oldGames = c.Games
-	c.Lock()
-	c.Games = games
-	c.Unlock()
+	oldGames = c.gameServer
+	c.mu.Lock()
+	c.gameServer = games
+	c.mu.Unlock()
 	return oldGames
 }
 
@@ -100,41 +137,41 @@ func (c *Clients) SetGameServer(games *games.Server) (oldGames *games.Server) {
 //joined: True: if the client is already loged-in.
 func (c *Clients) joinGameServer(name string, sid string, ws *websocket.Conn,
 	errCh chan<- error, joinCh chan<- *players.Player) (ok, down, joined bool) {
-	c.RLock()
-	if c.Games != nil {
+	c.mu.RLock()
+	if c.gameServer != nil {
 		client, found := c.Clients[name]
 		if found {
-			client.Lock()
-			if client.sid != sid {
-				client.Unlock()
+			client.mu.Lock()
+			if client.sid != sid { //I do not think this is necessary because of the handshake
+				client.mu.Unlock()
 			} else {
 				if client.ws == nil {
 					client.ws = ws
 					player := players.NewPlayer(client.Id, name, ws, errCh, joinCh)
-					client.Unlock()
-					c.Games.PlayerCh() <- player
+					client.mu.Unlock()
+					c.gameServer.PlayersJoinCh() <- player
 					ok = true
 				} else {
 					joined = true
-					client.Unlock()
+					client.mu.Unlock()
 				}
 			}
 		}
 	} else {
 		down = true
 	}
-	c.RUnlock()
+	c.mu.RUnlock()
 	return ok, down, joined
 }
 
 // verifySid verify name and session id.
 func (c *Clients) verifySid(name, sid string) (ok, down bool) {
 	ok = true
-	c.RLock()
-	down = c.Games == nil
+	c.mu.RLock()
+	down = c.gameServer == nil
 	client, found := c.Clients[name]
 	if found {
-		client.Lock()
+		client.mu.Lock()
 		if !down {
 			if client.sid != sid || client.ws != nil {
 				ok = false
@@ -143,21 +180,21 @@ func (c *Clients) verifySid(name, sid string) (ok, down bool) {
 			ok = false
 			clearLogIn(client) //Logout with out lock
 		}
-		client.Unlock()
+		client.mu.Unlock()
 	}
 
-	c.RUnlock()
+	c.mu.RUnlock()
 	return ok, down
 }
 
 //logIn log-in a client.
 func (c *Clients) logIn(name string, pw string) (sid string, err error) {
-	c.RLock()
-	if c.Games != nil {
+	c.mu.RLock()
+	if c.gameServer != nil {
 		client, found := c.Clients[name]
 		if found {
-			client.Lock()
-			if !client.disable {
+			client.mu.Lock()
+			if !client.Disable {
 				if client.sid == "" {
 					err = bcrypt.CompareHashAndPassword(client.Pw, []byte(pw))
 					if err == nil {
@@ -173,26 +210,26 @@ func (c *Clients) logIn(name string, pw string) (sid string, err error) {
 			} else {
 				err = errors.New("Account disabled.")
 			}
-			client.Unlock()
+			client.mu.Unlock()
 		} else {
 			err = errors.New("Name password combination do not exist")
 		}
 	} else {
 		err = NewErrDown("Game server down")
 	}
-	c.RUnlock()
+	c.mu.RUnlock()
 	return sid, err
 }
 
 //disable disable a client.
 func (c *Clients) disable(name string) {
-	c.RLock()
+	c.mu.RLock()
 	client, found := c.Clients[name]
-	c.RUnlock()
+	c.mu.RUnlock()
 	if found {
-		client.Lock()
-		client.disable = true
-		client.Unlock()
+		client.mu.Lock()
+		client.Disable = true
+		client.mu.Unlock()
 	}
 
 }
@@ -202,13 +239,14 @@ func (c *Clients) disable(name string) {
 func (c *Clients) addNew(name string, pwTxt string) (sid string, err error) {
 	err = checkNamePwSize(name, pwTxt)
 	if err == nil {
-		c.Lock()
-		if c.Games != nil {
+		c.mu.Lock()
+		if c.gameServer != nil {
 			client, found := c.Clients[name]
 			if !found {
-				pwh, err := bcrypt.GenerateFromPassword([]byte(pwTxt), COST)
+				var pwh []byte
+				pwh, err = bcrypt.GenerateFromPassword([]byte(pwTxt), COST)
 				if err == nil {
-					client = NewClient(name, c.NextId, pwh)
+					client = createClient(name, c.NextId, pwh)
 					c.NextId = c.NextId + 1
 					c.Clients[client.Name] = client
 					sid = client.sid
@@ -219,7 +257,7 @@ func (c *Clients) addNew(name string, pwTxt string) (sid string, err error) {
 		} else {
 			err = NewErrDown("Game server down")
 		}
-		c.Unlock()
+		c.mu.Unlock()
 	}
 	return sid, err
 }

@@ -13,6 +13,13 @@ import (
 	"sync"
 )
 
+const (
+	//Special move
+	SM_Pass = -1
+	SM_Quit = -2
+	SM_None = -3 // maybe used to track fails in json or other file serialization
+)
+
 //List is the structure that maintain the public data.
 type List struct {
 	lock    *sync.RWMutex

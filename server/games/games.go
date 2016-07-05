@@ -7,36 +7,28 @@ import (
 )
 
 type Server struct {
-	list       *pub.List
-	tableChCl  *tables.StartGameChCl
-	finTables  chan struct{}
-	playerCh   chan *players.Player
-	finPlayers chan struct{}
-	errCh      chan<- error
-	save       bool
-	saveDir    string
+	tables  *tables.Server
+	players *players.Server
 }
 
-func New(errCh chan<- error) (g *Server) {
+func New(errCh chan<- error, save bool, saveDir string) (g *Server, err error) {
 	g = new(Server)
-	g.list = pub.New()
-	g.tableChCl = tables.NewStartGameChCl()
-	g.finTables = make(chan struct{})
-	g.playerCh = make(chan *players.Player)
-	g.finPlayers = make(chan struct{})
-	g.errCh = errCh
-	return g
+	list := pub.New()
+	tables, err := tables.New(list, errCh, save, saveDir)
+	if err == nil {
+		g.tables = tables
+		g.players = players.New(list, g.tables.StartGameChCl)
+	}
+	return g, err
 }
-func (g *Server) Start(save bool, saveDir string) {
-	go tables.Start(g.tableChCl, g.list, g.finTables, save, saveDir, g.errCh)
-	go players.Start(g.playerCh, g.list, g.tableChCl, g.finPlayers)
+func (g *Server) Start() {
+	g.tables.Start()
+	g.players.Start()
 }
 func (g *Server) Stop() {
-	close(g.playerCh)
-	_ = g.finPlayers
-	close(g.tableChCl.Close)
-	_ = <-g.finTables
+	g.players.Stop()
+	g.tables.Stop()
 }
-func (g *Server) PlayerCh() chan<- *players.Player {
-	return g.playerCh
+func (g *Server) PlayersJoinCh() chan<- *players.Player {
+	return g.players.JoinCh
 }

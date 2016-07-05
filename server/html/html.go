@@ -10,27 +10,84 @@ import (
 	"golang.org/x/net/websocket"
 	"net"
 	"net/http"
+	"rezder.com/game/card/battleline/server/games"
 	"rezder.com/game/card/battleline/server/players"
 	"time"
 )
 
+type Server struct {
+	errCh       chan<- error
+	netListener *net.TCPListener
+	clients     *Clients
+	doneCh      chan struct{}
+	port        string
+}
+
+func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server, err error) {
+	s = new(Server)
+	s.port = port
+	s.errCh = errCh
+	dport := ":80"
+	if len(port) != 0 {
+		dport = port
+	}
+	laddr, err := net.ResolveTCPAddr("tcp", dport) //TODO this look strange
+	if err == nil {
+		var netListener *net.TCPListener
+		netListener, err = net.ListenTCP("tcp", laddr)
+		//netListener, err = net.ListenTCP("tcp", ":8181")
+		if err == nil {
+			s.netListener = netListener
+			var gameServer *games.Server
+			gameServer, err = games.New(errCh, save, saveDir)
+			if err == nil {
+				var clients *Clients
+				clients, err = loadClients(gameServer)
+				if err == nil {
+					s.clients = clients
+					s.doneCh = make(chan struct{})
+				}
+			}
+		}
+	}
+	return s, err
+}
+func (s *Server) Start() {
+	s.clients.gameServer.Start()
+	go start(s.errCh, s.netListener, s.clients, s.doneCh, s.port)
+}
+func (s *Server) Stop() {
+	gameServer := s.clients.SetGameServer(nil) //Prevent new players
+	if gameServer != nil {
+		gameServer.Stop() //kick players out
+	}
+	fmt.Println("Close net listner")
+	s.netListener.Close()
+	_ = <-s.doneCh
+	fmt.Println("Recieve done from http server")
+	err := s.clients.save() //TODO maybe not save the locks on clients and client as they may be locked
+	if err != nil {
+		s.errCh <- err
+	}
+}
+
 // Start the server.
-func Start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
-	finCh chan struct{}) {
+func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
+	doneCh chan struct{}, port string) {
 	pages := NewPages("html/pages")
 	pages.load()
 	http.Handle("/", &logInHandler{clients, pages})
 	http.Handle("/client", &clientHandler{clients, pages})
 	http.Handle("/in/game", &gameHandler{clients, pages, errCh})
-	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh})
-	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh})
+	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh, port})
+	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh, port})
 	http.Handle("/in/gamews", *createWsHandler(clients, errCh))
 	http.Handle("/static/", http.FileServer(http.Dir("./html")))
 
-	server := &http.Server{Addr: "game.rezder.com:8181"} //address is not used
+	server := &http.Server{Addr: "game.rezder.com" + port} //address is not used
 	err := server.Serve(tcpKeepAliveListener{netListener})
 	errCh <- err
-	close(finCh)
+	close(doneCh)
 }
 
 //createWsHandler create the websocket handler.
@@ -78,8 +135,8 @@ func getSidCookies(r *http.Request) (name string, sid string, err error) {
 	nameC, err := r.Cookie("name")
 	if err == nil {
 		name = nameC.Value
-		sidC, err := r.Cookie("sid")
-		if err == nil {
+		sidC, errC := r.Cookie("sid")
+		if errC == nil {
 			sid = sidC.Value
 		} else {
 			err = errors.New(fmt.Sprintf("Missing cookie! Ip: %v", r.RemoteAddr))
@@ -97,9 +154,9 @@ type logInHandler struct {
 }
 
 func (l *logInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l.clients.RLock()
-	down := l.clients.Games == nil // not atomic
-	l.clients.RUnlock()
+	l.clients.mu.RLock()
+	down := l.clients.gameServer == nil // not atomic
+	l.clients.mu.RUnlock()
 	if !down {
 		w.Write(l.pages.readPage("login.html"))
 	} else {
@@ -112,6 +169,7 @@ type logInPostHandler struct {
 	clients *Clients
 	pages   *Pages
 	errCh   chan<- error
+	port    string
 }
 
 func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +187,7 @@ func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		setSidCookies(w, name, sid)
-		http.Redirect(w, r, "http://game.rezder.com:8181/in/game", 303)
+		http.Redirect(w, r, "http://game.rezder.com"+g.port+"/in/game", 303)
 	}
 }
 
@@ -159,9 +217,9 @@ func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		ok, down := g.clients.verifySid(name, sid)
 		if ok {
-			w.Write(g.pages.readPage("game.html"))
+			w.Write(g.pages.readPage("game.html")) //TODO use serve file maybe
 		} else if down {
-			w.Write(g.pages.readPage("down.html"))
+			w.Write(g.pages.readPage("down.html")) //TODO use serve file maybe
 		} else {
 			w.WriteHeader(http.StatusBadRequest) // TODO this status did not give the expected result
 			g.errCh <- errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
@@ -179,9 +237,9 @@ type clientHandler struct {
 }
 
 func (c *clientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c.clients.RLock()
-	down := c.clients.Games == nil // not atomic
-	c.clients.RUnlock()
+	c.clients.mu.RLock()
+	down := c.clients.gameServer == nil // not atomic
+	c.clients.mu.RUnlock()
 	if !down {
 		w.Write(c.pages.readPage("client.html"))
 	} else {
@@ -194,6 +252,7 @@ type clientPostHandler struct {
 	clients *Clients
 	pages   *Pages
 	errCh   chan<- error
+	port    string
 }
 
 func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -215,7 +274,7 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		}
 	} else {
 		setSidCookies(w, name, sid)
-		http.Redirect(w, r, "http://game.rezder.com:8181/in/game", 303)
+		http.Redirect(w, r, "http://game.rezder.com"+handler.port+"/in/game", 303)
 	}
 }
 
