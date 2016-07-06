@@ -147,7 +147,7 @@ type Invite struct {
 	InvitorId   int
 	InvitorName string
 	ReceiverId  int
-	Rejected    bool                   //TODO maybe add reason
+	Rejected    bool                   //TODO MAYBE add reason
 	Response    chan<- *InviteResponse `json:"-"` //Common for all invitaion
 	Retract     chan struct{}          `json:"-"` //Per invite
 	DoneComCh   chan struct{}          `json:"-"`

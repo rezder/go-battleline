@@ -1425,7 +1425,7 @@ var batt={};
             }
         };
         function onClickedCone(coneElm,idObj){
-            //TODO maybe add unSelect and move to clone
+            //TODO MAYBE add unSelect and move to clone
             if (turn.isMyTurn&&turn.getState()===TURN_FLAG){
                 if (cone.validixs.size===0){
                     let moves=turn.getMoves();
@@ -1489,7 +1489,7 @@ var batt={};
             }
         };
         passButton.onclick=function(){
-            if(turn.current.MovePass){
+            if(turn.current.MovesPass){
                 turn.isMyTurn=false;
                 ws.actionBuilder(ws.ACT_MOVE).move(0,-1).send();
             }
@@ -1564,7 +1564,7 @@ var batt={};
             }
             turnTextArea.textContent= turnText;
             if  (myturn){
-                if (moveView.MovePass){
+                if (moveView.MovesPass){
                     passButton.disabled=false;
                 }else{
                     if (moveView.State!==TURN_FLAG){
@@ -2035,15 +2035,19 @@ var batt={};
                 console.log(event.reason);
                 console.log(event.wasClean);
                 if(!event.wasClean){
-                    let txt="Lost connection to server.\n"+event.reason;
-                    msg.recieved({Message:txt});
+                    console.log("Unclean close of connection.");
                 }
                 game.clear();
+                exp.unconnected=true;
             };
             conn.onerror=function(event){
                 console.log(event.code);
                 console.log(event.reason);
                 console.log(event.wasClean);
+                game.clear();
+                exp.unconnected=true;
+                let txt="No connection to server. you must login again.\n";
+                msg.recieved({Message:txt});
             };
             conn.onmessage=function(event){
                 const JT_Mess   = 1;
@@ -2053,7 +2057,7 @@ var batt={};
 	              const JT_List   = 5;
                 const JT_CloseCon=6;
                 const JT_ClearList=7;
-                //TODO clean up consolelog
+                //TODO CLEAN up consolelog
                 let json=JSON.parse(event.data);
                 console.log(json);
                 switch (json.JsonType){
@@ -2091,8 +2095,16 @@ var batt={};
         let game=createGame(document,ws,svg,msg);
         let table=createTable(document,msg,ws,game,cookies);
         ws.addListener(table,msg,game);
-
-        //TODO delete test begin
+        window.onbeforeunload = function(e) {
+            if (!ws.unconnected){
+                let dialogText="";
+                dialogText = "You will be log out";
+                e.returnValue = dialogText;
+                return dialogText;
+            }
+            return undefined;
+        };
+        //TODO CLEAN delete test begin
         svg.hand.drawOpp(true);
         svg.hand.drawOpp(false);
         svg.hand.drawOpp(true);

@@ -31,7 +31,7 @@ func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server,
 	if len(port) != 0 {
 		dport = port
 	}
-	laddr, err := net.ResolveTCPAddr("tcp", dport) //TODO this look strange
+	laddr, err := net.ResolveTCPAddr("tcp", dport) //TODO CHECK this look strange
 	if err == nil {
 		var netListener *net.TCPListener
 		netListener, err = net.ListenTCP("tcp", laddr)
@@ -65,7 +65,7 @@ func (s *Server) Stop() {
 	s.netListener.Close()
 	_ = <-s.doneCh
 	fmt.Println("Recieve done from http server")
-	err := s.clients.save() //TODO maybe not save the locks on clients and client as they may be locked
+	err := s.clients.save()
 	if err != nil {
 		s.errCh <- err
 	}
@@ -78,7 +78,7 @@ func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
 	pages.load()
 	http.Handle("/", &logInHandler{clients, pages})
 	http.Handle("/client", &clientHandler{clients, pages})
-	http.Handle("/in/game", &gameHandler{clients, pages, errCh})
+	http.Handle("/in/game", &gameHandler{clients, pages, errCh, port})
 	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh, port})
 	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh, port})
 	http.Handle("/in/gamews", *createWsHandler(clients, errCh))
@@ -210,6 +210,7 @@ type gameHandler struct {
 	clients *Clients
 	pages   *Pages
 	errCh   chan<- error
+	port    string
 }
 
 func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -217,15 +218,15 @@ func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		ok, down := g.clients.verifySid(name, sid)
 		if ok {
-			w.Write(g.pages.readPage("game.html")) //TODO use serve file maybe
+			w.Write(g.pages.readPage("game.html")) //TODO MAYBE use serve file.
 		} else if down {
-			w.Write(g.pages.readPage("down.html")) //TODO use serve file maybe
+			w.Write(g.pages.readPage("down.html")) //TODO MAYBE use serve file.
 		} else {
-			w.WriteHeader(http.StatusBadRequest) // TODO this status did not give the expected result
+			http.Redirect(w, r, "http://game.rezder.com"+g.port+"/", 303)
 			g.errCh <- errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
 		}
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Redirect(w, r, "http://game.rezder.com"+g.port+"/", 303)
 		g.errCh <- err
 	}
 }

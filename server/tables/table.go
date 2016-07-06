@@ -141,7 +141,7 @@ func updateClaim(pos *bat.GamePos, claimFailMap map[string][]int, claimView *Mov
 	if pos.State == bat.TURN_FINISH {
 		claimView.Win = true
 	}
-	move = *claimView //TODO this works with ref and without we need to find out why and when we
+	move = *claimView //TODO LEARN this works with ref and without we need to find out why and when we
 	// should use ref currently interface moves value is not ref but could be??
 	return move
 }
