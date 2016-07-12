@@ -1086,7 +1086,11 @@ var batt={};
                             svg.cone.pos(i+1,2);
                         }
                         for (let j=0;j<flag.OppTroops.length;j++){
-                            svg.hand.drawOpp(true);
+                            let troop=true;
+                            if (svg.card.isTac(flag.OppTroops[j])){
+                                troop=false;
+                            }
+                            svg.hand.drawOpp(troop);
                             svg.hand.moveToFlagOpp(flag.OppTroops[j],i+1);
                         }
                         for (let j=0;j<flag.OppEnvs.length;j++){
@@ -1425,7 +1429,7 @@ var batt={};
             }
         };
         function onClickedCone(coneElm,idObj){
-            //TODO MAYBE add unSelect and move to clone
+            //TODO MAYBE add unSelect move to cone
             if (turn.isMyTurn&&turn.getState()===TURN_FLAG){
                 if (cone.validixs.size===0){
                     let moves=turn.getMoves();
@@ -1946,7 +1950,7 @@ var batt={};
                                 let btn = document.createElement("BUTTON");
                                 let newTxtNode=document.createTextNode("W");
                                 btn.appendChild(newTxtNode);
-                                cell.appendChild(btn);
+                                cell.appendChild(btn);//TODO implement watch
                             }else if(pTableHeaders[i].id==="pt-msg-butt"){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");

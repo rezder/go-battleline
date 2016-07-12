@@ -10,35 +10,38 @@ import (
 type Pages struct {
 	*sync.RWMutex
 	list map[string][]byte
-	dir  string
 }
 
-func NewPages(dir string) (pages *Pages) {
+func NewPages() (pages *Pages) {
 	pages = new(Pages)
-	pages.dir = dir + "/"
 	pages.RWMutex = new(sync.RWMutex)
+	pages.list = make(map[string][]byte)
 	return pages
 }
 func (pages *Pages) addFile(file string) {
 	pages.list[file] = nil
 }
-func (pages *Pages) load() {
-	pages.list = make(map[string][]byte)
-	files, err := ioutil.ReadDir(pages.dir)
+func (pages *Pages) addDir(dir string) {
+	dirInfo, err := ioutil.ReadDir(dir)
 	if err != nil {
 		panic(err.Error())
 	}
-	for _, fInfo := range files {
+	for _, fInfo := range dirInfo {
 		if filepath.Ext(fInfo.Name()) == ".html" {
-			b, err := ioutil.ReadFile(pages.dir + fInfo.Name())
-			if err == nil {
-				pages.list[fInfo.Name()] = b
-			} else {
-				panic(err.Error())
-			}
+			filepath.Join(dir, fInfo.Name())
+			pages.list[filepath.Join(dir, fInfo.Name())] = nil
 		}
 	}
-
+}
+func (pages *Pages) load() {
+	for name, _ := range pages.list {
+		b, err := ioutil.ReadFile(name)
+		if err == nil {
+			pages.list[name] = b
+		} else {
+			panic(err.Error())
+		}
+	}
 }
 func (pages *Pages) loadLock() {
 	pages.Lock()

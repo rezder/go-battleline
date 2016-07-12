@@ -205,18 +205,21 @@ Loop:
 					actRetractInvite(sendInvites, act)
 				case ACT_MOVE:
 					fmt.Printf("handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
-					actMove(act, gameState, sendCh)
+					actMove(act, gameState, sendCh, player.errCh, player.id)
 				case ACT_SAVE:
 					if gameState.waitingForClient() || gameState.waitingForServer() {
 						gameState.closeChannel()
 					} else {
-						sendSysMess(sendCh, "Requesting game save with no game active!")
+						errTxt := "Requesting game save with no game active!"
+						sendSysMess(sendCh, errTxt)
+						player.errCh <- NewPlayerErr(errTxt, player.id)
 					}
 				case ACT_QUIT:
 					if gameState.waitingForClient() {
 						gameState.respCh <- [2]int{0, pub.SM_Quit}
 					} else {
 						sendSysMess(sendCh, "Quitting game out of turn is not possible.")
+						player.errCh <- NewPlayerErr("Quitting game out of turn.", player.id)
 					}
 				case ACT_WATCH:
 					upd = actWatch(watchGames, act, watchGameCh, player.doneComCh, readList,
@@ -226,7 +229,8 @@ Loop:
 				case ACT_LIST:
 					upd = true
 				default:
-					sendSysMess(sendCh, "No existen action")
+					player.errCh <- NewPlayerErr("Action do not exist.", player.id)
+
 				}
 				if upd {
 					readList = player.pubList.Read()
@@ -495,7 +499,7 @@ func watchGameListen(watchChCl *pub.WatchChCl, benchCh <-chan *pub.MoveBench,
 		}
 	} else {
 		txt := fmt.Sprintf("Failed to start watching game with player id %v\n.There could be two reason for this one your already started watching or the game is finished.", watchId)
-		sendSysMessGo(sendCh, doneCh, txt) //TODO request a update list here
+		sendSysMessGo(sendCh, doneCh, txt)
 	}
 
 }
@@ -525,7 +529,7 @@ func stopWatch(watchChCl *pub.WatchChCl, playerId int) {
 }
 
 // actMove makes a game move if the move is valid.
-func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}) {
+func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}, errCh chan<- error, id int) {
 	if gameState.waitingForClient() {
 		valid := false
 		lastMove := gameState.lastMove
@@ -549,12 +553,13 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}) {
 			gameState.sendMove(act.Move)
 		} else {
 			txt := "Illegal Move"
-			sendSysMess(sendCh, txt) //TODO All action error should be loged also
-			//as it could be sign of hacking and it should not be possible to crash!!!
+			sendSysMess(sendCh, txt)
+			errCh <- NewPlayerErr("Illegal move.", id)
 		}
 	} else {
 		txt := "Is not your time to move.!"
 		sendSysMess(sendCh, txt)
+		errCh <- NewPlayerErr("Move out of turn", id)
 	}
 }
 
@@ -925,4 +930,15 @@ type startWatchGameData struct {
 	chCl     *pub.WatchChCl
 	initMove *pub.MoveBench
 	player   int
+}
+type PlayerErr struct {
+	PlayerId int
+	Txt      string
+}
+
+func NewPlayerErr(txt string, id int) (err error) {
+	return &PlayerErr{id, txt}
+}
+func (err *PlayerErr) Error() string {
+	return fmt.Sprintf(err.Txt+" Error reported on player id: %v", err.PlayerId)
 }

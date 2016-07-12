@@ -74,13 +74,18 @@ func (s *Server) Stop() {
 // Start the server.
 func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
 	doneCh chan struct{}, port string) {
-	pages := NewPages("html/pages")
+	pages := NewPages()
+	fileDown := "html/pages/down.html"
+	fileLogIn := "html/pages/login.html"
+	fileCreateClient := "html/pages/client.html"
+	pages.addFile(fileLogIn)
+	pages.addFile(fileCreateClient)
 	pages.load()
-	http.Handle("/", &logInHandler{clients, pages})
-	http.Handle("/client", &clientHandler{clients, pages})
-	http.Handle("/in/game", &gameHandler{clients, pages, errCh, port})
-	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh, port})
-	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh, port})
+	http.Handle("/", &logInHandler{clients, fileDown, fileLogIn})
+	http.Handle("/client", &clientHandler{clients, fileDown, fileCreateClient})
+	http.Handle("/in/game", &gameHandler{clients, errCh, port, fileDown})
+	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh, port, fileDown, fileLogIn})
+	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh, port, fileDown, fileCreateClient})
 	http.Handle("/in/gamews", *createWsHandler(clients, errCh))
 	http.Handle("/static/", http.FileServer(http.Dir("./html")))
 
@@ -149,8 +154,9 @@ func getSidCookies(r *http.Request) (name string, sid string, err error) {
 
 //logInHandler the login page handler.
 type logInHandler struct {
-	clients *Clients
-	pages   *Pages
+	clients   *Clients
+	fileDown  string
+	fileLogIn string
 }
 
 func (l *logInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -158,18 +164,20 @@ func (l *logInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	down := l.clients.gameServer == nil // not atomic
 	l.clients.mu.RUnlock()
 	if !down {
-		w.Write(l.pages.readPage("login.html"))
+		http.ServeFile(w, r, l.fileLogIn)
 	} else {
-		w.Write(l.pages.readPage("down.html"))
+		http.ServeFile(w, r, l.fileDown)
 	}
 }
 
 //logInPostHandler the login post handler.
 type logInPostHandler struct {
-	clients *Clients
-	pages   *Pages
-	errCh   chan<- error
-	port    string
+	clients   *Clients
+	pages     *Pages
+	errCh     chan<- error
+	port      string
+	fileDown  string
+	fileLogIn string
 }
 
 func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -179,15 +187,15 @@ func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		_, ok := err.(*ErrDown)
 		if ok {
-			w.Write(g.pages.readPage("down.html"))
+			http.ServeFile(w, r, g.fileDown)
 		} else {
 			txt := fmt.Sprintf("Login failed! %v", err.Error())
-			addToForm(txt, "login.html", g.pages, w)
+			addToForm(txt, g.fileLogIn, g.pages, w)
 			g.errCh <- errors.New(fmt.Sprintf("Login failed! %v Ip: %v", err.Error(), r.RemoteAddr))
 		}
 	} else {
 		setSidCookies(w, name, sid)
-		http.Redirect(w, r, "http://game.rezder.com"+g.port+"/in/game", 303)
+		http.Redirect(w, r, "/in/game", 303)
 	}
 }
 
@@ -207,10 +215,10 @@ func setSidCookies(w http.ResponseWriter, name string, sid string) {
 
 //gameHandler the game handler this handler return our game page.
 type gameHandler struct {
-	clients *Clients
-	pages   *Pages
-	errCh   chan<- error
-	port    string
+	clients  *Clients
+	errCh    chan<- error
+	port     string
+	fileDown string
 }
 
 func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -218,23 +226,24 @@ func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		ok, down := g.clients.verifySid(name, sid)
 		if ok {
-			w.Write(g.pages.readPage("game.html")) //TODO MAYBE use serve file.
+			http.ServeFile(w, r, "html/pages/game.html")
 		} else if down {
-			w.Write(g.pages.readPage("down.html")) //TODO MAYBE use serve file.
+			http.ServeFile(w, r, g.fileDown)
 		} else {
-			http.Redirect(w, r, "http://game.rezder.com"+g.port+"/", 303)
+			http.Redirect(w, r, "/", 303)
 			g.errCh <- errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
 		}
 	} else {
-		http.Redirect(w, r, "http://game.rezder.com"+g.port+"/", 303)
+		http.Redirect(w, r, "/", 303)
 		g.errCh <- err
 	}
 }
 
 //clientHandler The create new client page handler.
 type clientHandler struct {
-	clients *Clients
-	pages   *Pages
+	clients          *Clients
+	fileDown         string
+	fileCreateClient string
 }
 
 func (c *clientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -242,18 +251,20 @@ func (c *clientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	down := c.clients.gameServer == nil // not atomic
 	c.clients.mu.RUnlock()
 	if !down {
-		w.Write(c.pages.readPage("client.html"))
+		http.ServeFile(w, r, c.fileCreateClient)
 	} else {
-		w.Write(c.pages.readPage("down.html"))
+		http.ServeFile(w, r, c.fileDown)
 	}
 }
 
 //clientPostHandler the new client post handler.
 type clientPostHandler struct {
-	clients *Clients
-	pages   *Pages
-	errCh   chan<- error
-	port    string
+	clients          *Clients
+	pages            *Pages
+	errCh            chan<- error
+	port             string
+	fileDown         string
+	fileCreateClient string
 }
 
 func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -263,19 +274,19 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch err := err.(type) {
 		case *ErrDown:
-			w.Write(handler.pages.readPage("down.html"))
+			http.ServeFile(w, r, handler.fileDown)
 		case *ErrExist:
-			addToForm(err.Error(), "client.html", handler.pages, w)
+			addToForm(err.Error(), handler.fileCreateClient, handler.pages, w)
 		case *ErrSize:
 			w.WriteHeader(http.StatusBadRequest)
 			handler.errCh <- errors.New(fmt.Sprintf("Data was submited with out our page validation! Ip: %v", r.RemoteAddr))
 		default:
-			addToForm("Unexpected error.", "client.html", handler.pages, w)
+			addToForm("Unexpected error.", handler.fileCreateClient, handler.pages, w)
 			handler.errCh <- err
 		}
 	} else {
 		setSidCookies(w, name, sid)
-		http.Redirect(w, r, "http://game.rezder.com"+handler.port+"/in/game", 303)
+		http.Redirect(w, r, "/in/game", 303)
 	}
 }
 
