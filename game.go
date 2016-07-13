@@ -1,3 +1,4 @@
+// The battleline card game.
 package battleline
 
 import (
@@ -10,10 +11,13 @@ import (
 )
 
 const (
+	//The numbers of flags
 	FLAGS = 9
-	HAND  = 7
-
-	SM_Pass   = -1
+	//The numbers starting cards
+	HAND = 7
+	//Special move pass
+	SM_Pass = -1
+	//Special move give up
 	SM_Giveup = -2
 )
 
@@ -54,6 +58,9 @@ func (game *Game) Equal(other *Game) (equal bool) {
 	}
 	return equal
 }
+
+//calcPos calculate the current posistion from the initial position and
+//the moves. The new position replace the old position.
 func (game *Game) calcPos() {
 	game.Pos = NewGamePos()
 	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
@@ -95,11 +102,14 @@ func (game *Game) addMove(cardix int, moveix int) {
 	game.Moves = append(game.Moves, [2]int{cardix, moveix})
 }
 
+//Quit handle player giving up.
 func (game *Game) Quit(playerix int) {
 	game.Pos.quit()
 	game.Pos.Info = ""
 	game.addMove(0, SM_Giveup)
 }
+
+//Pass player choose not to make a move.
 func (game *Game) Pass() {
 	if game.Pos.MovePass {
 		game.Pos.Info = ""
@@ -109,6 +119,10 @@ func (game *Game) Pass() {
 		panic("Calling pass when not possible")
 	}
 }
+
+//Move makes a none card move. Claim flags, Getting or returning cards to deck.
+//dealtix the card in deal move.
+//claimFailMap the failed claim map in a claim flag move. Is never nil.
 func (game *Game) Move(move int) (dealtix int, claimFailMap map[string][]int) {
 	game.addMove(0, move)
 	pos := game.Pos //Update
@@ -202,7 +216,11 @@ func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Han
 	return dealt
 }
 
-func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, redeployixs []int) {
+//MovesHand play a card from hand.
+//dealtix the delt cardix when the scout card is played.
+//dishixs the dished cards witch may results of a redeploy or desert of the mud card.
+//in case of redeploy it also holds the redeploy card if it is dished.
+func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, dishixs []int) {
 	game.addMove(cardix, moveix)
 	pos := game.Pos //Update
 	pos.Info = ""
@@ -218,13 +236,13 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, redeployixs []i
 			pos.Dishs[pos.Player].dishCard(cardix)
 			scout = true
 		case MoveDeserter:
-			err = moveDeserter(&move, &pos.Flags, pos.Opp(), &pos.Dishs)
+			dishixs, err = moveDeserter(&move, &pos.Flags, pos.Opp(), &pos.Dishs)
 			pos.Dishs[pos.Player].dishCard(cardix)
 		case MoveTraitor:
-			err = moveTraitor(&move, &pos.Flags, pos.Dishs[pos.Opp()], pos.Player)
+			err = moveTraitor(&move, &pos.Flags, pos.Player)
 			pos.Dishs[pos.Player].dishCard(cardix)
 		case MoveRedeploy:
-			err, redeployixs = moveRedeploy(&move, &pos.Flags, pos.Player, &pos.Dishs)
+			dishixs, err = moveRedeploy(&move, &pos.Flags, pos.Player, &pos.Dishs)
 			pos.Dishs[pos.Player].dishCard(cardix)
 		default:
 			panic("Illegal move type")
@@ -237,11 +255,16 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, redeployixs []i
 	} else {
 		panic("Wrong move function turn is not play card")
 	}
-	return dealtix, redeployixs
+	return dealtix, dishixs
 }
 
+//moveRedeploy handle the reploy move.
+//In case of a redeploying
+//the mud card two extra dish cards is possible.
+//#flags
+//#dish
 func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
-	dishs *[2]*Dish) (err error, dishixs []int) {
+	dishs *[2]*Dish) (dishixs []int, err error) {
 	var outFlag *flag.Flag = flags[move.OutFlag]
 	dishixs = make([]int, 0, 2)
 	m0ix, m1ix, err := outFlag.Remove(move.OutCard, playerix)
@@ -261,37 +284,44 @@ func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
 			dishs[playerix].dishCard(move.OutCard)
 		}
 	}
-	return err, dishixs
+	return dishixs, err
 }
-func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, oppDish *Dish, playerix int) (err error) {
+
+//moveTraitor handle the traitor move.
+//#flags
+func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, playerix int) (err error) {
 	var outFlag *flag.Flag = flags[move.OutFlag]
 	_, _, err = outFlag.Remove(move.OutCard, opponent(playerix)) //Only troop can be a traitor so no mudix
 	if err == nil {
-		if move.InFlag < 0 {
-			oppDish.dishCard(move.OutCard)
-		} else {
-			var inFlag *flag.Flag = flags[move.InFlag]
-			err = inFlag.Set(move.OutCard, playerix)
-		}
+		var inFlag *flag.Flag = flags[move.InFlag]
+		err = inFlag.Set(move.OutCard, playerix)
 	}
 
 	return err
 }
-func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int, dishs *[2]*Dish) (err error) {
+
+//moveDeserter handle the deserter move.
+//#flags
+//#dishs
+func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int,
+	dishs *[2]*Dish) (dishixs []int, err error) {
 	var flag *flag.Flag = flags[move.Flag]
 	m0ix, m1ix, err := flag.Remove(move.Card, oppix)
 	if err == nil {
 		dishs[oppix].dishCard(move.Card)
 		if m0ix != -1 {
 			dishs[0].dishCard(m0ix)
+			dishixs = append(dishixs, m0ix)
 		}
 		if m1ix != -1 {
 			dishs[1].dishCard(m1ix)
+			dishixs = append(dishixs, m1ix)
 		}
 	}
-	return err
+	return dishixs, err
 }
 
+//GamePos a game position.
 type GamePos struct {
 	Flags     [FLAGS]*flag.Flag
 	Dishs     [2]*Dish
@@ -370,6 +400,7 @@ func (pos *GamePos) Copy() (c *GamePos) {
 	return c
 }
 
+//simTroops return the troops need for simulation.
 func simTroops(deck *deck.Deck, troops1 []int, troops2 []int) (troops []int) {
 	dr := deck.Remaining()
 	troops = make([]int, len(dr), len(dr)+len(troops1)+len(troops2))
@@ -386,6 +417,8 @@ func simTroops(deck *deck.Deck, troops1 []int, troops2 []int) (troops []int) {
 	}
 	return troops
 }
+
+//opponent return the opponent.
 func opponent(playerix int) int {
 	if playerix == 0 {
 		return 1
@@ -424,18 +457,28 @@ func deckDealTactic(deckTac *deck.Deck) (tac int) {
 	}
 	return deckToTactic(c)
 }
+
+//deckToTroop calculate the troop card index from deck index.
 func deckToTroop(deckix int) int {
 	return deckix + 1
 }
+
+//deckFromTroop calculate the deck index from troop card index.
 func deckFromTroop(cardix int) int {
 	return cardix - 1
 }
+
+//deckToTactic calculate the tactic card index from deck index.
 func deckToTactic(deckix int) int {
 	return deckix + 1 + cards.TROOP_NO
 }
+
+//deckFromTactic calculate the deck index from tactic card index.
 func deckFromTactic(cardix int) int {
 	return cardix - 1 - cards.TROOP_NO
 }
+
+//GobRegistor register all move interfaces.
 func GobRegistor() {
 	gob.Register(MoveCardFlag{})
 	gob.Register(MoveClaim{})
@@ -445,6 +488,10 @@ func GobRegistor() {
 	gob.Register(MoveScoutReturn{})
 	gob.Register(MoveTraitor{})
 }
+
+//Save save a game.
+//Warning it set gamePos to nil before saving with savePos false,
+//the pos is return after save.
 func Save(game *Game, file *os.File, savePos bool) (err error) {
 	if !savePos {
 		pos := game.Pos
@@ -458,6 +505,8 @@ func Save(game *Game, file *os.File, savePos bool) (err error) {
 	}
 	return err
 }
+
+//Load load a game.
 func Load(file *os.File) (game *Game, err error) {
 	decoder := gob.NewDecoder(file)
 	var g Game = *new(Game)

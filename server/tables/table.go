@@ -34,19 +34,13 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 
 	var deltCardix int
 	var claimFailMap map[string][]int //may contain zero index for 4 card
-	var isScout bool
-	var scout bat.MoveScoutReturn
 	var isClaim bool
 	var claim bat.MoveClaim
 	var claimView *MoveClaimView
-	var redeploy bat.MoveRedeploy
-	var isRedeploy bool
-	var redeployDishixs []int
+	var mudDishixs []int
 	var isSaveMove = false
 	for {
-		isScout = false
 		isClaim = false
-		isRedeploy = false
 		isSaveMove = false
 		deltCardix = 0
 		claimFailMap = nil
@@ -65,14 +59,19 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 			move = *NewMovePass()
 		} else if moveix[0] > 0 {
 			move = game.Pos.MovesHand[moveix[0]][moveix[1]]
-			deltCardix, redeployDishixs = game.MoveHand(moveix[0], moveix[1])
-			redeploy, isRedeploy = move.(bat.MoveRedeploy)
+			deltCardix, mudDishixs = game.MoveHand(moveix[0], moveix[1])
+			redeploy, isRedeploy := move.(bat.MoveRedeploy)
 			if isRedeploy {
-				move = *NewMoveRedeployView(&redeploy, redeployDishixs)
+				move = *NewMoveRedeployView(&redeploy, mudDishixs)
+			} else {
+				deserter, isDeserter := move.(bat.MoveDeserter)
+				if isDeserter {
+					move = *NewMoveDeserterView(&deserter, mudDishixs)
+				}
 			}
 		} else {
 			move = game.Pos.Moves[moveix[1]]
-			scout, isScout = move.(bat.MoveScoutReturn)
+			scout, isScout := move.(bat.MoveScoutReturn)
 			if isScout {
 				move = *NewMoveScoutReturnView(scout)
 			} else {
@@ -402,6 +401,35 @@ func (m MoveRedeployView) MoveEqual(other bat.Move) (equal bool) {
 	return equal
 }
 func (m MoveRedeployView) Copy() (c bat.Move) {
+	c = m
+	return c
+}
+
+// MoveReployView the redeploy move view.
+type MoveDeserterView struct {
+	Move     *bat.MoveDeserter
+	Dishixs  []int
+	JsonType string
+}
+
+func NewMoveDeserterView(move *bat.MoveDeserter, dishixs []int) (m *MoveDeserterView) {
+	m = new(MoveDeserterView)
+	m.Move = move
+	m.Dishixs = dishixs
+	m.JsonType = "MoveDeserterView"
+	return m
+}
+
+func (m MoveDeserterView) MoveEqual(other bat.Move) (equal bool) {
+	if other != nil {
+		om, ok := other.(MoveDeserterView)
+		if ok && m.Move.MoveEqual(om.Move) && slice.Equal(m.Dishixs, om.Dishixs) {
+			equal = true
+		}
+	}
+	return equal
+}
+func (m MoveDeserterView) Copy() (c bat.Move) {
 	c = m
 	return c
 }

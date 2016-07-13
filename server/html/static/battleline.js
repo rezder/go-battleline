@@ -869,7 +869,7 @@ var batt={};
             let troopArea=new Area(backTroopRect.x.baseVal.value,
                                    backTroopRect.x.baseVal.value+backTroopRect.width.baseVal.value,
                                    backTroopRect.y.baseVal.value,
-                                   backTroopRect.y.baseVal.value+backTroopRect.width.baseVal.value
+                                   backTroopRect.y.baseVal.value+backTroopRect.height.baseVal.value
                                   );
             if(troopArea.hit(x,y)){
                 res[0]=deckTroopGroup;
@@ -877,7 +877,7 @@ var batt={};
                 let tacArea=new Area(backTacRect.x.baseVal.value,
                                      backTacRect.x.baseVal.value+backTacRect.width.baseVal.value,
                                      backTacRect.y.baseVal.value,
-                                     backTacRect.y.baseVal.value+backTacRect.width.baseVal.value
+                                     backTacRect.y.baseVal.value+backTacRect.height.baseVal.value
                                     );
                 if(tacArea.hit(x,y)){
                     res[0]=deckTacGroup;
@@ -892,7 +892,7 @@ var batt={};
             let troopArea=new Area(pDishTroopRect.x.baseVal.value,
                                    pDishTroopRect.x.baseVal.value+pDishTroopRect.width.baseVal.value,
                                    pDishTroopRect.y.baseVal.value,
-                                   pDishTroopRect.y.baseVal.value+pDishTroopRect.width.baseVal.value
+                                   pDishTroopRect.y.baseVal.value+pDishTroopRect.height.baseVal.value
                                   );
             if(troopArea.hit(x,y)){
                 res[0]=pDishTroopGroup;
@@ -900,7 +900,7 @@ var batt={};
                 let tacArea=new Area(pDishTacRect.x.baseVal.value,
                                      pDishTacRect.x.baseVal.value+pDishTacRect.width.baseVal.value,
                                      pDishTacRect.y.baseVal.value,
-                                     pDishTacRect.y.baseVal.value+pDishTacRect.width.baseVal.value
+                                     pDishTacRect.y.baseVal.value+pDishTacRect.height.baseVal.value
                                     );
                 if(tacArea.hit(x,y)){
                     res[0]=pDishTacGroup;
@@ -1064,6 +1064,12 @@ var batt={};
                             svg.flag.cardToDish(move.RedeployDishixs[i]);
                         }
                     }
+                }else if(move.JsonType==="MoveDeserterView"){
+                    if (move.Dishixs.length>0){
+                        for(let i=0;i<move.Dishixs.length;i++){
+                            svg.flag.cardToDish(move.Dishixs[i]);
+                        }
+                    }
                 }
             }else{
                 //Move bat.Move and Card int
@@ -1151,9 +1157,14 @@ var batt={};
                         }
                     }
                     break;
-                case "MoveDeserter":
+                case "MoveDeserterView":
                     svg.hand.moveToDishOpp(moveView.MoveCardix);
-                    svg.flag.cardToDish(move.Card);
+                    svg.flag.cardToDish(move.Move.Card);
+                    if (move.Dishixs.length>0){
+                        for(let i=0;i<move.Dishixs.length;i++){
+                            svg.flag.cardToDish(move.Dishixs[i]);
+                        }
+                    }
                     break;
                 case "MoveScoutReturnView":
                     svg.hand.moveToDishOpp(svg.card.TC_Scout);
