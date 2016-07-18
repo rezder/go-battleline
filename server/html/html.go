@@ -98,7 +98,7 @@ func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
 //createWsHandler create the websocket handler.
 func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Server) {
 	wsHandshake := func(ws *websocket.Config, r *http.Request) (err error) {
-		name, sid, err := getSidCookies(r)
+		name, sid, err := getCookies(r)
 		if err == nil {
 			ok, down := clients.verifySid(name, sid)
 			if down {
@@ -114,7 +114,7 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 	}
 	wsHandler := func(ws *websocket.Conn) {
 		joinCh := make(chan *players.Player)
-		name, sid, err := getSidCookies(ws.Request())
+		name, sid, err := getCookies(ws.Request())
 		ok, _, joined := clients.joinGameServer(name, sid, ws, errCh, joinCh)
 		if ok {
 			player := <-joinCh
@@ -135,8 +135,8 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 	return server
 }
 
-//getSidCookies extract the name and session cookies.
-func getSidCookies(r *http.Request) (name string, sid string, err error) {
+//getCookies extract the name and session cookies.
+func getCookies(r *http.Request) (name string, sid string, err error) {
 	nameC, err := r.Cookie("name")
 	if err == nil {
 		name = nameC.Value
@@ -194,13 +194,13 @@ func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			g.errCh <- errors.New(fmt.Sprintf("Login failed! %v Ip: %v", err.Error(), r.RemoteAddr))
 		}
 	} else {
-		setSidCookies(w, name, sid)
+		setCookies(w, name, sid)
 		http.Redirect(w, r, "/in/game", 303)
 	}
 }
 
-//setSidCookies set the name and session id cookies.
-func setSidCookies(w http.ResponseWriter, name string, sid string) {
+//setCookies set the name and session id cookies.
+func setCookies(w http.ResponseWriter, name string, sid string) {
 	nameC := new(http.Cookie)
 	nameC.Name = "name"
 	nameC.Value = name
@@ -222,7 +222,7 @@ type gameHandler struct {
 }
 
 func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	name, sid, err := getSidCookies(r)
+	name, sid, err := getCookies(r)
 	if err == nil {
 		ok, down := g.clients.verifySid(name, sid)
 		if ok {
@@ -285,7 +285,7 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			handler.errCh <- err
 		}
 	} else {
-		setSidCookies(w, name, sid)
+		setCookies(w, name, sid)
 		http.Redirect(w, r, "/in/game", 303)
 	}
 }
@@ -336,6 +336,7 @@ func addPTextNode(node *html.Node, addNode *html.Node) (found bool) {
 }
 
 //Add keep a live for 3 minute to a tcp handler.
+//This is deafult but id do not know how good an idea this is.
 type tcpKeepAliveListener struct {
 	*net.TCPListener
 }

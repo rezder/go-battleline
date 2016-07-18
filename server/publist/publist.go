@@ -271,6 +271,8 @@ type Data struct {
 	OppName string
 	Watch   *WatchChCl `json:"-"`
 }
+
+//JsonData a json wrapper for export of interface values via json.
 type JsonData struct {
 	JsonType int
 	Data     interface{}

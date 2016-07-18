@@ -44,6 +44,7 @@ type Client struct {
 	ws *websocket.Conn
 }
 
+//createClient creates a new client and log the client in.
 func createClient(name string, id int, pw []byte) (c *Client) {
 	c = new(Client)
 	c.Name = name
@@ -71,6 +72,9 @@ func NewClients(games *games.Server) (c *Clients) {
 	c.NextId = 1
 	return c
 }
+
+//loadClients loads client list from a file and adds
+//the mutexs.
 func loadClients(games *games.Server) (clients *Clients, err error) {
 	file, err := os.Open(CLIENTS_FileName)
 	if err == nil {
@@ -93,6 +97,8 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 	return clients, err
 
 }
+
+// save saves the client list to file.
 func (clients *Clients) save() (err error) {
 	file, err := os.Create(CLIENTS_FileName)
 	if err == nil {

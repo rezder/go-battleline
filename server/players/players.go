@@ -1,3 +1,4 @@
+//The players server. Keeps track of login players.
 package players
 
 import (
@@ -100,6 +101,7 @@ Loop:
 }
 
 // publish publish the players map.
+// Asyncronized.
 func publish(list map[int]*pub.PlayerData, pubList *pub.List) {
 	copy := make(map[int]*pub.PlayerData)
 	for key, v := range list {
@@ -281,6 +283,7 @@ Loop:
 	player.leaveCh <- player.id
 }
 
+//GameState keeps track of the current game.
 type GameState struct {
 	respCh   chan<- [2]int
 	lastMove *pub.MoveView
@@ -288,6 +291,7 @@ type GameState struct {
 	hasMoved bool
 }
 
+//waitingForServer the player is waiting for the server to return a move.
 func (state *GameState) waitingForServer() (res bool) {
 	if state.respCh != nil && state.lastMove.State != bat.TURN_FINISH &&
 		state.lastMove.State != bat.TURN_QUIT {
@@ -301,6 +305,8 @@ func (state *GameState) waitingForServer() (res bool) {
 	}
 	return res
 }
+
+//waitingForClient the client to make a move.
 func (state *GameState) waitingForClient() (res bool) {
 	if state.respCh != nil && state.lastMove.State != bat.TURN_FINISH &&
 		state.lastMove.State != bat.TURN_QUIT {
@@ -312,28 +318,36 @@ func (state *GameState) waitingForClient() (res bool) {
 	}
 	return res
 }
+
+//removeGame removes game.
 func (state *GameState) removeGame() {
 	state.respCh = nil
 	state.lastMove = nil
 	state.closed = false
 }
+
+//addGame adds a game.
 func (state *GameState) addGame(respCh chan<- [2]int, move *pub.MoveView) {
 	state.respCh = respCh
 	state.lastMove = move
 }
+
+//receiveMove receives a move.
 func (state *GameState) receiveMove(move *pub.MoveView) {
 	state.lastMove = move
 	state.hasMoved = false
 }
+
+//sendMove to table.
 func (state *GameState) sendMove(move [2]int) {
 	state.hasMoved = true
 	state.respCh <- move
 }
-
 func (state *GameState) hasGame() bool {
 	return state.respCh != nil
 }
 
+// closeChannel close the table move channel to signal save game.
 func (state *GameState) closeChannel() {
 	if state.waitingForClient() || state.waitingForServer() {
 		close(state.respCh)
@@ -854,6 +868,8 @@ Loop:
 	}
 	close(doneCh)
 }
+
+//netWrite_AddJsonType adds the json type to interface values.
 func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
 	jdata = new(pub.JsonData)
 	jdata.Data = data
@@ -931,6 +947,8 @@ type startWatchGameData struct {
 	initMove *pub.MoveBench
 	player   int
 }
+
+//PlayerErr a error message that include the player id.
 type PlayerErr struct {
 	PlayerId int
 	Txt      string

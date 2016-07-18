@@ -1,3 +1,5 @@
+//The tables server.
+//Keeping track of the games being played.
 package tables
 
 import (
@@ -157,10 +159,13 @@ func gameId(players [2]int) (id string) {
 	return id
 }
 
+//FinishTableData the data structur send on the finish channel.
 type FinishTableData struct {
 	ids  [2]int
 	game *bat.Game
 }
+
+//Save the data structur for saved games used to save as Gob.
 type SaveGames struct {
 	Games map[string]*bat.Game
 }

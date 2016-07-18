@@ -816,6 +816,8 @@ func evalFormation_T0(troops []*cards.Troop) (formation *cards.Formation, v123 i
 	}
 	return formation, v123, vLeader
 }
+
+//evalFormation_Color return true if all troops have th same color.
 func evalFormation_Color(troops []*cards.Troop) (color bool) {
 	color = true
 	for i, v := range troops {
@@ -828,6 +830,8 @@ func evalFormation_Color(troops []*cards.Troop) (color bool) {
 	}
 	return color
 }
+
+//evalFormation_Value return true if all cards have the same value.
 func evalFormation_Value(troops []*cards.Troop) (value bool) {
 	value = true
 	for i, v := range troops {
@@ -1051,11 +1055,15 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 	}
 	return ok, eks
 }
+
+//UsedTac collects the used tactic cards.
 func (flag *Flag) UsedTac() (v [2][]int) {
 	v[0] = usedTac_Tac(flag.Players[0].Env[:], flag.Players[0].Troops[:])
 	v[1] = usedTac_Tac(flag.Players[1].Env[:], flag.Players[1].Troops[:])
 	return v
 }
+
+//UsedTac_Tac collects the used tactic cards.
 func usedTac_Tac(Env []int, troops []int) (tacs []int) {
 	tacs = make([]int, 0, 5)
 	for _, e := range Env {
@@ -1073,6 +1081,8 @@ func usedTac_Tac(Env []int, troops []int) (tacs []int) {
 	}
 	return tacs
 }
+
+//Free check if there is space for a card on the flag.
 func (flag *Flag) Free() (v [2]bool) {
 	mud, _ := evalEnv(flag.Players[0].Env[:], flag.Players[1].Env[:])
 	p1 := played(flag.Players[0].Troops[:])
@@ -1085,6 +1095,9 @@ func (flag *Flag) Free() (v [2]bool) {
 	v[1] = space-p2 > 0
 	return v
 }
+
+//Env makes a slice with envirement tactic cards.
+//may be empty.
 func (flag *Flag) Env(pix int) (copyenv []int) {
 	env := flag.Players[pix].Env[:]
 	copyenv = make([]int, 0, len(env))
@@ -1095,6 +1108,8 @@ func (flag *Flag) Env(pix int) (copyenv []int) {
 	}
 	return copyenv
 }
+
+//Troops makes a slice with troops maybe empty.
 func (flag *Flag) Troops(pix int) (copyTroops []int) {
 	troops := flag.Players[pix].Troops[:]
 	copyTroops = make([]int, 0, len(troops))
@@ -1105,14 +1120,20 @@ func (flag *Flag) Troops(pix int) (copyTroops []int) {
 	}
 	return copyTroops
 }
+
+//Claimed return true if the flag is claimed.
 func (flag *Flag) Claimed() bool {
 	return flag.Players[0].Won || flag.Players[1].Won
 }
+
+//Won returns players won.
 func (flag *Flag) Won() (res [2]bool) {
 	res[0] = flag.Players[0].Won
 	res[1] = flag.Players[1].Won
 	return res
 }
+
+//Formation returns players formation.
 func (flag *Flag) Formations() (form [2]*cards.Formation) {
 	form[0] = flag.Players[0].Formation
 	form[1] = flag.Players[1].Formation

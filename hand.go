@@ -22,6 +22,8 @@ func NewHand() (hand *Hand) {
 	hand.Tacs = initEmptyHand()
 	return hand
 }
+
+//Return a empty slice the capacity of a max hand.
 func initEmptyHand() []int {
 	return make([]int, 0, HAND+2)
 }
@@ -65,6 +67,8 @@ func (hand *Hand) String() (txt string) {
 	}
 	return txt
 }
+
+//play removes a card from the hand.
 func (hand *Hand) play(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
 	if cardTac != nil {
@@ -75,11 +79,15 @@ func (hand *Hand) play(cardix int) {
 		panic("Card index is not valid")
 	}
 }
+
+//playMulti removes cards from hand.
 func (hand *Hand) playMulti(cardixs []int) {
 	for _, cardix := range cardixs {
 		hand.play(cardix)
 	}
 }
+
+//draw adds card to hand.
 func (hand *Hand) draw(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
 	if cardTac != nil {
@@ -90,6 +98,8 @@ func (hand *Hand) draw(cardix int) {
 		panic("Card index is not valid")
 	}
 }
+
+//size the total number of cards in hand.
 func (hand *Hand) size() int {
 	res := 0
 	if hand != nil {
@@ -155,6 +165,8 @@ func (dish *Dish) String() (txt string) {
 	}
 	return txt
 }
+
+//dishCard add card to the dish.
 func (dish *Dish) dishCard(cardix int) {
 	if tac, _ := cards.DrTactic(cardix); tac != nil {
 		dish.Tacs = append(dish.Tacs, cardix)

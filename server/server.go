@@ -13,7 +13,7 @@ import (
 
 // Start the battleline server.
 // The server needs the html/pages and the html/static files
-// and will create a data directory with two gob files
+// and will create a directory data with two gob files.
 func main() {
 	portFlag := flag.Int("port", 8181, "tcp port")
 	saveFlag := flag.Bool("save", false, "Save games.")
@@ -42,6 +42,10 @@ func main() {
 
 	}
 }
+
+//errServer start a error server.
+//all errors should be send here where the power to close down exist.
+//Currently it does nothing but log the errors.
 func errServer(errChan chan error, finCh chan struct{}) {
 	for {
 		err, open := <-errChan
