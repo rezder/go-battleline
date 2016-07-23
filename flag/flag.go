@@ -273,8 +273,8 @@ func (flag *Flag) Set(cardix int, playerix int) (err error) {
 			player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 		}
 	default:
-		fmt.Printf("card type %v", tcard)
-		panic("No supported type")
+		txt := fmt.Sprintf("Card type: %v not supported.", tcard)
+		panic(txt)
 	}
 	return err
 }

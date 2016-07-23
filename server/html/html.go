@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"golang.org/x/net/websocket"
+	"log"
 	"net"
 	"net/http"
 	"rezder.com/cerrors"
@@ -64,10 +65,14 @@ func (s *Server) Stop() {
 	if gameServer != nil {
 		gameServer.Stop() //kick players out
 	}
-	fmt.Println("Close net listner")
+	if cerrors.IsVerbose() {
+		log.Println("Close net listner.")
+	}
 	s.netListener.Close()
 	_ = <-s.doneCh
-	fmt.Println("Recieve done from http server")
+	if cerrors.IsVerbose() {
+		log.Println("Recieve done from http server.")
+	}
 	err := s.clients.save()
 	if err != nil {
 		s.errCh <- err

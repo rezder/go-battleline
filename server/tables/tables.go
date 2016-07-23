@@ -4,7 +4,7 @@ package tables
 
 import (
 	"encoding/gob"
-	"fmt"
+	"log"
 	"os"
 	"rezder.com/cerrors"
 	bat "rezder.com/game/card/battleline"
@@ -42,10 +42,14 @@ func (s *Server) Start() {
 	go start(s.StartGameChCl, s.pubList, s.doneCh, s.save, s.saveDir, s.errCh, s.saveGames)
 }
 func (s *Server) Stop() {
-	fmt.Println("Closing start game channel on tables")
+	if cerrors.IsVerbose() {
+		log.Println("Closing start game channel on tables")
+	}
 	close(s.StartGameChCl.Close)
 	_ = <-s.doneCh
-	fmt.Println("Receiving done from tables")
+	if cerrors.IsVerbose() {
+		log.Println("Receiving done from tables")
+	}
 }
 
 //Start tables server.

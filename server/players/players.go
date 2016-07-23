@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"golang.org/x/net/websocket"
 	"io"
+	"log"
 	"rezder.com/cerrors"
 	bat "rezder.com/game/card/battleline"
 	pub "rezder.com/game/card/battleline/server/publist"
@@ -56,10 +57,14 @@ func (s *Server) Start() {
 	go start(s.JoinCh, s.pubList, s.startGameChCl, s.finishedCh)
 }
 func (s *Server) Stop() {
-	fmt.Println("Closing players join channel")
+	if cerrors.IsVerbose() {
+		log.Println("Closing players join channel")
+	}
 	close(s.JoinCh)
 	_ = <-s.finishedCh
-	fmt.Println("Receiving players finished")
+	if cerrors.IsVerbose() {
+		log.Println("Receiving players finished")
+	}
 }
 
 // Start starts the players server.
@@ -207,7 +212,9 @@ Loop:
 				case ACT_INVRETRACT:
 					actRetractInvite(sendInvites, act)
 				case ACT_MOVE:
-					fmt.Printf("handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
+					if cerrors.IsVerbose() {
+						log.Printf("handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
+					}
 					actMove(act, gameState, sendCh, player.errCh, player.id)
 				case ACT_SAVE:
 					if gameState.waitingForClient() || gameState.waitingForServer() {
@@ -563,7 +570,9 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}, errCh
 			}
 		}
 		if valid {
-			fmt.Println("Sending move to table")
+			if cerrors.IsVerbose() {
+				log.Println("Sending move to table")
+			}
 			gameState.sendMove(act.Move)
 		} else {
 			txt := "Illegal Move"
@@ -889,8 +898,8 @@ func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
 	case ClearInvites:
 		jdata.JsonType = JT_ClearList
 	default:
-		fmt.Printf("Message not implemented yet: %v\n", data)
-
+		txt := fmt.Sprintf("Message not implemented yet: %v\n", data)
+		panic(txt)
 	}
 	return jdata
 }
@@ -905,7 +914,9 @@ Loop:
 	for {
 		var act Action
 		err := websocket.JSON.Receive(ws, &act)
-		fmt.Printf("Action received: %v, Error: %v\n", act, err)
+		if cerrors.IsVerbose() {
+			log.Printf("Action received: %v, Error: %v\n", act, err)
+		}
 		if err == io.EOF {
 			break Loop
 		} else if err != nil {

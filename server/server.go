@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"rezder.com/cerrors"
 	"rezder.com/game/card/battleline/server/html"
 	"strconv"
 )
@@ -18,8 +19,9 @@ func main() {
 	portFlag := flag.Int("port", 8181, "tcp port")
 	saveFlag := flag.Bool("save", false, "Save games.")
 	saveDirFlag := flag.String("savedir", "temp", "Save game directory")
+	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 2 highest")
 	flag.Parse()
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	cerrors.InitLog(*logFlag)
 	var port string
 	if *portFlag == 80 { //Add https port if use https
 		port = ""
@@ -29,7 +31,11 @@ func main() {
 	errCh := make(chan error, 10)
 	httpServer, err := html.New(errCh, port, *saveFlag, *saveDirFlag)
 	if err != nil {
-		fmt.Printf("Create server fail. Error: %v\n", err)
+		if cerrors.LogLevel() != cerrors.LOG_Debug {
+			log.Printf("Create server fail. Error: %v\n", err)
+		} else {
+			log.Printf("Create server fail. Error: %+v\n", err)
+		}
 		return
 	}
 	finErrCh := make(chan struct{})
@@ -39,7 +45,9 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 	fmt.Println("Server up and running. Close with ctrl+c")
 	_ = <-stop
-	log.Println("Server closed with interrupt signal")
+	if cerrors.IsVerbose() {
+		log.Println("Server closed with interrupt signal")
+	}
 	httpServer.Stop()
 	close(errCh)
 	_ = <-finErrCh
@@ -53,7 +61,11 @@ func errServer(errChan chan error, finCh chan struct{}) {
 	for {
 		err, open := <-errChan
 		if open {
-			log.Printf("Error: %+v", err)
+			if cerrors.LogLevel() != cerrors.LOG_Debug {
+				log.Printf("Error: %v", err)
+			} else {
+				log.Printf("Error: %+v", err)
+			}
 		} else {
 			close(finCh)
 			break

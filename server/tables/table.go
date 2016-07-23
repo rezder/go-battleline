@@ -3,6 +3,7 @@ package tables
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -46,9 +47,13 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		deltCardix = 0
 		claimFailMap = nil
 		mover = game.Pos.Player
-		fmt.Printf("Waiting for mover ix: %v id: %v\n", mover, ids[mover])
+		if cerrors.IsVerbose() {
+			log.Printf("Waiting for mover ix: %v id: %v", mover, ids[mover])
+		}
 		moveix, open = <-moveChs[mover]
-		fmt.Printf("Recived move ix:%v from mover ix: %v id:%v\n", moveix, mover, ids[mover])
+		if cerrors.IsVerbose() {
+			log.Printf("Recived move ix:%v from mover ix: %v id:%v", moveix, mover, ids[mover])
+		}
 		if !open {
 			isSaveMove = true
 			move = *NewMoveSave()
@@ -87,9 +92,13 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 			move = updateClaim(game.Pos, claimFailMap, claimView)
 		}
 		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, game.Pos, ids)
-		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[0], move1)
+		if cerrors.IsVerbose() {
+			log.Printf("Sending move to playerid: %v\n%v\n", ids[0], move1)
+		}
 		playerChs[0] <- move1
-		fmt.Printf("Sending move to playerid: %v\n%v\n", ids[1], move2)
+		if cerrors.IsVerbose() {
+			log.Printf("Sending move to playerid: %v\n%v\n", ids[1], move2)
+		}
 		playerChs[1] <- move2
 		benchCh <- moveBench
 		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT || isSaveMove {
