@@ -15,10 +15,11 @@ func New(errCh chan<- error, save bool, saveDir string) (g *Server, err error) {
 	g = new(Server)
 	list := pub.New()
 	tables, err := tables.New(list, errCh, save, saveDir)
-	if err == nil {
-		g.tables = tables
-		g.players = players.New(list, g.tables.StartGameChCl)
+	if err != nil {
+		return g, err
 	}
+	g.tables = tables
+	g.players = players.New(list, g.tables.StartGameChCl)
 	return g, err
 }
 func (g *Server) Start() {

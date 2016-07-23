@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"golang.org/x/net/websocket"
 	"io"
+	"rezder.com/cerrors"
 	bat "rezder.com/game/card/battleline"
 	pub "rezder.com/game/card/battleline/server/publist"
 	"rezder.com/game/card/battleline/server/tables"
@@ -214,14 +215,14 @@ Loop:
 					} else {
 						errTxt := "Requesting game save with no game active!"
 						sendSysMess(sendCh, errTxt)
-						player.errCh <- NewPlayerErr(errTxt, player.id)
+						player.errCh <- cerrors.Wrap(NewPlayerErr(errTxt, player.id), 19, "")
 					}
 				case ACT_QUIT:
 					if gameState.waitingForClient() {
 						gameState.respCh <- [2]int{0, pub.SM_Quit}
 					} else {
 						sendSysMess(sendCh, "Quitting game out of turn is not possible.")
-						player.errCh <- NewPlayerErr("Quitting game out of turn.", player.id)
+						player.errCh <- cerrors.Wrap(NewPlayerErr("Quitting game out of turn", player.id), 20, "")
 					}
 				case ACT_WATCH:
 					upd = actWatch(watchGames, act, watchGameCh, player.doneComCh, readList,
@@ -231,8 +232,7 @@ Loop:
 				case ACT_LIST:
 					upd = true
 				default:
-					player.errCh <- NewPlayerErr("Action do not exist.", player.id)
-
+					player.errCh <- cerrors.Wrap(NewPlayerErr("Action do not exist", player.id), 21, "")
 				}
 				if upd {
 					readList = player.pubList.Read()
@@ -568,12 +568,12 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}, errCh
 		} else {
 			txt := "Illegal Move"
 			sendSysMess(sendCh, txt)
-			errCh <- NewPlayerErr("Illegal move.", id)
+			errCh <- cerrors.Wrap(NewPlayerErr("Illegal move", id), 22, "")
 		}
 	} else {
 		txt := "Is not your time to move.!"
 		sendSysMess(sendCh, txt)
-		errCh <- NewPlayerErr("Move out of turn", id)
+		errCh <- cerrors.Wrap(NewPlayerErr("Move out of turn", id), 23, "")
 	}
 }
 
@@ -851,7 +851,7 @@ Loop:
 		if !broke && !playerStop {
 			err := websocket.JSON.Send(ws, netWrite_AddJsonType(data))
 			if err != nil {
-				errCh <- err
+				errCh <- cerrors.Wrap(err, 24, "Websocket send")
 				broke = true
 			} else {
 				if len(dataCh) > WRTBUFF_LIM {
@@ -912,7 +912,7 @@ Loop:
 			select {
 			case <-doneCh:
 			default:
-				errCh <- err
+				errCh <- cerrors.Wrap(err, 25, "Websocket receive")
 			}
 			break Loop //maybe to harsh
 		} else {

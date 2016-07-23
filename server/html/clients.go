@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/websocket"
 	"math/rand"
 	"os"
+	"rezder.com/cerrors"
 	"rezder.com/game/card/battleline/server/games"
 	"rezder.com/game/card/battleline/server/players"
 	"strconv"
@@ -92,6 +93,8 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 		if os.IsNotExist(err) {
 			err = nil
 			clients = NewClients(games) //first start
+		} else {
+			err = cerrors.Wrap(err, 1, "Open clients file")
 		}
 	}
 	return clients, err
@@ -101,11 +104,13 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 // save saves the client list to file.
 func (clients *Clients) save() (err error) {
 	file, err := os.Create(CLIENTS_FileName)
-	if err == nil {
-		defer file.Close()
-		encoder := gob.NewEncoder(file)
-		err = encoder.Encode(clients)
+	if err != nil {
+		cerrors.Wrap(err, 2, "Create clients file")
+		return err
 	}
+	defer file.Close()
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(clients)
 	return err
 }
 
@@ -228,6 +233,7 @@ func (c *Clients) logIn(name string, pw string) (sid string, err error) {
 }
 
 //disable disable a client.
+//Warning should not be used during save.
 func (c *Clients) disable(name string) {
 	c.mu.RLock()
 	client, found := c.Clients[name]
@@ -244,27 +250,29 @@ func (c *Clients) disable(name string) {
 // Errors: ErrExist,ErrDown,ErrSize and bcrypt errors.
 func (c *Clients) addNew(name string, pwTxt string) (sid string, err error) {
 	err = checkNamePwSize(name, pwTxt)
-	if err == nil {
-		c.mu.Lock()
-		if c.gameServer != nil {
-			client, found := c.Clients[name]
-			if !found {
-				var pwh []byte
-				pwh, err = bcrypt.GenerateFromPassword([]byte(pwTxt), COST)
-				if err == nil {
-					client = createClient(name, c.NextId, pwh)
-					c.NextId = c.NextId + 1
-					c.Clients[client.Name] = client
-					sid = client.sid
-				}
-			} else {
-				err = NewErrExist("Name is used.")
+	if err != nil {
+		return sid, err
+	}
+	c.mu.Lock()
+	if c.gameServer != nil {
+		client, found := c.Clients[name]
+		if !found {
+			var pwh []byte
+			pwh, err = bcrypt.GenerateFromPassword([]byte(pwTxt), COST)
+			if err == nil {
+				client = createClient(name, c.NextId, pwh)
+				c.NextId = c.NextId + 1
+				c.Clients[client.Name] = client
+				sid = client.sid
 			}
 		} else {
-			err = NewErrDown("Game server down")
+			err = NewErrExist("Name is used.")
 		}
-		c.mu.Unlock()
+	} else {
+		err = NewErrDown("Game server down")
 	}
+	c.mu.Unlock()
+
 	return sid, err
 }
 

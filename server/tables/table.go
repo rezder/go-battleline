@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"rezder.com/cerrors"
 	bat "rezder.com/game/card/battleline"
 	"rezder.com/game/card/battleline/flag"
 	pub "rezder.com/game/card/battleline/server/publist"
@@ -92,28 +93,28 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		playerChs[1] <- move2
 		benchCh <- moveBench
 		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT || isSaveMove {
-			if save {
-				hour, min, _ := time.Now().Clock()
-				fileName := fmt.Sprintf("game%vvs%v%v%v.gob", ids[0], ids[1], hour, min)
-				fileNamePath := filepath.Join(savedir, fileName)
-				file, err := os.Create(fileNamePath)
-				//defer file.Close()//close even if panic. Double close produce a error
-				//but we are not listening it is possible to add the close error to err of a returning function
-				//but id do not think i care.
-				if err == nil {
-					err = bat.Save(game, file, true)
-					file.Close()
-					if err != nil {
-						errCh <- err
-					}
-				} else {
-					errCh <- err
-				}
-			}
 			break
 		}
 	}
-
+	if save {
+		hour, min, _ := time.Now().Clock()
+		fileName := fmt.Sprintf("game%vvs%v%v%v.gob", ids[0], ids[1], hour, min)
+		fileNamePath := filepath.Join(savedir, fileName)
+		file, err := os.Create(fileNamePath)
+		//defer file.Close()//close even if panic. Double close produce a error
+		//but we are not listening it is possible to add the close error to err of a returning function
+		//but id do not think i care.
+		if err == nil {
+			defer file.Close()
+			err = bat.Save(game, file, true)
+			if err != nil {
+				errCh <- cerrors.Wrap(err, 17, "Saving server games")
+			}
+		} else {
+			err = cerrors.Wrap(err, 18, "Create server games file")
+			errCh <- err
+		}
+	}
 	close(playerChs[0])
 	close(playerChs[1])
 	close(benchCh)

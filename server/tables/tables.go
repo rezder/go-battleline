@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"os"
+	"rezder.com/cerrors"
 	bat "rezder.com/game/card/battleline"
 	pub "rezder.com/game/card/battleline/server/publist"
 	"strconv"
@@ -177,11 +178,13 @@ func NewSaveGames() (sg *SaveGames) {
 }
 func (games *SaveGames) save() (err error) {
 	file, err := os.Create(SAVE_GamesFile)
-	if err == nil {
-		defer file.Close()
-		encoder := gob.NewEncoder(file)
-		err = encoder.Encode(games)
+	if err != nil {
+		err = cerrors.Wrap(err, 15, "Create games file")
+		return err
 	}
+	defer file.Close()
+	encoder := gob.NewEncoder(file)
+	err = encoder.Encode(games)
 	return err
 }
 func loadSaveGames() (games *SaveGames, err error) {
@@ -198,6 +201,9 @@ func loadSaveGames() (games *SaveGames, err error) {
 		if os.IsNotExist(err) {
 			err = nil
 			games = NewSaveGames() //first start
+		} else {
+			err = cerrors.Wrap(err, 16, "Open saved games file")
+			return games, err
 		}
 	}
 	return games, err

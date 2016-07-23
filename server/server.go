@@ -19,6 +19,7 @@ func main() {
 	saveFlag := flag.Bool("save", false, "Save games.")
 	saveDirFlag := flag.String("savedir", "temp", "Save game directory")
 	flag.Parse()
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	var port string
 	if *portFlag == 80 { //Add https port if use https
 		port = ""
@@ -27,20 +28,22 @@ func main() {
 	}
 	errCh := make(chan error, 10)
 	httpServer, err := html.New(errCh, port, *saveFlag, *saveDirFlag)
-	if err == nil {
-		finErrCh := make(chan struct{})
-		go errServer(errCh, finErrCh)
-		httpServer.Start()
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt)
-		fmt.Println("Server up and running. Close with ctrl+c")
-		_ = <-stop
-		log.Println("Server closed with interrupt signal")
-		httpServer.Stop()
-		close(errCh)
-		_ = <-finErrCh
-
+	if err != nil {
+		fmt.Printf("Create server fail. Error: %v\n", err)
+		return
 	}
+	finErrCh := make(chan struct{})
+	go errServer(errCh, finErrCh)
+	httpServer.Start()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	fmt.Println("Server up and running. Close with ctrl+c")
+	_ = <-stop
+	log.Println("Server closed with interrupt signal")
+	httpServer.Stop()
+	close(errCh)
+	_ = <-finErrCh
+
 }
 
 //errServer start a error server.
@@ -50,7 +53,7 @@ func errServer(errChan chan error, finCh chan struct{}) {
 	for {
 		err, open := <-errChan
 		if open {
-			log.Println("Error: ", err.Error())
+			log.Printf("Error: %+v", err)
 		} else {
 			close(finCh)
 			break

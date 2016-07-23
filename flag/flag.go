@@ -145,47 +145,46 @@ func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err 
 	mudix1 = -1
 	mudix0 = -1
 	card, err := cards.DrCard(cardix)
-	if err == nil {
-		errMessage := fmt.Sprintf("Player %v do not have card %v", playerix, card.Name())
-		var delix int
-		switch tcard := card.(type) {
-		case cards.Tactic:
-			if tcard.Type() == cards.T_Env {
-				delix, err = remove_clear(player.Env[:], cardix, errMessage)
-				if delix != -1 {
-					if cardix == cards.TC_Mud {
-						if played(player.Troops[:]) == 4 {
-							mudix0 = remove_Mud(player, opp)
-							remove_clear(player.Troops[:], mudix0, errMessage)
-						}
-						if played(opp.Troops[:]) == 4 {
-							mudix1 = remove_Mud(opp, player)
-							remove_clear(opp.Troops[:], mudix1, errMessage)
-						}
+	if err != nil {
+		panic("Card do not exist")
+	}
+	errMessage := fmt.Sprintf("Player %v do not have card %v", playerix, card.Name())
+	var delix int
+	switch tcard := card.(type) {
+	case cards.Tactic:
+		if tcard.Type() == cards.T_Env {
+			delix, err = remove_clear(player.Env[:], cardix, errMessage)
+			if delix != -1 {
+				if cardix == cards.TC_Mud {
+					if played(player.Troops[:]) == 4 {
+						mudix0 = remove_Mud(player, opp)
+						remove_clear(player.Troops[:], mudix0, errMessage)
 					}
-					sort.Sort(sort.Reverse(sort.IntSlice(player.Env[:])))
-					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
-					opp.Formation, opp.Strenght = eval(opp.Troops[:], opp.Env[:], player.Env[:])
+					if played(opp.Troops[:]) == 4 {
+						mudix1 = remove_Mud(opp, player)
+						remove_clear(opp.Troops[:], mudix1, errMessage)
+					}
 				}
-			} else if tcard.Type() == cards.T_Morale {
-				delix, err = remove_clear(player.Troops[:], cardix, errMessage)
-				if delix != -1 {
-					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
-				}
-			} else {
-				err = errors.New(fmt.Sprintf("Illegal tactic card: %v", card.Name()))
+				sort.Sort(sort.Reverse(sort.IntSlice(player.Env[:])))
+				player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
+				opp.Formation, opp.Strenght = eval(opp.Troops[:], opp.Env[:], player.Env[:])
 			}
-		case cards.Troop:
+		} else if tcard.Type() == cards.T_Morale {
 			delix, err = remove_clear(player.Troops[:], cardix, errMessage)
 			if delix != -1 {
 				player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 			}
-
-		default:
-			panic("No supprted type")
+		} else {
+			err = errors.New(fmt.Sprintf("Illegal tactic card: %v", card.Name()))
 		}
-	} else {
-		panic("Card do not exist")
+	case cards.Troop:
+		delix, err = remove_clear(player.Troops[:], cardix, errMessage)
+		if delix != -1 {
+			player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
+		}
+
+	default:
+		panic("Not a supported type")
 	}
 	return mudix0, mudix1, err
 }
@@ -247,36 +246,35 @@ func (flag *Flag) Set(cardix int, playerix int) (err error) {
 	player := flag.Players[playerix]        // updated
 	opp := flag.Players[opponent(playerix)] // updated
 	card, err := cards.DrCard(cardix)
-	if err == nil {
-		errMessage := fmt.Sprintf("Player %v do not have space for card %v", playerix, card.Name())
-		var place int
-		switch tcard := card.(type) {
-		case cards.Tactic:
-			if tcard.Type() == cards.T_Env {
-				place, err = set_Card(cardix, player.Env[:], errMessage)
-				if place != -1 {
-					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
-					opp.Formation, opp.Strenght = eval(opp.Troops[:], opp.Env[:], player.Env[:])
-				}
-			} else if tcard.Type() == cards.T_Morale {
-				place, err = set_Card(cardix, player.Troops[:], errMessage)
-				if place != -1 {
-					player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
-				}
-			} else {
-				err = errors.New("Illegal tactic card: " + card.Name())
+	if err != nil {
+		panic("Card do not exist")
+	}
+	errMessage := fmt.Sprintf("Player %v do not have space for card %v", playerix, card.Name())
+	var place int
+	switch tcard := card.(type) {
+	case cards.Tactic:
+		if tcard.Type() == cards.T_Env {
+			place, err = set_Card(cardix, player.Env[:], errMessage)
+			if place != -1 {
+				player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
+				opp.Formation, opp.Strenght = eval(opp.Troops[:], opp.Env[:], player.Env[:])
 			}
-		case cards.Troop:
+		} else if tcard.Type() == cards.T_Morale {
 			place, err = set_Card(cardix, player.Troops[:], errMessage)
 			if place != -1 {
 				player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
 			}
-		default:
-			fmt.Printf("card type %v", tcard)
-			panic("No supported type")
+		} else {
+			err = errors.New("Illegal tactic card: " + card.Name())
 		}
-	} else {
-		panic("Card do not exist")
+	case cards.Troop:
+		place, err = set_Card(cardix, player.Troops[:], errMessage)
+		if place != -1 {
+			player.Formation, player.Strenght = eval(player.Troops[:], player.Env[:], opp.Env[:])
+		}
+	default:
+		fmt.Printf("card type %v", tcard)
+		panic("No supported type")
 	}
 	return err
 }

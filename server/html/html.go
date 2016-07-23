@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/websocket"
 	"net"
 	"net/http"
+	"rezder.com/cerrors"
 	"rezder.com/game/card/battleline/server/games"
 	"rezder.com/game/card/battleline/server/players"
 	"time"
@@ -32,21 +33,23 @@ func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server,
 		dport = port
 	}
 	laddr, err := net.ResolveTCPAddr("tcp", dport) //TODO CHECK this look strange
+	if err != nil {
+		err = cerrors.Wrap(err, 3, "Resolve address")
+		return s, err
+	}
+	var netListener *net.TCPListener
+	netListener, err = net.ListenTCP("tcp", laddr)
+	//netListener, err = net.ListenTCP("tcp", ":8181")
 	if err == nil {
-		var netListener *net.TCPListener
-		netListener, err = net.ListenTCP("tcp", laddr)
-		//netListener, err = net.ListenTCP("tcp", ":8181")
+		s.netListener = netListener
+		var gameServer *games.Server
+		gameServer, err = games.New(errCh, save, saveDir)
 		if err == nil {
-			s.netListener = netListener
-			var gameServer *games.Server
-			gameServer, err = games.New(errCh, save, saveDir)
+			var clients *Clients
+			clients, err = loadClients(gameServer)
 			if err == nil {
-				var clients *Clients
-				clients, err = loadClients(gameServer)
-				if err == nil {
-					s.clients = clients
-					s.doneCh = make(chan struct{})
-				}
+				s.clients = clients
+				s.doneCh = make(chan struct{})
 			}
 		}
 	}
@@ -91,6 +94,7 @@ func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
 
 	server := &http.Server{Addr: "game.rezder.com" + port} //address is not used
 	err := server.Serve(tcpKeepAliveListener{netListener})
+	err = cerrors.Wrap(err, 4, "Http server serves")
 	errCh <- err
 	close(doneCh)
 }
@@ -99,15 +103,17 @@ func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
 func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Server) {
 	wsHandshake := func(ws *websocket.Config, r *http.Request) (err error) {
 		name, sid, err := getCookies(r)
-		if err == nil {
-			ok, down := clients.verifySid(name, sid)
-			if down {
-				err = errors.New("Game server down")
-			} else if !ok {
-				err = errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
-				errCh <- err
-			}
-		} else {
+		if err != nil {
+			err = cerrors.Wrap(err, 5, "Websocket handshake")
+			errCh <- err
+			return err
+		}
+		ok, down := clients.verifySid(name, sid)
+		if down {
+			err = errors.New("Game server down")
+		} else if !ok {
+			err = errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
+			err = cerrors.Wrap(err, 6, "Websocket handshake")
 			errCh <- err
 		}
 		return err
@@ -121,14 +127,19 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 			player.Start()
 			err = ws.Close()
 			clients.logOut(name)
+			if err != nil {
+				err = cerrors.Wrap(err, 8, "Player is finish closing websocket")
+				errCh <- err
+			}
 		} else {
 			if !joined {
 				clients.logOut(name)
 			}
 			err = ws.Close()
-		}
-		if err != nil {
-			errCh <- err
+			if err != nil {
+				err = cerrors.Wrap(err, 9, "Player faild to join closing websocket")
+				errCh <- err
+			}
 		}
 	}
 	server = &websocket.Server{Handler: wsHandler, Handshake: wsHandshake}
@@ -191,7 +202,8 @@ func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			txt := fmt.Sprintf("Login failed! %v", err.Error())
 			addToForm(txt, g.fileLogIn, g.pages, w)
-			g.errCh <- errors.New(fmt.Sprintf("Login failed! %v Ip: %v", err.Error(), r.RemoteAddr))
+			err = errors.New(fmt.Sprintf("Login failed! %v Ip: %v", err.Error(), r.RemoteAddr))
+			g.errCh <- cerrors.Wrap(err, 10, "")
 		}
 	} else {
 		setCookies(w, name, sid)
@@ -223,19 +235,20 @@ type gameHandler struct {
 
 func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name, sid, err := getCookies(r)
-	if err == nil {
-		ok, down := g.clients.verifySid(name, sid)
-		if ok {
-			http.ServeFile(w, r, "html/pages/game.html")
-		} else if down {
-			http.ServeFile(w, r, g.fileDown)
-		} else {
-			http.Redirect(w, r, "/", 303)
-			g.errCh <- errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
-		}
+	if err != nil {
+		http.Redirect(w, r, "/", 303)
+		g.errCh <- cerrors.Wrap(err, 11, "Serving game html file")
+		return
+	}
+	ok, down := g.clients.verifySid(name, sid)
+	if ok {
+		http.ServeFile(w, r, "html/pages/game.html")
+	} else if down {
+		http.ServeFile(w, r, g.fileDown)
 	} else {
 		http.Redirect(w, r, "/", 303)
-		g.errCh <- err
+		err = errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
+		g.errCh <- cerrors.Wrap(err, 12, "Serving game html file")
 	}
 }
 
@@ -279,10 +292,11 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			addToForm(err.Error(), handler.fileCreateClient, handler.pages, w)
 		case *ErrSize:
 			w.WriteHeader(http.StatusBadRequest)
-			handler.errCh <- errors.New(fmt.Sprintf("Data was submited with out our page validation! Ip: %v", r.RemoteAddr))
+			errSize := errors.New(fmt.Sprintf("Data was submited with out our page validation! Ip: %v", r.RemoteAddr))
+			handler.errCh <- cerrors.Wrap(errSize, 13, "Serve new client")
 		default:
 			addToForm("Unexpected error.", handler.fileCreateClient, handler.pages, w)
-			handler.errCh <- err
+			handler.errCh <- cerrors.Wrap(err, 14, "Serve new client")
 		}
 	} else {
 		setCookies(w, name, sid)
@@ -297,14 +311,12 @@ func addToForm(txt string, fileName string, pages *Pages, w http.ResponseWriter)
 	startNode, err := html.Parse(reader)
 	if err != nil {
 		panic(err.Error())
+	}
+	found := addPTextNode(startNode, createPTextNode(txt))
+	if !found {
+		panic("html file do not have a body")
 	} else {
-		found := addPTextNode(startNode, createPTextNode(txt))
-		if !found {
-			panic("html file do not have a body")
-		} else {
-			html.Render(w, startNode)
-		}
-
+		html.Render(w, startNode)
 	}
 }
 
@@ -344,7 +356,7 @@ type tcpKeepAliveListener struct {
 func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	tc, err := ln.AcceptTCP()
 	if err != nil {
-		return
+		return c, err
 	}
 	tc.SetKeepAlive(true)
 	tc.SetKeepAlivePeriod(3 * time.Minute)

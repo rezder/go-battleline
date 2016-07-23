@@ -268,22 +268,24 @@ func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
 	var outFlag *flag.Flag = flags[move.OutFlag]
 	dishixs = make([]int, 0, 2)
 	m0ix, m1ix, err := outFlag.Remove(move.OutCard, playerix)
-	if err == nil {
-		if m0ix != -1 {
-			dishs[0].dishCard(m0ix)
-			dishixs = append(dishixs, m0ix)
-		}
-		if m1ix != -1 {
-			dishs[1].dishCard(m1ix)
-			dishixs = append(dishixs, m1ix)
-		}
-		if move.InFlag != -1 {
-			var inFlag *flag.Flag = flags[move.InFlag]
-			err = inFlag.Set(move.OutCard, playerix)
-		} else {
-			dishs[playerix].dishCard(move.OutCard)
-		}
+	if err != nil {
+		return dishixs, err
 	}
+	if m0ix != -1 {
+		dishs[0].dishCard(m0ix)
+		dishixs = append(dishixs, m0ix)
+	}
+	if m1ix != -1 {
+		dishs[1].dishCard(m1ix)
+		dishixs = append(dishixs, m1ix)
+	}
+	if move.InFlag != -1 {
+		var inFlag *flag.Flag = flags[move.InFlag]
+		err = inFlag.Set(move.OutCard, playerix)
+	} else {
+		dishs[playerix].dishCard(move.OutCard)
+	}
+
 	return dishixs, err
 }
 
@@ -292,11 +294,11 @@ func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
 func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, playerix int) (err error) {
 	var outFlag *flag.Flag = flags[move.OutFlag]
 	_, _, err = outFlag.Remove(move.OutCard, opponent(playerix)) //Only troop can be a traitor so no mudix
-	if err == nil {
-		var inFlag *flag.Flag = flags[move.InFlag]
-		err = inFlag.Set(move.OutCard, playerix)
+	if err != nil {
+		return err
 	}
-
+	var inFlag *flag.Flag = flags[move.InFlag]
+	err = inFlag.Set(move.OutCard, playerix)
 	return err
 }
 
@@ -307,16 +309,17 @@ func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int,
 	dishs *[2]*Dish) (dishixs []int, err error) {
 	var flag *flag.Flag = flags[move.Flag]
 	m0ix, m1ix, err := flag.Remove(move.Card, oppix)
-	if err == nil {
-		dishs[oppix].dishCard(move.Card)
-		if m0ix != -1 {
-			dishs[0].dishCard(m0ix)
-			dishixs = append(dishixs, m0ix)
-		}
-		if m1ix != -1 {
-			dishs[1].dishCard(m1ix)
-			dishixs = append(dishixs, m1ix)
-		}
+	if err != nil {
+		return dishixs, err
+	}
+	dishs[oppix].dishCard(move.Card)
+	if m0ix != -1 {
+		dishs[0].dishCard(m0ix)
+		dishixs = append(dishixs, m0ix)
+	}
+	if m1ix != -1 {
+		dishs[1].dishCard(m1ix)
+		dishixs = append(dishixs, m1ix)
 	}
 	return dishixs, err
 }
@@ -512,11 +515,13 @@ func Load(file *os.File) (game *Game, err error) {
 	var g Game = *new(Game)
 
 	err = decoder.Decode(&g)
-	if err == nil {
-		game = &g
-		if game.Pos == nil {
-			game.calcPos()
-		}
+	if err != nil {
+		return game, err
 	}
+	game = &g
+	if game.Pos == nil {
+		game.calcPos()
+	}
+
 	return game, err
 }
