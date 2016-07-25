@@ -33,3 +33,6 @@ func (g *Server) Stop() {
 func (g *Server) PlayersJoinCh() chan<- *players.Player {
 	return g.players.JoinCh
 }
+func (g *Server) PlayersDisableCh() chan<- *players.DisData {
+	return g.players.DisableCh
+}

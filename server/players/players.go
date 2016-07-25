@@ -40,6 +40,7 @@ const (
 
 type Server struct {
 	JoinCh        chan *Player
+	DisableCh     chan *DisData
 	pubList       *pub.List
 	startGameChCl *tables.StartGameChCl
 	finishedCh    chan struct{}
@@ -50,11 +51,12 @@ func New(pubList *pub.List, startGameChCl *tables.StartGameChCl) (s *Server) {
 	s.pubList = pubList
 	s.startGameChCl = startGameChCl
 	s.JoinCh = make(chan *Player)
+	s.DisableCh = make(chan *DisData)
 	s.finishedCh = make(chan struct{})
 	return s
 }
 func (s *Server) Start() {
-	go start(s.JoinCh, s.pubList, s.startGameChCl, s.finishedCh)
+	go start(s.JoinCh, s.DisableCh, s.pubList, s.startGameChCl, s.finishedCh)
 }
 func (s *Server) Stop() {
 	if cerrors.IsVerbose() {
@@ -68,11 +70,12 @@ func (s *Server) Stop() {
 }
 
 // Start starts the players server.
-func start(joinCh <-chan *Player, pubList *pub.List, startGameChCl *tables.StartGameChCl,
+func start(joinCh <-chan *Player, disableCh <-chan *DisData, pubList *pub.List, startGameChCl *tables.StartGameChCl,
 	finishedCh chan struct{}) {
 	leaveCh := make(chan int)
 	list := make(map[int]*pub.PlayerData)
 	done := false
+	disPlayers := make(map[int]bool)
 Loop:
 	for {
 		select {
@@ -99,6 +102,20 @@ Loop:
 					joinCh = nil // do not listen any more
 				} else {
 					break Loop
+				}
+			}
+		case disData := <-disableCh:
+			if !done {
+				if disData.Enable {
+					delete(disPlayers, disData.PlayerId)
+				} else {
+					if !disPlayers[disData.PlayerId] {
+						disPlayers[disData.PlayerId] = true
+						p, found := list[disData.PlayerId]
+						if found {
+							close(p.BootCh)
+						}
+					}
 				}
 			}
 		}
@@ -970,4 +987,9 @@ func NewPlayerErr(txt string, id int) (err error) {
 }
 func (err *PlayerErr) Error() string {
 	return fmt.Sprintf(err.Txt+" Error reported on player id: %v", err.PlayerId)
+}
+
+type DisData struct {
+	Enable   bool
+	PlayerId int
 }

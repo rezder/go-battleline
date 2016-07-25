@@ -236,12 +236,17 @@ func (c *Clients) logIn(name string, pw string) (sid string, err error) {
 //Warning should not be used during save.
 func (c *Clients) disable(name string) {
 	c.mu.RLock()
+	defer c.mu.RUnlock()
 	client, found := c.Clients[name]
-	c.mu.RUnlock()
 	if found {
 		client.mu.Lock()
-		client.Disable = true
-		client.mu.Unlock()
+		defer client.mu.Unlock()
+		if !client.Disable {
+			client.Disable = true
+			if c.gameServer != nil {
+				c.gameServer.PlayersDisableCh() <- &players.DisData{false, client.Id}
+			}
+		}
 	}
 
 }
