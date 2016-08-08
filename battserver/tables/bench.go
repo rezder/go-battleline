@@ -1,9 +1,9 @@
 package tables
 
 import (
-	bat "rezder.com/game/card/battleline"
-	pub "rezder.com/game/card/battleline/server/publist"
-	slice "rezder.com/slice/int"
+	bat "github.com/rezder/go-battleline/battleline"
+	pub "github.com/rezder/go-battleline/battserver/publist"
+	slice "github.com/rezder/go-slice/int"
 )
 
 // The bench server for a table.

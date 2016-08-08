@@ -3,15 +3,15 @@ package tables
 
 import (
 	"fmt"
+	bat "github.com/rezder/go-battleline/battleline"
+	"github.com/rezder/go-battleline/battleline/flag"
+	pub "github.com/rezder/go-battleline/battserver/publist"
+	"github.com/rezder/go-error/cerrors"
+	slice "github.com/rezder/go-slice/int"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"rezder.com/cerrors"
-	bat "rezder.com/game/card/battleline"
-	"rezder.com/game/card/battleline/flag"
-	pub "rezder.com/game/card/battleline/server/publist"
-	slice "rezder.com/slice/int"
 	"time"
 )
 

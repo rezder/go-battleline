@@ -2,8 +2,8 @@ package battleline
 
 import (
 	"fmt"
-	"rezder.com/game/card/battleline/cards"
-	slice "rezder.com/slice/int"
+	"github.com/rezder/go-battleline/battleline/cards"
+	slice "github.com/rezder/go-slice/int"
 )
 
 const (

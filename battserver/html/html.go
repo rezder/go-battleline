@@ -5,15 +5,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/rezder/go-battleline/battserver/games"
+	"github.com/rezder/go-battleline/battserver/players"
+	"github.com/rezder/go-error/cerrors"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"golang.org/x/net/websocket"
 	"log"
 	"net"
 	"net/http"
-	"rezder.com/cerrors"
-	"rezder.com/game/card/battleline/server/games"
-	"rezder.com/game/card/battleline/server/players"
 	"time"
 )
 
@@ -73,7 +73,7 @@ func (s *Server) Stop() {
 	if cerrors.IsVerbose() {
 		log.Println("Recieve done from http server.")
 	}
-	err := s.clients.save()
+	err := s.clients.save() //no lock is used.
 	if err != nil {
 		s.errCh <- err
 	}

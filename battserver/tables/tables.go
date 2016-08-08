@@ -4,11 +4,11 @@ package tables
 
 import (
 	"encoding/gob"
+	bat "github.com/rezder/go-battleline/battleline"
+	pub "github.com/rezder/go-battleline/battserver/publist"
+	"github.com/rezder/go-error/cerrors"
 	"log"
 	"os"
-	"rezder.com/cerrors"
-	bat "rezder.com/game/card/battleline"
-	pub "rezder.com/game/card/battleline/server/publist"
 	"strconv"
 )
 
@@ -19,7 +19,7 @@ const (
 type Server struct {
 	save          bool
 	saveDir       string
-	StartGameChCl *StartGameChCl
+	StartGameChCl *pub.StartGameChCl
 	pubList       *pub.List
 	doneCh        chan struct{}
 	errCh         chan<- error
@@ -32,7 +32,7 @@ func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *S
 	s.errCh = errCh
 	s.save = save
 	s.saveDir = saveDir
-	s.StartGameChCl = NewStartGameChCl()
+	s.StartGameChCl = pub.NewStartGameChCl()
 	s.doneCh = make(chan struct{})
 	bat.GobRegistor()
 	s.saveGames, err = loadSaveGames()
@@ -54,7 +54,7 @@ func (s *Server) Stop() {
 
 //Start tables server.
 //doneCh closing this channel will close down the tables server.
-func start(startGameChCl *StartGameChCl, pubList *pub.List, doneCh chan struct{},
+func start(startGameChCl *pub.StartGameChCl, pubList *pub.List, doneCh chan struct{},
 	save bool, saveDir string, errCh chan<- error, saveGames *SaveGames) {
 	finishTableCh := make(chan *FinishTableData)
 	startCh := startGameChCl.Channel
@@ -133,25 +133,6 @@ func NewGameData(opp int, watch *pub.WatchChCl) (g *pub.GameData) {
 	g.Opp = opp
 	g.Watch = watch
 	return g
-}
-
-// StartGameData is the information need to start a game.
-type StartGameData struct {
-	PlayerIds [2]int
-	PlayerChs [2]chan<- *pub.MoveView
-}
-
-// StartGameChCl the start game channel.
-type StartGameChCl struct {
-	Channel chan *StartGameData
-	Close   chan struct{}
-}
-
-func NewStartGameChCl() (sgc *StartGameChCl) {
-	sgc = new(StartGameChCl)
-	sgc.Channel = make(chan *StartGameData)
-	sgc.Close = make(chan struct{})
-	return sgc
 }
 
 // gameId makes a unique game id.

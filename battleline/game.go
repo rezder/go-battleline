@@ -3,10 +3,10 @@ package battleline
 
 import (
 	"encoding/gob"
+	"github.com/rezder/go-battleline/battleline/cards"
+	"github.com/rezder/go-battleline/battleline/flag"
+	"github.com/rezder/go-card/deck"
 	"os"
-	"rezder.com/game/card/battleline/cards"
-	"rezder.com/game/card/battleline/flag"
-	"rezder.com/game/card/deck"
 	"strconv"
 )
 

@@ -5,7 +5,7 @@ import (
 	//"fmt"
 	"bytes"
 	"encoding/gob"
-	"rezder.com/game/card/battleline/cards"
+	"github.com/rezder/go-battleline/battleline/cards"
 	"testing"
 )
 

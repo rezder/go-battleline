@@ -4,11 +4,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/rezder/go-battleline/battserver/html"
+	"github.com/rezder/go-error/cerrors"
 	"log"
 	"os"
 	"os/signal"
-	"rezder.com/cerrors"
-	"rezder.com/game/card/battleline/server/html"
 	"strconv"
 )
 
@@ -55,9 +55,16 @@ func main() {
 }
 
 //errServer start a error server.
-//all errors should be send here where the power to close down exist.
+//all errors should be send where the power to close down exist.
 //Currently it does nothing but log the errors.
 func errServer(errChan chan error, finCh chan struct{}) {
+	//TODO maybe move the error server to html
+	// Add error count on player id and auto disable player with to many errors.
+	// disable must not be possible during save and error log should be active to the
+	// end. This leaves two possiblities tell error server to stop disable players during close
+	// or return fail when call disable during save/close, because error channel is buffered
+	// it is not enough to stop the servers that produce the errors we need acttive stop of the
+	// error server for disable.
 	for {
 		err, open := <-errChan
 		if open {

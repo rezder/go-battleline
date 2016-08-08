@@ -4,9 +4,9 @@ package flag
 import (
 	"errors"
 	"fmt"
-	"rezder.com/game/card/battleline/cards"
-	Math "rezder.com/math/int"
-	slice "rezder.com/slice/int"
+	"github.com/rezder/go-battleline/battleline/cards"
+	math "github.com/rezder/go-math/int"
+	slice "github.com/rezder/go-slice/int"
 	"sort"
 )
 
@@ -983,7 +983,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							}
 						}
 					case 2:
-						match := Math.Perm2(len(unPlayCards), func(v [2]int) bool {
+						match := math.Perm2(len(unPlayCards), func(v [2]int) bool {
 							copy(simCards, opCards)
 							simCards[len(opCards)-1] = unPlayCards[v[1]]
 							simCards[len(opCards)-2] = unPlayCards[v[0]]
@@ -1002,7 +1002,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							ok = true
 						}
 					case 3:
-						match := Math.Perm3(len(unPlayCards), func(v [3]int) bool {
+						match := math.Perm3(len(unPlayCards), func(v [3]int) bool {
 							copy(simCards, opCards)
 							simCards[len(opCards)-1] = unPlayCards[v[2]]
 							simCards[len(opCards)-2] = unPlayCards[v[1]]
@@ -1022,7 +1022,7 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 							ok = true
 						}
 					case 4:
-						match := Math.Perm4(len(unPlayCards), func(v [4]int) bool {
+						match := math.Perm4(len(unPlayCards), func(v [4]int) bool {
 							copy(simCards, opCards)
 							simCards[len(opCards)-1] = unPlayCards[v[3]]
 							simCards[len(opCards)-2] = unPlayCards[v[2]]

@@ -1,0 +1,34 @@
+* TableServer
+Start TableServer(10 tables)
+Start ConnectionServer(TableServer)
+Start LoginServer(ConnectionServer)
+** Table
+*** Table create a join channel bench.
+One can join or leave one at the time, it is oneway and recieve a non blocking callback interface and a request. 
+**** Join bench 
+Table get a oneway information channelback interface or remove one.
+and keep sending game and table information untill it is removed.
+*** Tabel create a join chair channel.
+It is oneway and recieve two non blocking callbacks information interface bench and chair and
+and a chair two way game channel.
+**** Join a chair
+If one is ready return chair channel or else retun nil.
+One is added to the bench if no chair is availabel. 
+** Chair
+*** Info channel.
+*** Game channel.
+Used only for game move/left game communication and lost connection
+Table know the sequence logic,Block for Player 1 move, return succes or fail, if fail block for new move.
+Succes block for player 2 move ....
+We could a have a separat channel for lost connection because it could be nice to know so you could use more time
+to move. I think we live.
+*** Timer would be Chair reposibility.
+If player do not move with in x time or y time if lost connection.
+Save game for later? declare winner leaving game should not an advantage.
+
+* ConnectionServer
+
+ 
+
+ 
+

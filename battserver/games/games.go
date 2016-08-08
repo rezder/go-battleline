@@ -1,9 +1,9 @@
 package games
 
 import (
-	"rezder.com/game/card/battleline/server/players"
-	pub "rezder.com/game/card/battleline/server/publist"
-	"rezder.com/game/card/battleline/server/tables"
+	"github.com/rezder/go-battleline/battserver/players"
+	pub "github.com/rezder/go-battleline/battserver/publist"
+	"github.com/rezder/go-battleline/battserver/tables"
 )
 
 type Server struct {

@@ -4,13 +4,13 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"github.com/rezder/go-battleline/battserver/games"
+	"github.com/rezder/go-battleline/battserver/players"
+	"github.com/rezder/go-error/cerrors"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"math/rand"
 	"os"
-	"rezder.com/cerrors"
-	"rezder.com/game/card/battleline/server/games"
-	"rezder.com/game/card/battleline/server/players"
 	"strconv"
 	"sync"
 	"time"
@@ -102,6 +102,7 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 }
 
 // save saves the client list to file.
+// No lock is used.
 func (clients *Clients) save() (err error) {
 	file, err := os.Create(CLIENTS_FileName)
 	if err != nil {
@@ -233,18 +234,17 @@ func (c *Clients) logIn(name string, pw string) (sid string, err error) {
 }
 
 //disable disable a client.
-//Warning should not be used during save.
-func (c *Clients) disable(name string) {
+func (c *Clients) updateDisable(name string, disable bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	client, found := c.Clients[name]
 	if found {
 		client.mu.Lock()
 		defer client.mu.Unlock()
-		if !client.Disable {
-			client.Disable = true
+		if client.Disable != disable {
+			client.Disable = disable
 			if c.gameServer != nil {
-				c.gameServer.PlayersDisableCh() <- &players.DisData{false, client.Id}
+				c.gameServer.PlayersDisableCh() <- &players.DisData{disable, client.Id}
 			}
 		}
 	}

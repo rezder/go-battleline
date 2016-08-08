@@ -1,11 +1,11 @@
 package battleline
 
 import (
-	"rezder.com/game/card/battleline/cards"
-	"rezder.com/game/card/battleline/flag"
-	"rezder.com/game/card/deck"
-	math "rezder.com/math/int"
-	slice "rezder.com/slice/int"
+	"github.com/rezder/go-battleline/battleline/cards"
+	"github.com/rezder/go-battleline/battleline/flag"
+	"github.com/rezder/go-card/deck"
+	math "github.com/rezder/go-math/int"
+	slice "github.com/rezder/go-slice/int"
 )
 
 const (

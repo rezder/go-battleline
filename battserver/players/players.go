@@ -3,13 +3,12 @@ package players
 
 import (
 	"fmt"
+	bat "github.com/rezder/go-battleline/battleline"
+	pub "github.com/rezder/go-battleline/battserver/publist"
+	"github.com/rezder/go-error/cerrors"
 	"golang.org/x/net/websocket"
 	"io"
 	"log"
-	"rezder.com/cerrors"
-	bat "rezder.com/game/card/battleline"
-	pub "rezder.com/game/card/battleline/server/publist"
-	"rezder.com/game/card/battleline/server/tables"
 	"strconv"
 )
 
@@ -42,11 +41,11 @@ type Server struct {
 	JoinCh        chan *Player
 	DisableCh     chan *DisData
 	pubList       *pub.List
-	startGameChCl *tables.StartGameChCl
+	startGameChCl *pub.StartGameChCl
 	finishedCh    chan struct{}
 }
 
-func New(pubList *pub.List, startGameChCl *tables.StartGameChCl) (s *Server) {
+func New(pubList *pub.List, startGameChCl *pub.StartGameChCl) (s *Server) {
 	s = new(Server)
 	s.pubList = pubList
 	s.startGameChCl = startGameChCl
@@ -70,11 +69,13 @@ func (s *Server) Stop() {
 }
 
 // Start starts the players server.
-func start(joinCh <-chan *Player, disableCh <-chan *DisData, pubList *pub.List, startGameChCl *tables.StartGameChCl,
+func start(joinCh <-chan *Player, disableCh <-chan *DisData, pubList *pub.List, startGameChCl *pub.StartGameChCl,
 	finishedCh chan struct{}) {
 	leaveCh := make(chan int)
 	list := make(map[int]*pub.PlayerData)
 	done := false
+	// disPlayers is need because is possible for a player to be logged in but
+	// not join the players server when he is booted out. Unlikely but possibel.
 	disPlayers := make(map[int]bool)
 Loop:
 	for {
@@ -93,6 +94,9 @@ Loop:
 				p.joinedCh <- p
 				list[p.id] = &pub.PlayerData{p.id, p.name, inviteCh, p.doneComCh, messCh, p.bootCh}
 				publish(list, pubList)
+				if disPlayers[p.id] {
+					close(p.bootCh)
+				}
 			} else {
 				done = true
 				if len(list) > 0 {
@@ -106,7 +110,7 @@ Loop:
 			}
 		case disData := <-disableCh:
 			if !done {
-				if disData.Enable {
+				if !disData.Disable {
 					delete(disPlayers, disData.PlayerId)
 				} else {
 					if !disPlayers[disData.PlayerId] {
@@ -138,7 +142,7 @@ func publish(list map[int]*pub.PlayerData, pubList *pub.List) {
 type Player struct {
 	id          int
 	name        string
-	tableStChCl *tables.StartGameChCl
+	tableStChCl *pub.StartGameChCl
 	leaveCh     chan<- int
 	pubList     *pub.List
 	inviteCh    <-chan *pub.Invite
@@ -165,7 +169,7 @@ func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error,
 
 // joinServer add the players server information.
 func (p *Player) joinServer(inviteCh <-chan *pub.Invite, messCh <-chan *pub.MesData,
-	leaveCh chan<- int, pubList *pub.List, startGameChCl *tables.StartGameChCl) {
+	leaveCh chan<- int, pubList *pub.List, startGameChCl *pub.StartGameChCl) {
 	p.leaveCh = leaveCh
 	p.pubList = pubList
 	p.inviteCh = inviteCh
@@ -392,7 +396,7 @@ func actRetractInvite(sendInvites map[int]*pub.Invite, act *Action) {
 //# sendInvites
 func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
 	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}, playerId int, doneComCh chan struct{},
-	gameReceiveCh chan<- *pub.MoveView, tableStChCl *tables.StartGameChCl) {
+	gameReceiveCh chan<- *pub.MoveView, tableStChCl *pub.StartGameChCl) {
 	_, found := sendInvites[response.Responder] //if not found we rejected but he did not get the msg yet
 	if found {
 		delete(sendInvites, response.Responder)
@@ -401,7 +405,7 @@ func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
 			sendCh <- invite
 		} else {
 			moveRecCh := make(chan *pub.MoveView, 1)
-			tableData := new(tables.StartGameData)
+			tableData := new(pub.StartGameData)
 			tableData.PlayerIds = [2]int{playerId, response.Responder}
 			tableData.PlayerChs = [2]chan<- *pub.MoveView{moveRecCh, response.GameCh}
 			select {
@@ -896,8 +900,8 @@ Loop:
 }
 
 //netWrite_AddJsonType adds the json type to interface values.
-func netWrite_AddJsonType(data interface{}) (jdata *pub.JsonData) {
-	jdata = new(pub.JsonData)
+func netWrite_AddJsonType(data interface{}) (jdata *JsonData) {
+	jdata = new(JsonData)
 	jdata.Data = data
 	switch data.(type) {
 	case map[string]*pub.Data:
@@ -990,6 +994,12 @@ func (err *PlayerErr) Error() string {
 }
 
 type DisData struct {
-	Enable   bool
+	Disable  bool
 	PlayerId int
+}
+
+//JsonData a json wrapper for export of interface values via json.
+type JsonData struct {
+	JsonType int
+	Data     interface{}
 }

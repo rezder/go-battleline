@@ -8,7 +8,7 @@ the list is updated and any new reads can give differnt list.
 package publist
 
 import (
-	bat "rezder.com/game/card/battleline"
+	bat "github.com/rezder/go-battleline/battleline"
 	"strconv"
 	"sync"
 )
@@ -128,7 +128,7 @@ type MoveBench struct {
 	NextMover  int
 }
 
-//PlayerData the data send between logon server and the player server.
+//PlayerData the public list player information.
 type PlayerData struct {
 	Id      int
 	Name    string
@@ -272,8 +272,21 @@ type Data struct {
 	Watch   *WatchChCl `json:"-"`
 }
 
-//JsonData a json wrapper for export of interface values via json.
-type JsonData struct {
-	JsonType int
-	Data     interface{}
+// StartGameData is the information need to start a game.
+type StartGameData struct {
+	PlayerIds [2]int
+	PlayerChs [2]chan<- *MoveView
+}
+
+// StartGameChCl the start game channel.
+type StartGameChCl struct {
+	Channel chan *StartGameData
+	Close   chan struct{}
+}
+
+func NewStartGameChCl() (sgc *StartGameChCl) {
+	sgc = new(StartGameChCl)
+	sgc.Channel = make(chan *StartGameData)
+	sgc.Close = make(chan struct{})
+	return sgc
 }
