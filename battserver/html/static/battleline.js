@@ -2089,8 +2089,10 @@ var batt={};
                     game.move(json.Data);
                     break;
                 case JT_CloseCon:
-                    msg.recieved({Message:json.Data});
+                    msg.recieved({Message:json.Data.Reason});
                     conn.close();
+                    game.clear();
+                    exp.unconnected=true;
                     break;
                 case JT_ClearList:
                     table.invites.clear();
