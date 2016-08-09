@@ -93,6 +93,9 @@ Loop:
 							start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1],
 								start.PlayerChs[0]}
 						}
+						if game.Pos == nil {
+							game.CalcPos()
+						}
 					}
 					watch := pub.NewWatchChCl()
 					go table(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh, save,
@@ -111,7 +114,8 @@ Loop:
 			}
 		}
 	} //loop
-	err := saveGames.save()
+	noPosGames := saveGames.copyClearPos()
+	err := noPosGames.save()
 	if err != nil {
 		errCh <- err
 	}
@@ -151,7 +155,7 @@ type FinishTableData struct {
 	game *bat.Game
 }
 
-//Save the data structur for saved games used to save as Gob.
+//SaveGames the data structur for saved games used to save as Gob.
 type SaveGames struct {
 	Games map[string]*bat.Game
 }
@@ -160,6 +164,21 @@ func NewSaveGames() (sg *SaveGames) {
 	sg = new(SaveGames)
 	sg.Games = make(map[string]*bat.Game)
 	return sg
+}
+
+//copyClearPos makes a copy of the SaveGames with out the game position
+//The game is not deep copied which mean the Moves slice array is
+//still connected.
+func (games *SaveGames) copyClearPos() (c *SaveGames) {
+	c = NewSaveGames()
+	if len(games.Games) > 0 {
+		for k, v := range games.Games {
+			g := *v
+			g.Pos = nil
+			c.Games[k] = &g
+		}
+	}
+	return c
 }
 func (games *SaveGames) save() (err error) {
 	file, err := os.Create(SAVE_GamesFile)

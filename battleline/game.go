@@ -61,7 +61,7 @@ func (game *Game) Equal(other *Game) (equal bool) {
 
 //calcPos calculate the current posistion from the initial position and
 //the moves. The new position replace the old position.
-func (game *Game) calcPos() {
+func (game *Game) CalcPos() {
 	game.Pos = NewGamePos()
 	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
 	game.Pos.DeckTac = *game.InitDeckTac.Copy()
@@ -520,7 +520,7 @@ func Load(file *os.File) (game *Game, err error) {
 	}
 	game = &g
 	if game.Pos == nil {
-		game.calcPos()
+		game.CalcPos()
 	}
 
 	return game, err
