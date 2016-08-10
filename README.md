@@ -64,7 +64,7 @@ The java script must wait I will be working on a bot next.
 This is my first program in go so the code is not consistent as I am trying to learn new things and therefore may code the same thing in multiple ways. It is also my first javascript, css and html and I am taking spacemacs for its first spind.
 I do not like front end code never did. I like the go code syntax and the channels but I do think that the lack of version support is going to be a challenge. "go get" combined with github not have directories for repository is bad both of them.
 
-![Game page](batt.png)
+![Game page](bat.png)
 
 
 
