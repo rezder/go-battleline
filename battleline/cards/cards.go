@@ -14,6 +14,7 @@ const (
 	T_Env    = 3
 	T_Guile  = 4
 
+	C_None   = 0
 	C_Green  = 1
 	C_Red    = 2
 	C_Purpel = 3
@@ -214,4 +215,13 @@ func DrTactic(ix int) (c *Tactic, err error) {
 	} else {
 		return nil, errors.New("Card do not exist")
 	}
+}
+func IsEnv(ix int) bool {
+	return ix == TC_Mud || ix == TC_Fog
+}
+func IsMorale(ix int) bool {
+	return ix == TC_Alexander || ix == TC_Darius || ix == TC_123 || ix == TC_8
+}
+func IsTroop(ix int) bool {
+	return ix <= TROOP_NO
 }

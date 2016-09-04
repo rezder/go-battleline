@@ -491,193 +491,103 @@ func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
 			}
 		}
 	}
+	m = claimCombi(posFlags)
+	return m
+}
+func claimCombi(posFlags []int) (m []Move) {
 	n := len(posFlags)
 	if n != 0 {
+		m = make([]Move, 0, claimCombiNo(n))
+		m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
+		m = append(m, *NewMoveClaim(posFlags[:]))    // all
 		switch n {
-		case 0:
-			m = make([]Move, 0, 1)
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-		case 1:
-			m = make([]Move, 0, 2)
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
 		case 2:
-			m = make([]Move, 0, 2+2)
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-			}
+			m = claimAddOne(m, false, posFlags)
 		case 3:
-			m = make([]Move, 0, 2+(n*2))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
+			m = claimAddOne(m, true, posFlags)
 		case 4:
-			m = make([]Move, 0, 2+(n*2)+math.Comb(n, 2))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {                    // 1 and all -1
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
-			_ = math.Perm2(n, func(per [2]int) bool { // 2
-				var flagixs = make([]int, 2)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				return false
-			})
+			m = claimAddOne(m, true, posFlags)
+			m = claimAdd(m, false, posFlags, 2)
 		case 5:
-			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {                    // 1 and all -1
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
-			_ = math.Perm2(n, func(per [2]int) bool {
-				var flagixs = make([]int, 2)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
+			m = claimAddOne(m, true, posFlags)
+			m = claimAdd(m, true, posFlags, 2)
 		case 6:
-			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+math.Comb(n, 3))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {                    // 1 and all -1
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
-			_ = math.Perm2(n, func(per [2]int) bool {
-				var flagixs = make([]int, 2)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
-			_ = math.Perm3(n, func(per [3]int) bool {
-				var flagixs = make([]int, 3)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				return false
-			})
+			m = claimAddOne(m, true, posFlags)
+			m = claimAdd(m, true, posFlags, 2)
+			m = claimAdd(m, false, posFlags, 3)
 		case 7:
-			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {                    // 1 and all -1
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
-			_ = math.Perm2(n, func(per [2]int) bool {
-				var flagixs = make([]int, 2)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
-			_ = math.Perm3(n, func(per [3]int) bool {
-				var flagixs = make([]int, 3)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
+			m = claimAddOne(m, true, posFlags)
+			m = claimAdd(m, true, posFlags, 2)
+			m = claimAdd(m, true, posFlags, 3)
 		case 8:
-			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3)+math.Comb(n, 4))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {                    // 1 and all -1
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
-			_ = math.Perm2(n, func(per [2]int) bool {
-				var flagixs = make([]int, 2)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
-			_ = math.Perm3(n, func(per [3]int) bool {
-				var flagixs = make([]int, 3)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
-			_ = math.Perm4(n, func(per [4]int) bool {
-				var flagixs = make([]int, 4)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				return false
-			})
+			m = claimAddOne(m, true, posFlags)
+			m = claimAdd(m, true, posFlags, 2)
+			m = claimAdd(m, true, posFlags, 3)
+			m = claimAdd(m, false, posFlags, 4)
 		case 9:
-			m = make([]Move, 0, 2+(n*2)+2*math.Comb(n, 2)+2*math.Comb(n, 3)+2*math.Comb(n, 4))
-			m = append(m, *NewMoveClaim(make([]int, 0))) //no claims
-			m = append(m, *NewMoveClaim(posFlags[:]))    // all
-			for i := range posFlags {                    // 1 and all -1
-				m = append(m, *NewMoveClaim(posFlags[i : i+1]))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
-			}
-			_ = math.Perm2(n, func(per [2]int) bool {
-				var flagixs = make([]int, 2)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
-			_ = math.Perm3(n, func(per [3]int) bool {
-				var flagixs = make([]int, 3)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
-			_ = math.Perm4(n, func(per [4]int) bool {
-				var flagixs = make([]int, 4)
-				for i, ix := range per {
-					flagixs[i] = posFlags[ix]
-				}
-				m = append(m, *NewMoveClaim(flagixs))
-				m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
-				return false
-			})
+			m = claimAddOne(m, true, posFlags)
+			m = claimAdd(m, true, posFlags, 2)
+			m = claimAdd(m, true, posFlags, 3)
+			m = claimAdd(m, true, posFlags, 4)
 		}
 	}
 	return m
 }
 
+func claimAddOne(m []Move, reverse bool, posFlags []int) []Move {
+	for i := range posFlags {
+		m = append(m, *NewMoveClaim(posFlags[i : i+1]))
+		if reverse {
+			m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, posFlags[i:i+1])))
+		}
+	}
+	return m
+}
+
+func claimAdd(m []Move, reverse bool, posFlags []int, d int) []Move {
+	n := len(posFlags)
+	_ = math.Perm(n, d, func(per []int) bool {
+		var flagixs = make([]int, d)
+		for i, ix := range per {
+			flagixs[i] = posFlags[ix]
+		}
+		m = append(m, *NewMoveClaim(flagixs))
+		if reverse {
+			m = append(m, *NewMoveClaim(slice.WithOutNew(posFlags, flagixs)))
+		}
+		return false
+	})
+	return m
+}
+
+func claimCombiNo(flagsNo int) (no int) {
+	switch flagsNo {
+	case 1:
+		no = 2
+	case 2:
+		no = 2 + flagsNo
+	case 3:
+		no = 2 + (flagsNo * 2)
+	case 4:
+		no = 2 + (flagsNo * 2) + int(math.Comb(uint64(flagsNo), uint64(2)))
+	case 5:
+		no = 2 + (flagsNo * 2) + 2*int(math.Comb(uint64(flagsNo), uint64(2)))
+	case 6:
+		no = 2 + (flagsNo * 2) + 2*int(math.Comb(uint64(flagsNo), uint64(2))) + int(math.Comb(uint64(flagsNo), uint64(3)))
+	case 7:
+		no = 2 + (flagsNo * 2) + 2*int(math.Comb(uint64(flagsNo), uint64(2))+math.Comb(uint64(flagsNo), uint64(3)))
+	case 8:
+		no = 2 + (flagsNo * 2) + 2*int(math.Comb(uint64(flagsNo), uint64(2))+math.Comb(uint64(flagsNo), uint64(3))) + int(math.Comb(uint64(flagsNo), uint64(4)))
+	case 9:
+		no = 2 + (flagsNo * 2) + 2*int(math.Comb(uint64(flagsNo), uint64(2))+math.Comb(uint64(flagsNo), uint64(3))+math.Comb(uint64(flagsNo), uint64(4)))
+	}
+	return no
+}
+
 // getMoveDeck returns all the possible move deck.
 func getMoveDeck(tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Hand, turnState int) (m []Move) {
 	m = make([]Move, 0, 2)
-	if turnState != TURN_DECK || (turnState == TURN_DECK && hand.size() < 7) {
+	if turnState != TURN_DECK || (turnState == TURN_DECK && hand.Size() < 7) {
 		if !tacDeck.Empty() {
 			m = append(m, *NewMoveDeck(DECK_TAC))
 		}

@@ -69,7 +69,7 @@ func (hand *Hand) String() (txt string) {
 }
 
 //play removes a card from the hand.
-func (hand *Hand) play(cardix int) {
+func (hand *Hand) Play(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
 	if cardTac != nil {
 		hand.Tacs = slice.Remove(hand.Tacs, cardix)
@@ -81,14 +81,14 @@ func (hand *Hand) play(cardix int) {
 }
 
 //playMulti removes cards from hand.
-func (hand *Hand) playMulti(cardixs []int) {
+func (hand *Hand) PlayMulti(cardixs []int) {
 	for _, cardix := range cardixs {
-		hand.play(cardix)
+		hand.Play(cardix)
 	}
 }
 
 //draw adds card to hand.
-func (hand *Hand) draw(cardix int) {
+func (hand *Hand) Draw(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
 	if cardTac != nil {
 		hand.Tacs = append(hand.Tacs, cardix)
@@ -100,7 +100,7 @@ func (hand *Hand) draw(cardix int) {
 }
 
 //size the total number of cards in hand.
-func (hand *Hand) size() int {
+func (hand *Hand) Size() int {
 	res := 0
 	if hand != nil {
 		res = len(hand.Troops) + len(hand.Tacs)
@@ -167,7 +167,7 @@ func (dish *Dish) String() (txt string) {
 }
 
 //dishCard add card to the dish.
-func (dish *Dish) dishCard(cardix int) {
+func (dish *Dish) DishCard(cardix int) {
 	if tac, _ := cards.DrTactic(cardix); tac != nil {
 		dish.Tacs = append(dish.Tacs, cardix)
 	} else if troop, _ := cards.DrTroop(cardix); troop != nil {

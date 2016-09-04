@@ -3,6 +3,7 @@ package battleline
 import (
 	"bytes"
 	"encoding/gob"
+	math "github.com/rezder/go-math/int"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -279,5 +280,62 @@ func dataConversion(game *Game) {
 				game.Moves[i] = move
 			}
 		}
+	}
+}
+func TestClaimCombi(t *testing.T) {
+	flags := []int{0}
+	m := claimCombi(flags)
+	no := claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1, 2}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1, 2, 3}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1, 2, 3, 4}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1, 2, 3, 4, 5}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+
+	flags = []int{0, 1, 2, 3, 4, 5, 6}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1, 2, 3, 4, 5, 6, 7}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
+	}
+	flags = []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
+	m = claimCombi(flags)
+	no = claimCombiNo(len(flags))
+	if len(m) != no {
+		t.Errorf("%v flags expected %v, got %v", len(flags), len(m), no)
 	}
 }

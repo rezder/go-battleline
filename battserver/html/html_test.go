@@ -26,7 +26,7 @@ func TestParseHtml(t *testing.T) {
 	if !found {
 		t.Errorf("Body was not found in file")
 	}
-	file, err := os.Create("test/client.html")
+	file, err := os.Create("_test/client.html")
 	if err == nil {
 		defer file.Close()
 		err = html.Render(file, startNode)

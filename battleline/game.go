@@ -172,7 +172,7 @@ func moveScoutRet(move *MoveScoutReturn, deckTack *deck.Deck, deckTroop *deck.De
 			reTac[i] = deckFromTactic(v)
 		}
 		deckTack.Return(reTac)
-		hand.playMulti(move.Tac)
+		hand.PlayMulti(move.Tac)
 	}
 	if len(move.Troop) != 0 {
 		reTroop := make([]int, len(move.Troop))
@@ -180,7 +180,7 @@ func moveScoutRet(move *MoveScoutReturn, deckTack *deck.Deck, deckTroop *deck.De
 			reTroop[i] = deckFromTroop(v)
 		}
 		deckTroop.Return(reTroop)
-		hand.playMulti(move.Troop)
+		hand.PlayMulti(move.Troop)
 	}
 }
 
@@ -208,10 +208,10 @@ func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Han
 	switch int(deck.Deck) {
 	case DECK_TAC:
 		dealt = deckDealTactic(tacDeck)
-		hand.draw(dealt)
+		hand.Draw(dealt)
 	case DECK_TROOP:
 		dealt = deckDealTroop(troopDeck)
-		hand.draw(dealt)
+		hand.Draw(dealt)
 	}
 	return dealt
 }
@@ -227,23 +227,23 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, dishixs []int) 
 	scout := false
 	var err error
 	if pos.State == TURN_HAND {
-		pos.Hands[pos.Player].play(cardix)
+		pos.Hands[pos.Player].Play(cardix)
 		switch move := pos.MovesHand[cardix][moveix].(type) {
 		case MoveCardFlag:
 			err = pos.Flags[move.Flagix].Set(cardix, pos.Player)
 		case MoveDeck: //scout
 			dealtix = moveDeck(move, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
-			pos.Dishs[pos.Player].dishCard(cardix)
+			pos.Dishs[pos.Player].DishCard(cardix)
 			scout = true
 		case MoveDeserter:
 			dishixs, err = moveDeserter(&move, &pos.Flags, pos.Opp(), &pos.Dishs)
-			pos.Dishs[pos.Player].dishCard(cardix)
+			pos.Dishs[pos.Player].DishCard(cardix)
 		case MoveTraitor:
 			err = moveTraitor(&move, &pos.Flags, pos.Player)
-			pos.Dishs[pos.Player].dishCard(cardix)
+			pos.Dishs[pos.Player].DishCard(cardix)
 		case MoveRedeploy:
 			dishixs, err = moveRedeploy(&move, &pos.Flags, pos.Player, &pos.Dishs)
-			pos.Dishs[pos.Player].dishCard(cardix)
+			pos.Dishs[pos.Player].DishCard(cardix)
 		default:
 			panic("Illegal move type")
 		}
@@ -266,24 +266,23 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, dishixs []int) 
 func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
 	dishs *[2]*Dish) (dishixs []int, err error) {
 	var outFlag *flag.Flag = flags[move.OutFlag]
-	dishixs = make([]int, 0, 2)
 	m0ix, m1ix, err := outFlag.Remove(move.OutCard, playerix)
 	if err != nil {
 		return dishixs, err
 	}
 	if m0ix != -1 {
-		dishs[0].dishCard(m0ix)
+		dishs[0].DishCard(m0ix)
 		dishixs = append(dishixs, m0ix)
 	}
 	if m1ix != -1 {
-		dishs[1].dishCard(m1ix)
+		dishs[1].DishCard(m1ix)
 		dishixs = append(dishixs, m1ix)
 	}
 	if move.InFlag != -1 {
 		var inFlag *flag.Flag = flags[move.InFlag]
 		err = inFlag.Set(move.OutCard, playerix)
 	} else {
-		dishs[playerix].dishCard(move.OutCard)
+		dishs[playerix].DishCard(move.OutCard)
 	}
 
 	return dishixs, err
@@ -312,13 +311,13 @@ func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int,
 	if err != nil {
 		return dishixs, err
 	}
-	dishs[oppix].dishCard(move.Card)
+	dishs[oppix].DishCard(move.Card)
 	if m0ix != -1 {
-		dishs[0].dishCard(m0ix)
+		dishs[0].DishCard(m0ix)
 		dishixs = append(dishixs, m0ix)
 	}
 	if m1ix != -1 {
-		dishs[1].dishCard(m1ix)
+		dishs[1].DishCard(m1ix)
 		dishixs = append(dishixs, m1ix)
 	}
 	return dishixs, err
@@ -436,7 +435,7 @@ func opponent(playerix int) int {
 func deal(hands *[2]*Hand, deck *deck.Deck) {
 	for _, hand := range hands {
 		for i := 0; i < HAND; i++ {
-			hand.draw(deckDealTroop(deck))
+			hand.Draw(deckDealTroop(deck))
 		}
 	}
 }

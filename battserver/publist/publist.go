@@ -143,7 +143,6 @@ type PlayerData struct {
 //This make the standard select unreliable. Use a select with default to check if retracted and
 //the receiver must count on receiving retracted responses.
 type Invite struct {
-	ResType     int
 	InvitorId   int
 	InvitorName string
 	ReceiverId  int

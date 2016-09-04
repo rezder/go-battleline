@@ -1096,27 +1096,24 @@ func (flag *Flag) Free() (v [2]bool) {
 
 //Env makes a slice with envirement tactic cards.
 //may be empty.
-func (flag *Flag) Env(pix int) (copyenv []int) {
-	env := flag.Players[pix].Env[:]
-	copyenv = make([]int, 0, len(env))
-	for _, v := range env {
+func (flag *Flag) Env(pix int) (env []int) {
+	env = removeZeros(flag.Players[pix].Env[:])
+	return env
+}
+func removeZeros(list []int) (clean []int) {
+	clean = make([]int, 0, len(list))
+	for _, v := range list {
 		if v != 0 {
-			copyenv = append(copyenv, v)
+			clean = append(clean, v)
 		}
 	}
-	return copyenv
+	return clean
 }
 
 //Troops makes a slice with troops maybe empty.
-func (flag *Flag) Troops(pix int) (copyTroops []int) {
-	troops := flag.Players[pix].Troops[:]
-	copyTroops = make([]int, 0, len(troops))
-	for _, v := range troops {
-		if v != 0 {
-			copyTroops = append(copyTroops, v)
-		}
-	}
-	return copyTroops
+func (flag *Flag) Troops(pix int) (troops []int) {
+	troops = removeZeros(flag.Players[pix].Troops[:])
+	return troops
 }
 
 //Claimed return true if the flag is claimed.

@@ -25,13 +25,13 @@ const (
 	ACT_LIST       = 10
 	ACT_SAVE       = 11
 
-	JT_Mess      = 1
-	JT_Invite    = 2
-	JT_Move      = 3
-	JT_BenchMove = 4
-	JT_List      = 5
-	JT_CloseCon  = 6
-	JT_ClearList = 7
+	JT_Mess         = 1
+	JT_Invite       = 2
+	JT_Move         = 3
+	JT_BenchMove    = 4
+	JT_List         = 5
+	JT_CloseCon     = 6
+	JT_ClearInvites = 7
 
 	WRTBUFF_SIZE = 10
 	WRTBUFF_LIM  = 8
@@ -486,7 +486,7 @@ func actWatch(watchGames map[int]*pub.WatchChCl, act *Action,
 		case watchChCl.Channel <- watch:
 			go watchGameListen(watchChCl, benchCh, startWatchGameCh, gameDoneCh, sendCh, act.Id, playerId)
 		case <-watchChCl.Close:
-			txt := fmt.Sprintf("Player id: %v do not have a active game")
+			txt := fmt.Sprintf("Player id: %v do not have a active game", act.Id)
 			sendSysMess(sendCh, txt)
 			updList = true
 		}
@@ -917,7 +917,7 @@ func netWrite_AddJsonType(data interface{}) (jdata *JsonData) {
 	case CloseCon:
 		jdata.JsonType = JT_CloseCon
 	case ClearInvites:
-		jdata.JsonType = JT_ClearList
+		jdata.JsonType = JT_ClearInvites
 	default:
 		txt := fmt.Sprintf("Message not implemented yet: %v\n", data)
 		panic(txt)

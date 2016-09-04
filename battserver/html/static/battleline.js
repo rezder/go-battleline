@@ -1059,13 +1059,13 @@ var batt={};
                 }else if(move.JsonType==="MoveQuit"){
                     msg.recieved({Message:"You have lost the game by giving up."});
                 }else if(move.JsonType==="MoveRedeployView"){
-                    if(move.RedeployDishixs.length>0){
+                    if(move.RedeployDishixs){
                         for(let i=0;i<move.RedeployDishixs.length;i++){
                             svg.flag.cardToDish(move.RedeployDishixs[i]);
                         }
                     }
                 }else if(move.JsonType==="MoveDeserterView"){
-                    if (move.Dishixs.length>0){
+                    if (move.Dishixs){
                         for(let i=0;i<move.Dishixs.length;i++){
                             svg.flag.cardToDish(move.Dishixs[i]);
                         }
@@ -1160,7 +1160,7 @@ var batt={};
                 case "MoveDeserterView":
                     svg.hand.moveToDishOpp(moveView.MoveCardix);
                     svg.flag.cardToDish(move.Move.Card);
-                    if (move.Dishixs.length>0){
+                    if (move.Dishixs){
                         for(let i=0;i<move.Dishixs.length;i++){
                             svg.flag.cardToDish(move.Dishixs[i]);
                         }
@@ -1195,7 +1195,7 @@ var batt={};
                     }else{
                         svg.flag.cardToDish(move.Move.OutCard);
                     }
-                    if(move.RedeployDishixs.length>0){
+                    if(move.RedeployDishixs){
                         for(let i=0;i<move.RedeployDishixs.length;i++){
                             svg.flag.cardToDish(move.RedeployDishixs[i]);
                         }
@@ -1956,7 +1956,7 @@ var batt={};
                                 let newTxtNode=document.createTextNode("I");
                                 btn.appendChild(newTxtNode);
                                 cell.appendChild(btn);
-                            }else if(pTableHeaders[i].id==="pt-watch-butt"&&p.OppName){
+                            }else if(pTableHeaders[i].id==="pt-watch-butt"&&p.OppName&&p.OppName!==cookies.name){
                                 let cell=newRow.insertCell(-1);
                                 let btn = document.createElement("BUTTON");
                                 let newTxtNode=document.createTextNode("W");
@@ -2071,7 +2071,7 @@ var batt={};
                 const JT_BenchMove = 4;
 	              const JT_List   = 5;
                 const JT_CloseCon=6;
-                const JT_ClearList=7;
+                const JT_ClearInvites=7;
                 //TODO CLEAN up consolelog
                 let json=JSON.parse(event.data);
                 console.log(json);
@@ -2094,7 +2094,7 @@ var batt={};
                     game.clear();
                     exp.unconnected=true;
                     break;
-                case JT_ClearList:
+                case JT_ClearInvites:
                     table.invites.clear();
                 }
             };
