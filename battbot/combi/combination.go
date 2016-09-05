@@ -30,7 +30,7 @@ func createCombiWedge(cardsNo int) []*Combination {
 	combis := make([]*Combination, 0, 10+1-cardsNo)
 	for value := 10; value >= cardsNo; value-- {
 		combi := Combination{
-			Formation: cards.F_Wedge,
+			Formation: cards.FWedge,
 			Troops:    make(map[int][]int),
 		}
 
@@ -54,7 +54,7 @@ func createCombiPhalanx(cardsNo int) []*Combination {
 	//Phalanx
 	for value := 10; value > 0; value-- {
 		combi := Combination{
-			Formation: cards.F_Phalanx,
+			Formation: cards.FPhalanx,
 			Strength:  value * cardsNo,
 			Troops:    make(map[int][]int),
 		}
@@ -62,7 +62,7 @@ func createCombiPhalanx(cardsNo int) []*Combination {
 		for color := 1; color < 7; color++ {
 			cardixs = append(cardixs, (color-1)*10+value)
 		}
-		combi.Troops[cards.C_None] = cardixs
+		combi.Troops[cards.COLNone] = cardixs
 		combis = append(combis, &combi)
 	}
 	return combis
@@ -84,7 +84,7 @@ func createCombiBattalion(cardsNo int) (combis []*Combination) {
 	combis = make([]*Combination, 0, maxsum-minsum)
 	for sum := maxsum; sum > minsum; sum-- {
 		combi := Combination{
-			Formation: cards.F_BattalionOrder,
+			Formation: cards.FBattalion,
 			Strength:  sum,
 			Troops:    make(map[int][]int),
 		}
@@ -112,7 +112,7 @@ func createCombiSkirmish(cardsNo int) (combis []*Combination) {
 
 	for value := 10; value >= cardsNo; value-- {
 		combi := Combination{
-			Formation: cards.F_SkirmishLine,
+			Formation: cards.FSkirmish,
 			Troops:    make(map[int][]int),
 		}
 		baseixs := make([]int, 0, cardsNo)
@@ -128,7 +128,7 @@ func createCombiSkirmish(cardsNo int) (combis []*Combination) {
 				cardixs = append(cardixs, (color-1)*10+baseix)
 			}
 		}
-		combi.Troops[cards.C_None] = cardixs
+		combi.Troops[cards.COLNone] = cardixs
 
 		combis = append(combis, &combi)
 	}

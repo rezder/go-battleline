@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	C_Opp  = -1
-	C_Play = 1
-	C_None = 0
+	C_Opp   = -1
+	C_Play  = 1
+	COLNone = 0
 )
 
 type Flag struct {

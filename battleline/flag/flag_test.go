@@ -11,33 +11,11 @@ import (
 
 //TestFlagT1LeaderWedge testing wedge with one leader
 func TestFlagT1LeaderWedge(t *testing.T) {
-	flag := New()
+	flag := flagLeader(t, []int{2, 3}, []int{11, 13}, 9, 6, &cards.FWedge)
+
+	//----------Buttom
 	player1 := 0
 	player2 := 1
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(2, player1)
-	flag.Set(3, player1)
-
-	flag.Set(11, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(13, player2)
-	t.Logf("Flag %+v", flag)
-	//---------Top
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != 9 {
-		t.Errorf("Strenght wrong expect %v got %v", 9, flag.Players[player1].Strenght)
-	}
-	//----------Middel
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	if flag.Players[player2].Strenght != 6 {
-		t.Errorf("Strenght wrong expect %v got %v", 6, flag.Players[player2].Strenght)
-	}
-	//----------Buttom
-
 	mud1, mud2, err := flag.Remove(2, player1)
 	if mud1 != -1 || mud2 != -1 {
 		t.Errorf("No exces card should be removed do to mud. Card %v,%v was moved", mud1, mud2)
@@ -52,67 +30,29 @@ func TestFlagT1LeaderWedge(t *testing.T) {
 	if err != nil {
 		t.Errorf("We do not expect a error: %v", err)
 	}
-
-	flag.Set(9, player1)
-	flag.Set(10, player1)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != 27 {
-		t.Errorf("Strenght wrong expect %v got %v", 27, flag.Players[player1].Strenght)
-	}
-	//----------Fog
-	flag.Set(cards.TC_Fog, player1)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player2].Strenght != 14 {
-		t.Errorf("Strenght wrong expect %v got %v", 14, flag.Players[player1].Strenght)
-	}
+	flag = flagLeader(t, []int{9, 10}, []int{11, 13}, 27, 6, &cards.FWedge)
+	flag = flagLeader(t, []int{9, 10}, []int{11, 13, cards.TCFog}, 29, 14, &cards.FHost)
 
 	//===========Mud
 	flag = New()
 	//-----------Top
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(1, player1)
-	flag.Set(2, player1)
-	flag.Set(3, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	//---------Buttom
-	flag.Set(20, player2)
-	flag.Set(19, player2)
-	flag.Set(18, player2)
-	flag.Set(cards.TC_Darius, player2)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != 10 {
-		t.Errorf("Strenght wrong expect %v got %v", 10, flag.Players[player1].Strenght)
-	}
+	flag = flagLeader(t, []int{cards.TCMud, 1, 2, 3}, []int{20, 19, 18}, 10, 34, &cards.FWedge)
 
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	if flag.Players[player2].Strenght != 34 {
-		t.Errorf("Strenght wrong expect %v got %v", 34, flag.Players[player2].Strenght)
-	}
-	mud1, mud2, err = flag.Remove(cards.TC_Mud, player1)
+	mud1, mud2, err = flag.Remove(cards.TCMud, player1)
 	ex := 1
 	if mud1 != ex {
 		t.Errorf("Expected mud 1 index: %v got: %v", ex, mud1)
 	}
-	ex = cards.TC_Darius // this can only happen if you did not claim the flag as you hadd the best Formation
+	ex = cards.TCDarius // this can only happen if you did not claim the flag as you hadd the best Formation
 	if mud2 != ex {
 		t.Errorf("Expected mud 2 index: %v got: %v", ex, mud2)
 	}
+
 	if err != nil {
 		t.Errorf("We do not expect a error: %v", err)
 	}
 	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
+	if flag.Players[player1].Formation != &cards.FWedge {
 		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
 	}
 	ex = 9
@@ -120,198 +60,41 @@ func TestFlagT1LeaderWedge(t *testing.T) {
 		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
 	}
 	ex = 27
-	if flag.Players[player2].Formation != &cards.F_Wedge {
+	if flag.Players[player2].Formation != &cards.FWedge {
 		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
 	}
 	if flag.Players[player2].Strenght != ex {
 		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
 	}
-	flag = New()
 	//-----------Middel Top
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(1, player1)
-	flag.Set(2, player1)
-	flag.Set(4, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	//---------Middel Buttom
-	flag.Set(20, player2)
-	flag.Set(19, player2)
-	flag.Set(17, player2)
-	flag.Set(cards.TC_Darius, player2)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != 10 {
-		t.Errorf("Strenght wrong expect %v got %v", 10, flag.Players[player1].Strenght)
-	}
+	flagLeader(t, []int{cards.TCMud, 1, 2, 4}, []int{20, 19, 17}, 10, 34, &cards.FWedge)
 
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	if flag.Players[player2].Strenght != 34 {
-		t.Errorf("Strenght wrong expect %v got %v", 34, flag.Players[player2].Strenght)
-	}
-	flag = New()
 	//-----------Miss two step
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(1, player1)
-	flag.Set(3, player1)
-	flag.Set(5, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	//--------- Miss big hole
-	flag.Set(20, player2)
-	flag.Set(16, player2)
-	flag.Set(17, player2)
-	flag.Set(cards.TC_Darius, player2)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 19
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
+	flagLeader(t, []int{cards.TCMud, 1, 3, 5}, []int{20, 16, 17}, 19, 33, &cards.FBattalion)
 
-	if flag.Players[player2].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 33
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
 }
 
 // TestFlagT1NWedge testing wedge with one number joker.
 // Player 1 have 8 player 2 have 123.
 func TestFlagT1NWedge(t *testing.T) {
 	//------Top
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(6, player1)
+	flag8x123(t, []int{7, 6}, []int{11, 12}, 21, 6, &cards.FWedge)
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(11, player2)
-	flag.Set(12, player2)
-
-	t.Logf("Flag %+v", flag)
-	//---------Top
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Top Formation 8 wrong : %v", flag.Players[player1].Formation)
-	}
-	ex := 21
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Top Strenght 8 wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Top Formation 123  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Top Strenght 123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
 	//----------Buttom
-	flag = New()
-	flag.Set(cards.TC_8, player1)
-	flag.Set(10, player1)
-	flag.Set(9, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(12, player2)
-	flag.Set(13, player2)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Button Formation 8 wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 27
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Button  Strenght 8 wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Button Formation 123  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Button Strenght 123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flag := flag8x123(t, []int{10, 9}, []int{12, 13}, 27, 6, &cards.FWedge)
 
 	//----------Fog
-	flag.Set(cards.TC_Fog, player1)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Fog Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 8
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Fog Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	ex = 27
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Fog Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
+	flag8x123(t, []int{10, 9, cards.TCFog}, []int{12, 13}, 27, 8, &cards.FHost)
 	//----------Middel
-	flag = New()
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(9, player1)
+	flag8x123(t, []int{9, 7}, []int{11, 13}, 24, 6, &cards.FWedge)
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(11, player2)
-	flag.Set(13, player2)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Button Formation 8 wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 24
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Button  Strenght 8 wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Button Formation 123  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Button Strenght 123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-
-	//===========Mud
-	flag = New()
-	//-----------Top
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(5, player1)
-	flag.Set(7, player1)
-	flag.Set(6, player1)
-	flag.Set(cards.TC_8, player1)
-
-	flag.Set(11, player2)
-	flag.Set(12, player2)
-	flag.Set(14, player2)
-	flag.Set(cards.TC_123, player2)
-	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Mud top 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 26
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Mud top 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Mud top 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Mud top 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	//-----------Top Mud
+	flag = flag8x123(t, []int{cards.TCMud, 5, 7, 6}, []int{11, 12, 14}, 26, 10, &cards.FWedge)
+	player1 := 0
+	player2 := 1
 	t.Logf("Remove mud 8 and 123")
-	mud1, mud2, err := flag.Remove(cards.TC_Mud, player1)
-	ex = 5
+	mud1, mud2, err := flag.Remove(cards.TCMud, player1)
+	ex := 5
 	if mud1 != ex {
 		t.Errorf("Expected mud 1 index: %v got: %v", ex, mud1)
 	}
@@ -323,7 +106,7 @@ func TestFlagT1NWedge(t *testing.T) {
 		t.Errorf("We do not expect a error: %v", err)
 	}
 	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
+	if flag.Players[player1].Formation != &cards.FWedge {
 		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
 	}
 	ex = 21
@@ -331,879 +114,127 @@ func TestFlagT1NWedge(t *testing.T) {
 		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
 	}
 	ex = 9
-	if flag.Players[player2].Formation != &cards.F_Wedge {
+	if flag.Players[player2].Formation != &cards.FWedge {
 		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
 	}
 	if flag.Players[player2].Strenght != ex {
 		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
 	}
-	flag = New()
 	//-----------Middel Top
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(6, player1)
-	flag.Set(7, player1)
-	flag.Set(9, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(11, player2)
-	flag.Set(12, player2)
-	flag.Set(14, player2)
-	flag.Set(cards.TC_123, player2)
-	t.Logf("Mud Middel Top Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Mud Middel Top 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 30
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Mud Middel Top 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
+	flag8x123(t, []int{cards.TCMud, 6, 7, 9}, []int{11, 12, 14}, 30, 10, &cards.FWedge)
 
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Mud Middel Top 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Mud Middel Top 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
 	//-----------Middel button
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(7, player1)
-	flag.Set(9, player1)
-	flag.Set(10, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(11, player2)
-	flag.Set(13, player2)
-	flag.Set(14, player2)
-	flag.Set(cards.TC_123, player2)
-	t.Logf("Mud Middel button Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Mud Middel Top 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Mud Middel button 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
+	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{11, 13, 14}, 34, 10, &cards.FWedge)
 
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Mud Middel button 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Mud Middel button 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-
+	troops1 := []int{cards.TCMud, 10, 9, 8, cards.TC8} // Miss
+	troops2 := []int{1, 2, 3, cards.TC123}             //Miss big hole
+	flagStd(t, troops1, troops2, 35, 9, &cards.FBattalion)
+}
+func flagStd(t *testing.T, troops1, troops2 []int, ex1, ex2 int, formation *cards.Formation) (flag *Flag) {
 	flag = New()
-	//-----------Miss
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(10, player1)
-	flag.Set(9, player1)
-	flag.Set(8, player1)
-	flag.Set(cards.TC_8, player1)
-	//---------Miss big hole
-	flag.Set(1, player2)
-	flag.Set(2, player2)
-	flag.Set(3, player2)
-	flag.Set(cards.TC_123, player2)
+	player1 := 0
+	player2 := 1
+	for _, cix := range troops1 {
+		flag.Set(cix, player1)
+	}
+	for _, cix := range troops2 {
+		flag.Set(cix, player2)
+	}
 	t.Logf("Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
+	if flag.Players[player1].Formation != formation {
 		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
 	}
-	ex = 35
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
+	if flag.Players[player1].Strenght != ex1 {
+		t.Errorf("Strenght wrong expect %v got %v", ex1, flag.Players[player1].Strenght)
 	}
 
-	if flag.Players[player2].Formation != &cards.F_BattalionOrder {
+	if flag.Players[player2].Formation != formation {
 		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
 	}
-	ex = 9
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
+	if flag.Players[player2].Strenght != ex2 {
+		t.Errorf("Strenght wrong expect %v got %v", ex2, flag.Players[player2].Strenght)
 	}
-
+	return flag
 }
 
 //TestFlagT1Phalanx testing Phalax
 func TestFlagT1Phalanx(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(7, player1)
-	flag.Set(17, player1)
+	flagLeader(t, []int{7, 17}, []int{11, 21}, 21, 3, &cards.FPhalanx)
+	flag8x123(t, []int{8, 18}, []int{12, 22}, 24, 6, &cards.FPhalanx)
+	flag8x123(t, []int{8, 18, 28}, []int{12, 22, 32, cards.TCMud}, 32, 8, &cards.FPhalanx)
+}
+func flag8x123(t *testing.T, troops1, troops2 []int, ex1, ex2 int,
+	formation *cards.Formation) (flag *Flag) {
+	troops1 = append(troops1, cards.TC8)
+	troops2 = append(troops2, cards.TC123)
+	return flagStd(t, troops1, troops2, ex1, ex2, formation)
+}
 
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(11, player2)
-	flag.Set(21, player2)
-
-	t.Logf("Leader Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("Alex Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex := 21
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Alex Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("Darius  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 3
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Darius  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-
-	flag.Set(cards.TC_8, player1)
-	flag.Set(8, player1)
-	flag.Set(18, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(12, player2)
-	flag.Set(22, player2)
-
-	t.Logf("N Flag %+v", flag)
-
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("Top Formation 8 wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 24
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Top Strenght 8 wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("Top Formation 123  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Top Strenght 123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag.Set(cards.TC_Mud, player2)
-	flag.Set(28, player1)
-	flag.Set(32, player2)
-	t.Logf("N Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("Top Formation 8 wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 32
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Top Strenght 8 wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("Top Formation 123  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 8
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Top Strenght 123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+//TestFlagLeader test one leader.
+func flagLeader(t *testing.T, troops1, troops2 []int, ex1, ex2 int, formation *cards.Formation) (flag *Flag) {
+	troops1 = append(troops1, cards.TCAlexander)
+	troops2 = append(troops2, cards.TCDarius)
+	return flagStd(t, troops1, troops2, ex1, ex2, formation)
 }
 
 //TestFlagT1Battalion testing Battalion
 func TestFlagT1Battalion(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(7, player1)
-
-	flag.Set(1, player1)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(11, player2)
-	flag.Set(20, player2)
-
-	t.Logf("Leader Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Alex Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex := 18
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Alex Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Darius  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 21
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Darius  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(1, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(11, player2)
-	flag.Set(20, player2)
-
-	t.Logf("N Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 16
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_BattalionOrder {
-		t.Errorf("123 wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 14
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagLeader(t, []int{7, 1}, []int{11, 20}, 18, 21, &cards.FBattalion)
+	flag8x123(t, []int{7, 1}, []int{11, 20}, 16, 14, &cards.FBattalion)
 }
 
 //TestFlagT1Line testing a line Formation
 func TestFlagT1Line(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(7, player1)
-	flag.Set(18, player1)
-
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(3, player2)
-	flag.Set(15, player2)
-
-	t.Logf("Leader Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Alex Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex := 24
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Alex Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Darius  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 12
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Darius  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(19, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(11, player2)
-	flag.Set(22, player2)
-
-	t.Logf("N Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_SkirmishLine {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 24
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_SkirmishLine {
-		t.Errorf("123 wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-
+	flagLeader(t, []int{7, 18}, []int{3, 15}, 24, 12, &cards.FSkirmish)
+	flag8x123(t, []int{7, 19}, []int{11, 22}, 24, 6, &cards.FSkirmish)
 }
 
 //TestFlagT1Host testing a no Formation
 func TestFlagT1Host(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(7, player1)
-	flag.Set(20, player1)
-
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(3, player2)
-	flag.Set(16, player2)
-
-	t.Logf("Leader Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Alex Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex := 27
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Alex Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Darius  wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 19
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Darius  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(30, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(11, player2)
-	flag.Set(24, player2)
-
-	t.Logf("N Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 25
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Formation wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("123 wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 8
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123  wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagLeader(t, []int{7, 20}, []int{3, 16}, 27, 19, &cards.FHost)
+	flag8x123(t, []int{7, 30}, []int{11, 24}, 25, 8, &cards.FHost)
 }
 
 //TestFlagT2Wedge testing wedge with two jokers
 func TestFlagT2Wedge(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
 	//---------Low
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(6, player1)
+	flagLeader(t, []int{cards.TC8, 6}, []int{cards.TC123, 1}, 21, 6, &cards.FWedge)
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	t.Logf("Low Flag %+v", flag)
-	ex := 21
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Low 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Low 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Low 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Low 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
 	//---------Middel
-	flag = New()
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
+	flagLeader(t, []int{cards.TC8, 7}, []int{cards.TC123, 2}, 24, 9, &cards.FWedge)
+	flagLeader(t, []int{cards.TC8, 9}, []int{cards.TC123, 3}, 27, 9, &cards.FWedge)
+	flagLeader(t, []int{cards.TC123, 5}, []int{cards.TC123, 4}, 12, 12, &cards.FWedge)
+	flagLeader(t, []int{cards.TC8, 10}, []int{cards.TC123, 5}, 27, 12, &cards.FWedge)
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(2, player2)
-	t.Logf("Middel Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Middel 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 24
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Middel 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Middel 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 9
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Middel 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(9, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(3, player2)
-	t.Logf("Middel Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Middel 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 27
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Middel 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Middel 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 9
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Middel 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_123, player1)
-	flag.Set(5, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(4, player2)
-	t.Logf("Middel Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Middel 123 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 12
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Middel 123 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Middel 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 12
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Middel 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(10, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(5, player2)
-	t.Logf("High Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 27
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf(" 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 12
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
 	//============Mud
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(9, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(2, player2)
-	flag.Set(3, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(10, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	flag.Set(4, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(6, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	flag.Set(3, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 30
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(10, player1)
-	flag.Set(9, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(5, player2)
-	flag.Set(3, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 14
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(6, player1)
-	flag.Set(9, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(4, player2)
-	flag.Set(3, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 30
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 14
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(6, player1)
-	flag.Set(5, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	flag.Set(2, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 26
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(7, player1)
-	flag.Set(5, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(5, player2)
-	flag.Set(6, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 26
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 18
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_123, player1)
-	flag.Set(2, player1)
-	flag.Set(4, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(4, player2)
-	flag.Set(6, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 14
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 18
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_123, player1)
-	flag.Set(1, player1)
-	flag.Set(5, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(4, player2)
-	flag.Set(5, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
-		t.Errorf("123 Miss Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 19
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("123 miss Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 18
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 7, 9}, []int{cards.TC123, 2, 3}, 34, 10, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 7, 10}, []int{cards.TC123, 1, 4}, 34, 10, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 7, 6}, []int{cards.TC123, 1, 3}, 30, 10, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 10, 9}, []int{cards.TC123, 5, 3}, 34, 14, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 6, 9}, []int{cards.TC123, 4, 3}, 30, 14, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 6, 5}, []int{cards.TC123, 1, 2}, 26, 10, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 7, 5}, []int{cards.TC123, 5, 6}, 26, 18, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC123, 2, 4}, []int{cards.TC123, 4, 6}, 14, 18, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC123, 1, 4}, []int{cards.TC123, 4, 5}, 10, 18, &cards.FWedge)
+	flagLeader(t, []int{cards.TCMud, cards.TC123, 1, 5}, []int{cards.TC123, 11, 15}, 19, 19, &cards.FBattalion)
 }
 
 //TestFlagT2Phalanx testing Phalanx with two jokers
 func TestFlagT2Phalanx(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
 	//---------Low
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(8, player1)
+	flagLeader(t, []int{cards.TC8, 8}, []int{cards.TC8, 18}, 24, 24, &cards.FPhalanx)
+	flagLeader(t, []int{cards.TC123, 1}, []int{cards.TC123, 11}, 6, 6, &cards.FWedge)
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	t.Logf(" Flag %+v", flag)
-	ex := 24
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("Low 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Low 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Miss 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Miss 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(8, player1)
-	flag.Set(18, player1)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 8, 18}, []int{cards.TC123, 1, 11}, 32, 4, &cards.FPhalanx)
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	flag.Set(1, player2)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 8, 19}, []int{cards.TC8, 3, 19}, 35, 30, &cards.FHost)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 8, 18}, []int{cards.TC123, 2, 22}, 32, 8, &cards.FPhalanx)
 
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 32
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 4
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(8, player1)
-	flag.Set(19, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(2, player2)
-	flag.Set(2, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Miss 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 35
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Miss 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 8
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(3, player1)
-	flag.Set(19, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(3, player2)
-	flag.Set(3, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Miss 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 30
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Miss 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 12
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 8, 28}, []int{cards.TC123, 3, 33}, 32, 12, &cards.FPhalanx)
 }
 
-//TestFlagT2Line testing Line with two jokers
-func TestFlagT2Line(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(cards.TC_Mud, player2)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(9, player1)
-	flag.Set(27, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(3, player2)
-	flag.Set(14, player2)
-	t.Logf(" Mud Flag %+v", flag)
-	ex := 34
-	if flag.Players[player1].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Mud  8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Mud 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Mud 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 14
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Mud 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(9, player1)
-	flag.Set(20, player1)
-
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(21, player2)
-	flag.Set(33, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_SkirmishLine {
-		t.Errorf("8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_SkirmishLine {
-		t.Errorf("123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 10
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+//TestSort tests sort.
+func TestSort(t *testing.T) {
 	v := []int{4, 3, 2, 7}
 	exv := []int{7, 4, 3, 2}
 	sortInt(v)
@@ -1212,343 +243,44 @@ func TestFlagT2Line(t *testing.T) {
 			t.Errorf("sort big first %v ", v)
 		}
 	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(cards.TC_Alexander, player1)
-	flag.Set(cards.TC_8, player1)
-	flag.Set(1, player1)
-	flag.Set(19, player1)
+}
 
-	flag.Set(cards.TC_123, player2)
-	flag.Set(cards.TC_Darius, player2)
-	flag.Set(1, player2)
-	flag.Set(36, player2)
-
-	t.Logf("Miss Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Miss 8 Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 28
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Miss 8 Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Miss 123 Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 20
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Miss 123 Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+//TestFlagT2Line testing Line with two jokers
+func TestFlagT2Line(t *testing.T) {
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 9, 27}, []int{cards.TC123, 3, 14}, 34, 14, &cards.FSkirmish)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 9, 20}, []int{cards.TC123, 21, 33}, 34, 10, &cards.FSkirmish)
+	flagLeader(t, []int{cards.TCMud, cards.TC8, 1, 19}, []int{cards.TC123, 1, 36}, 28, 20, &cards.FHost)
 }
 
 //TestFlagWedge testing wedge no jokers
 func TestFlagWedge(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(7, player1)
-	flag.Set(9, player1)
-	flag.Set(8, player1)
-
-	flag.Set(31, player2)
-	flag.Set(33, player2)
-	flag.Set(32, player2)
-	t.Logf("Wedge Flag %+v", flag)
-	ex := 24
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(8, player1)
-	flag.Set(10, player1)
-	flag.Set(9, player1)
-	flag.Set(7, player1)
-
-	flag.Set(4, player2)
-	flag.Set(5, player2)
-	flag.Set(6, player2)
-	flag.Set(7, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Wedge {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 22
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-
+	flagStd(t, []int{7, 9, 8}, []int{31, 32, 33}, 24, 6, &cards.FWedge)
+	flagStd(t, []int{cards.TCMud, 8, 10, 9, 7}, []int{4, 5, 6, 7}, 34, 22, &cards.FWedge)
 }
 
 //TestFlagPhalanx testing Phalanx no jokers
 func TestFlagPhalanx(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(7, player1)
-	flag.Set(17, player1)
-	flag.Set(27, player1)
-
-	flag.Set(8, player2)
-	flag.Set(38, player2)
-	flag.Set(58, player2)
-	t.Logf("Phalanx Flag %+v", flag)
-	ex := 21
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 24
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(8, player1)
-	flag.Set(18, player1)
-	flag.Set(28, player1)
-	flag.Set(38, player1)
-
-	flag.Set(31, player2)
-	flag.Set(41, player2)
-	flag.Set(1, player2)
-	flag.Set(51, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Phalanx {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 32
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Phalanx {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 4
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(8, player1)
-	flag.Set(18, player1)
-	flag.Set(28, player1)
-	flag.Set(38, player1)
-
-	flag.Set(cards.TC_Fog, player2)
-	flag.Set(31, player2)
-	flag.Set(41, player2)
-	flag.Set(1, player2)
-	flag.Set(51, player2)
-
-	t.Logf("Mud/Fog Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 32
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 4
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagStd(t, []int{7, 17, 27}, []int{8, 38, 58}, 21, 24, &cards.FPhalanx)
+	flagStd(t, []int{cards.TCMud, 8, 18, 28, 38}, []int{31, 11, 1, 41}, 32, 4, &cards.FPhalanx)
+	flagStd(t, []int{cards.TCMud, 8, 18, 28, 38}, []int{cards.TCFog, 31, 11, 1, 41}, 32, 4, &cards.FHost)
 }
 
 //TestFlagBattalion testing line no jokers
 func TestFlagBattalion(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(7, player1)
-	flag.Set(10, player1)
-	flag.Set(8, player1)
-
-	flag.Set(31, player2)
-	flag.Set(39, player2)
-	flag.Set(32, player2)
-	t.Logf("Battalion Flag %+v", flag)
-	ex := 25
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 12
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(8, player1)
-	flag.Set(1, player1)
-	flag.Set(9, player1)
-	flag.Set(7, player1)
-
-	flag.Set(1, player2)
-	flag.Set(5, player2)
-	flag.Set(6, player2)
-	flag.Set(7, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 25
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_BattalionOrder {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 19
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagStd(t, []int{7, 10, 8}, []int{31, 39, 32}, 25, 12, &cards.FBattalion)
+	flagStd(t, []int{cards.TCMud, 8, 1, 9, 7}, []int{1, 5, 6, 7}, 25, 19, &cards.FBattalion)
 }
 
 //TestFlagLine testing wedge no jokers
 func TestFlagLine(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(7, player1)
-	flag.Set(19, player1)
-	flag.Set(8, player1)
-
-	flag.Set(31, player2)
-	flag.Set(43, player2)
-	flag.Set(32, player2)
-	t.Logf("Line Flag %+v", flag)
-	ex := 24
-	if flag.Players[player1].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 6
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(8, player1)
-	flag.Set(10, player1)
-	flag.Set(39, player1)
-	flag.Set(7, player1)
-
-	flag.Set(4, player2)
-	flag.Set(15, player2)
-	flag.Set(6, player2)
-	flag.Set(7, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 34
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_SkirmishLine {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 22
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagStd(t, []int{7, 19, 8}, []int{31, 43, 32}, 24, 6, &cards.FSkirmish)
+	flagStd(t, []int{cards.TCMud, 8, 10, 39, 7}, []int{4, 15, 6, 7}, 34, 22, &cards.FSkirmish)
 }
 
 //TestFlagHost testing Host no jokers
 func TestFlagHost(t *testing.T) {
-	flag := New()
-	player1 := 0
-	player2 := 1
-	flag.Set(6, player1)
-	flag.Set(19, player1)
-	flag.Set(9, player1)
-
-	flag.Set(41, player2)
-	flag.Set(32, player2)
-	flag.Set(52, player2)
-	t.Logf("Host Flag %+v", flag)
-	ex := 24
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 5
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
-	flag = New()
-	flag.Set(cards.TC_Mud, player1)
-	flag.Set(18, player1)
-	flag.Set(1, player1)
-	flag.Set(9, player1)
-	flag.Set(7, player1)
-
-	flag.Set(8, player2)
-	flag.Set(18, player2)
-	flag.Set(28, player2)
-	flag.Set(7, player2)
-
-	t.Logf("Mud Flag %+v", flag)
-	if flag.Players[player1].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player1].Formation)
-	}
-	ex = 25
-	if flag.Players[player1].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player1].Strenght)
-	}
-
-	if flag.Players[player2].Formation != &cards.F_Host {
-		t.Errorf("Formation wrong : %v", flag.Players[player2].Formation)
-	}
-	ex = 31
-	if flag.Players[player2].Strenght != ex {
-		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
-	}
+	flagStd(t, []int{6, 19, 9}, []int{41, 32, 52}, 24, 5, &cards.FHost)
+	flagStd(t, []int{cards.TCMud, 18, 1, 9, 7}, []int{8, 18, 28, 7}, 25, 31, &cards.FHost)
 }
 func TestFlagClaims(t *testing.T) {
 	player1 := 0
@@ -1558,9 +290,9 @@ func TestFlagClaims(t *testing.T) {
 	}
 	del := []int{9, 8, 7, 6, 20, 30, 50, 40}
 	unUsed := deleteCards(all, del)
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag := New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(9, player1)
 	flag.Set(8, player1)
 	flag.Set(6, player1)
@@ -1583,9 +315,9 @@ func TestFlagClaims(t *testing.T) {
 	}
 	del = []int{9, 18, 7, 6, 20, 30, 50, 40}
 	unUsed = deleteCards(all, del)
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(9, player1)
 	flag.Set(18, player1)
 	flag.Set(6, player1)
@@ -1595,9 +327,9 @@ func TestFlagClaims(t *testing.T) {
 		t.Errorf("Should have fail")
 	}
 	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(9, player1)
 	flag.Set(18, player1)
 	flag.Set(6, player1)
@@ -1607,9 +339,9 @@ func TestFlagClaims(t *testing.T) {
 		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
 	}
 	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(9, player1)
 	flag.Set(8, player1)
 	flag.Set(6, player1)
@@ -1623,9 +355,9 @@ func TestFlagClaims(t *testing.T) {
 		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
 	}
 	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(9, player1)
 	flag.Set(8, player1)
 	flag.Set(5, player1)
@@ -1639,9 +371,9 @@ func TestFlagClaims(t *testing.T) {
 		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
 	}
 	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(17, player1)
 	flag.Set(27, player1)
 	flag.Set(37, player1)
@@ -1655,9 +387,9 @@ func TestFlagClaims(t *testing.T) {
 		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
 	}
 	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(6, player1)
 	flag.Set(15, player1)
 	flag.Set(4, player1)
@@ -1671,9 +403,9 @@ func TestFlagClaims(t *testing.T) {
 		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
 	}
 	unUsed = []int{1, 18, 16, 46, 55, 56}
-	t.Logf("UnUsed", unUsed)
+	t.Logf("UnUsed: %v", unUsed)
 	flag = New()
-	flag.Set(cards.TC_Mud, player1)
+	flag.Set(cards.TCMud, player1)
 	flag.Set(6, player1)
 	flag.Set(15, player1)
 	flag.Set(4, player1)

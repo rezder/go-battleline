@@ -1,4 +1,4 @@
-// The cards of the game
+// Package cards contain the cards of battleline.
 package cards
 
 import (
@@ -6,57 +6,71 @@ import (
 )
 
 const (
-	TROOP_NO = 60
-	TAC_NO   = 10
+	//NOTroop is the number of troop cards.
+	NOTroop = 60
+	//NOTac is the number of tactic cards.
+	NOTac = 10
 
-	T_Troop  = 1
-	T_Morale = 2
-	T_Env    = 3
-	T_Guile  = 4
+	//Card types.
 
-	C_None   = 0
-	C_Green  = 1
-	C_Red    = 2
-	C_Purpel = 3
-	C_Yellow = 4
-	C_Blue   = 5
-	C_Orange = 6
+	CTTroop  = 1
+	CTMorale = 2
+	CTEnv    = 3
+	CTGuile  = 4
 
-	TC_Alexander = 70
-	TC_Darius    = 69
-	TC_8         = 68
-	TC_123       = 67
-	TC_Fog       = 66
-	TC_Mud       = 65
-	TC_Scout     = 64
-	TC_Redeploy  = 63
-	TC_Deserter  = 62
-	TC_Traitor   = 61
+	//Troops colors.
+
+	COLNone   = 0
+	COLGreen  = 1
+	COLRed    = 2
+	COLPurpel = 3
+	COLYellow = 4
+	COLBlue   = 5
+	COLOrange = 6
+
+	//Tactic cards.
+
+	TCAlexander = 70
+	TCDarius    = 69
+	TC8         = 68
+	TC123       = 67
+	TCFog       = 66
+	TCMud       = 65
+	TCScout     = 64
+	TCRedeploy  = 63
+	TCDeserter  = 62
+	TCTraitor   = 61
 )
 
 var (
-	Cards   [TAC_NO + TROOP_NO + 1]Card // zero index is nil
-	F_Wedge = Formation{
+	//Cards contain all battleline cards.
+	Cards [NOTac + NOTroop + 1]Card // zero index is nil
+	//FWedge the wedge formation.
+	FWedge = Formation{
 		Name:    "Wedge",
 		Describ: "3(4) troops connected and same color. Like 2,1,3 or 3,2,1.",
 		Value:   5,
 	}
-	F_Phalanx = Formation{
+	//FPhalanx the phalanx formation.
+	FPhalanx = Formation{
 		Name:    "Phalanx",
 		Describ: "3(4) troops same value. Like 10,10,10",
 		Value:   4,
 	}
-	F_BattalionOrder = Formation{
+	//FBattalion the battalion Order formation.
+	FBattalion = Formation{
 		Name:    "Battalion Order",
 		Describ: "3(4) troops same color",
 		Value:   3,
 	}
-	F_SkirmishLine = Formation{
+	//FSkirmish the skirmish line formation.
+	FSkirmish = Formation{
 		Name:    "Skirmish Line",
 		Describ: "3(4) troops connected. Like 2,1,3 or 3,1,2",
 		Value:   2,
 	}
-	F_Host = Formation{
+	//FHost the jost formation.
+	FHost = Formation{
 		Name:    "Host",
 		Describ: "Any troops",
 		Value:   1,
@@ -78,7 +92,7 @@ func init() {
 
 	for i := 1; i < 7; i++ {
 		for j := 1; j < 11; j++ {
-			var troop *Troop = new(Troop)
+			troop := new(Troop)
 			troop.name = names[10-j]
 			troop.describ = names[10-j]
 			troop.color = i
@@ -87,66 +101,68 @@ func init() {
 		}
 	}
 
-	Cards[TC_Alexander] = Tactic{
+	Cards[TCAlexander] = Tactic{
 		name:    "Leader Alexander",
 		describ: "Any troop value. Only one leader can be played by a player. Value and color is defined before when the flag is resolved and not when played.",
-		ttype:   T_Morale,
+		ttype:   CTMorale,
 	}
-	Cards[TC_Darius] = Tactic{
+	Cards[TCDarius] = Tactic{
 		name:    "Leader Darius",
-		describ: Cards[TC_Alexander].Describ(),
-		ttype:   T_Morale,
+		describ: Cards[TCAlexander].Describ(),
+		ttype:   CTMorale,
 	}
 
-	Cards[TC_8] = Tactic{
+	Cards[TC8] = Tactic{
 		name:    "Companion Cavalry",
 		describ: "Any color value 8. Color is defined when flag is resolved",
-		ttype:   T_Morale,
+		ttype:   CTMorale,
 	}
-	Cards[TC_123] = Tactic{
+	Cards[TC123] = Tactic{
 		name:    "Shield Bearers",
 		describ: "Any color value 1, 2 or 3. Color is defined when flag is resolve",
-		ttype:   T_Morale,
+		ttype:   CTMorale,
 	}
-	Cards[TC_Fog] = Tactic{
+	Cards[TCFog] = Tactic{
 		name:    "Fog",
 		describ: "Disables formation Flag is won by sum of values",
-		ttype:   T_Env,
+		ttype:   CTEnv,
 	}
 
-	Cards[TC_Mud] = Tactic{
+	Cards[TCMud] = Tactic{
 		name:    "Mud",
 		describ: "Formation is extended to 4 cards",
-		ttype:   T_Env,
+		ttype:   CTEnv,
 	}
-	Cards[TC_Scout] = Tactic{
+	Cards[TCScout] = Tactic{
 		name:    "Scout",
 		describ: "Draw 3 cards any decks and return 3 cards any decks player control the order",
-		ttype:   T_Guile,
+		ttype:   CTGuile,
 	}
-	Cards[TC_Redeploy] = Tactic{
+	Cards[TCRedeploy] = Tactic{
 		name:    "Redeploy",
 		describ: "Move any of his troop or tactic card from any flag that is not claimed. Troop may be removed from game",
-		ttype:   T_Guile,
+		ttype:   CTGuile,
 	}
-	Cards[TC_Deserter] = Tactic{
+	Cards[TCDeserter] = Tactic{
 		name:    "Deserter",
 		describ: "Remove any opponent troop or tactic card from unclaimed flags",
-		ttype:   T_Guile,
+		ttype:   CTGuile,
 	}
-	Cards[TC_Traitor] = Tactic{
+	Cards[TCTraitor] = Tactic{
 		name:    "Traitor",
 		describ: "Take a troop from an opponents unclaimed flags and play it. You must have a slot to play the flag on",
-		ttype:   T_Guile,
+		ttype:   CTGuile,
 	}
 }
 
+//Card interface is the interface a battleline card.
 type Card interface {
 	Name() string
 	Describ() string
 	Type() int
 }
 
+//Troop is troop card.
 type Troop struct {
 	name    string
 	describ string
@@ -154,74 +170,104 @@ type Troop struct {
 	value   int
 }
 
+//Name is the name of the troop card.
 func (t Troop) Name() string {
 	return t.name
 }
 
+//Describ is a short describtion of the troop card.
 func (t Troop) Describ() string {
 	return t.describ
 }
+
+//Type is CTTroop
 func (t Troop) Type() int {
-	return T_Troop
+	return CTTroop
 }
+
+//Color is the color of the troop.
 func (t Troop) Color() int {
 	return t.color
 }
+
+//Value is the value of the troop 1-10.
 func (t Troop) Value() int {
 	return t.value
 }
 
+//Tactic is tactic card.
 type Tactic struct {
 	name    string
 	describ string
 	ttype   int
 }
 
+//Name is the name of the tactic card.
 func (t Tactic) Name() string {
 	return t.name
 }
+
+//Describ is short text describtion of the Tactic card.
 func (t Tactic) Describ() string {
 	return t.describ
 }
+
+//Type is CTMorale, CTEnv or CTGuile for a
+//tactic card.
 func (t Tactic) Type() int {
 	return t.ttype
 }
 
+//Formation a flag formation.
 type Formation struct {
 	Name, Describ string
 	Value         int
 }
 
+//DrCard returns the Card of the card index.
 func DrCard(ix int) (c Card, err error) {
-	if ix > 0 && ix < TROOP_NO+TAC_NO+1 {
+	if ix > 0 && ix < NOTroop+NOTac+1 {
 		return Cards[ix], err
-	} else {
-		return nil, errors.New("Card do not exist")
 	}
+	return nil, errors.New("Card do not exist")
 }
 
+//DrTroop returns the Troop card of the card index.
 func DrTroop(ix int) (c *Troop, err error) {
 	troop, ok := Cards[ix].(Troop)
 	if ok {
 		return &troop, err
-	} else {
-		return nil, errors.New("Troop do not exist")
 	}
+	return nil, errors.New("Troop do not exist")
 }
+
+//DrTactic returns the Tactic card of the card index.
 func DrTactic(ix int) (c *Tactic, err error) {
 	tactic, ok := Cards[ix].(Tactic)
 	if ok {
 		return &tactic, err
-	} else {
-		return nil, errors.New("Card do not exist")
 	}
+	return nil, errors.New("Card do not exist")
 }
+
+//IsEnv checks if card index is a environment tactic card.
+//Mud or fog.
 func IsEnv(ix int) bool {
-	return ix == TC_Mud || ix == TC_Fog
+	return ix == TCMud || ix == TCFog
 }
+
+//IsMorale checks if a card index is morale tactic card.
+//All jokers.
 func IsMorale(ix int) bool {
-	return ix == TC_Alexander || ix == TC_Darius || ix == TC_123 || ix == TC_8
+	return ix == TCAlexander || ix == TCDarius || ix == TC123 || ix == TC8
 }
+
+//IsTac checks if a card index is a tactic card.
+func IsTac(ix int) bool {
+	return ix > NOTroop
+}
+
+//IsTroop checks if a cardix is troop card.
 func IsTroop(ix int) bool {
-	return ix <= TROOP_NO
+	return ix <= NOTroop
 }

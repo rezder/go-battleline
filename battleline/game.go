@@ -339,8 +339,8 @@ func NewGamePos() *GamePos {
 	for i := range pos.Flags {
 		pos.Flags[i] = flag.New()
 	}
-	pos.DeckTac = *deck.New(cards.TAC_NO)
-	pos.DeckTroop = *deck.New(cards.TROOP_NO)
+	pos.DeckTac = *deck.New(cards.NOTac)
+	pos.DeckTroop = *deck.New(cards.NOTroop)
 	pos.Hands[0] = NewHand()
 	pos.Hands[1] = NewHand()
 	pos.Dishs[0] = NewDish()
@@ -472,12 +472,12 @@ func deckFromTroop(cardix int) int {
 
 //deckToTactic calculate the tactic card index from deck index.
 func deckToTactic(deckix int) int {
-	return deckix + 1 + cards.TROOP_NO
+	return deckix + 1 + cards.NOTroop
 }
 
 //deckFromTactic calculate the deck index from tactic card index.
 func deckFromTactic(cardix int) int {
-	return cardix - 1 - cards.TROOP_NO
+	return cardix - 1 - cards.NOTroop
 }
 
 //GobRegistor register all move interfaces.

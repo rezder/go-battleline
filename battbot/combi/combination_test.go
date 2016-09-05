@@ -85,7 +85,7 @@ func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies [
 	}
 	handCards = make([]int, 7)
 	copy(handCards, dummies[:7])
-	jokers := []int{cards.TC_123, cards.TC_Alexander, cards.TC_Darius, cards.TC_8}
+	jokers := []int{cards.TC123, cards.TCAlexander, cards.TCDarius, cards.TC8}
 	flagCards = append(flagCards, 0)
 	for _, j := range jokers {
 		flagCards[1] = j
@@ -113,7 +113,7 @@ func combiTest(t *testing.T, combiNo int, flagCards, handCards, dummies []int, m
 
 func createDrawSet() map[int]bool {
 	drawSet := make(map[int]bool)
-	for i := 1; i <= cards.TROOP_NO; i++ {
+	for i := 1; i <= cards.NOTroop; i++ {
 		drawSet[i] = true
 	}
 	return drawSet

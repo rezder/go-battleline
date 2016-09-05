@@ -26,8 +26,9 @@ func makeMove(pos *Pos) (move [2]int) {
 		}
 	} else {
 		for is := range pos.turn.MovesHand {
-			cardix, _ := strconv.ParseInt(is, 10, 0)
-			if cardix > cards.TROOP_NO {
+			i64, _ := strconv.ParseInt(is, 10, 0)
+			cardix := int(i64)
+			if cards.IsTac(cardix) {
 				move[0] = int(cardix)
 				break
 			}

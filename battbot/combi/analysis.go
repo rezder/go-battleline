@@ -34,7 +34,7 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 		if len(flagTroops) != 0 {
 			handTroops, drawTroops := anaCombiHandDraw(comb.Troops[color], handCards, drawSet)
 			switch comb.Formation {
-			case cards.F_Wedge:
+			case cards.FWedge:
 				validMorale := moralesReduce(flagTroops, flagMorales)
 				if !validMorale {
 					ana.Prop = 0
@@ -61,14 +61,14 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 					}
 				}
 
-			case cards.F_Phalanx:
+			case cards.FPhalanx:
 				anaWedgePhalanx(ana, nAll, dAll, formationNo, flagTroops, flagMorales, handTroops, drawTroops)
 
-			case cards.F_BattalionOrder:
+			case cards.FBattalion:
 				anaBattalion(ana, nAll, dAll, formationNo, comb.Strength, flagMorales,
 					flagTroops, handTroops, drawTroops)
 
-			case cards.F_SkirmishLine:
+			case cards.FSkirmish:
 				anaSkirmish(ana, nAll, dAll, formationNo, flagMorales, flagTroops, handTroops, drawTroops)
 
 			} //end switch
@@ -547,34 +547,34 @@ func anaCombiFlagCards(troops map[int][]int, flagCards []int, formation int) (va
 	validTroops []int, validMorales map[int]map[int]bool, color int) {
 	validMorales = make(map[int]map[int]bool)
 	valid = true
-	color = cards.C_None
+	color = cards.COLNone
 	colorFormation := false
 	var valueTroops []int
-	if len(troops[cards.C_None]) == 0 {
+	if len(troops[cards.COLNone]) == 0 {
 		colorFormation = true
-		valueTroops = troops[cards.C_Green]
+		valueTroops = troops[cards.COLGreen]
 	} else {
-		valueTroops = troops[cards.C_None]
+		valueTroops = troops[cards.COLNone]
 	}
 	for _, cix := range flagCards {
 		found := false
 		if cards.IsMorale(cix) {
-			if cix == cards.TC_123 {
-				if formation != cards.F_BattalionOrder.Value {
+			if cix == cards.TC123 {
+				if formation != cards.FBattalion.Value {
 					found = moralesUpd(validMorales, cix, valueTroops, []int{1, 2, 3})
 				} else {
 					moralesSetValue(validMorales, cix, 3)
 					found = true
 				}
-			} else if cix == cards.TC_8 {
-				if formation != cards.F_BattalionOrder.Value {
+			} else if cix == cards.TC8 {
+				if formation != cards.FBattalion.Value {
 					found = moralesUpd(validMorales, cix, valueTroops, []int{8})
 				} else {
 					moralesSetValue(validMorales, cix, 8)
 					found = true
 				}
 			} else {
-				if formation != cards.F_BattalionOrder.Value {
+				if formation != cards.FBattalion.Value {
 					found = moralesUpd(validMorales, cix, valueTroops, nil)
 				} else {
 					moralesSetValue(validMorales, cix, 10)
@@ -582,7 +582,7 @@ func anaCombiFlagCards(troops map[int][]int, flagCards []int, formation int) (va
 				}
 			}
 		} else {
-			if colorFormation && color == cards.C_None {
+			if colorFormation && color == cards.COLNone {
 				troop, _ := cards.DrTroop(cix)
 				color = troop.Color()
 			}

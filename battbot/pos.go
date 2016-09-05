@@ -139,11 +139,11 @@ func (pos *Pos) Move(moveView *pub.MoveView) (done bool) {
 			updateMudDishixs(flag, move.Dishixs, pos.oppDish, pos.playDish)
 		case tables.MoveScoutReturnView:
 			if moveView.Mover {
-				pos.playHand.Play(cards.TC_Scout)
-				pos.playDish.DishCard(cards.TC_Scout)
+				pos.playHand.Play(cards.TCScout)
+				pos.playDish.DishCard(cards.TCScout)
 			} else {
-				pos.deck.OppPlay(cards.TC_Scout)
-				pos.playDish.DishCard(cards.TC_Scout)
+				pos.deck.OppPlay(cards.TCScout)
+				pos.playDish.DishCard(cards.TCScout)
 				pos.deck.OppScoutReturn(move.Troop, move.Tac)
 			}
 		case bat.MoveTraitor:

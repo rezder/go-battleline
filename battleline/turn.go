@@ -284,8 +284,8 @@ func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *de
 		used = append(used, tac)
 	}
 
-	playedLeader := slice.Contain(used, cards.TC_Alexander)
-	if (!playedLeader) && slice.Contain(used, cards.TC_Darius) {
+	playedLeader := slice.Contain(used, cards.TCAlexander)
+	if (!playedLeader) && slice.Contain(used, cards.TCDarius) {
 		playedLeader = true
 	}
 
@@ -297,23 +297,23 @@ func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *de
 	for _, v := range hand.Tacs {
 		if playTac {
 			switch v {
-			case cards.TC_123, cards.TC_8:
+			case cards.TC123, cards.TC8:
 				moves = getCardFlagMoves(troopSpace)
-			case cards.TC_Alexander, cards.TC_Darius:
+			case cards.TCAlexander, cards.TCDarius:
 				if !playedLeader {
 					moves = getCardFlagMoves(troopSpace)
 				} else {
 					moves = nil
 				}
-			case cards.TC_Fog, cards.TC_Mud:
+			case cards.TCFog, cards.TCMud:
 				moves = getCardFlagMoves(notClaimed)
-			case cards.TC_Deserter:
+			case cards.TCDeserter:
 				moves = getDeserterMoves(flags, opponent(playerix))
-			case cards.TC_Redeploy:
+			case cards.TCRedeploy:
 				moves = getRedeployMoves(flags, playerix)
-			case cards.TC_Scout:
+			case cards.TCScout:
 				moves = getScoutMoves(tacDeck, troopDeck)
-			case cards.TC_Traitor:
+			case cards.TCTraitor:
 				moves = getTraitorMoves(flags, playerix)
 			}
 			if len(moves) != 0 {
@@ -359,9 +359,9 @@ func getTraitorMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 		if !oppFlag.Claimed() {
 			for flagix, flag := range flags {
 				if !flag.Claimed() && flag.Free()[playerix] {
-					for _, troop := range oppFlag.Troops(opponent(playerix)) {
-						if troop <= cards.TROOP_NO {
-							moves = append(moves, *NewMoveTraitor(oppFlagix, troop, flagix))
+					for _, troopix := range oppFlag.Troops(opponent(playerix)) {
+						if cards.IsTroop(troopix) {
+							moves = append(moves, *NewMoveTraitor(oppFlagix, troopix, flagix))
 						}
 					}
 				}

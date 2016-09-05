@@ -34,10 +34,10 @@ func NewDeck() (deck *Deck) {
 
 //initDecks initialize the deck content to all cards.
 func initDecks(troops map[int]bool, tacs map[int]bool) {
-	for i := 1; i <= cards.TROOP_NO; i++ {
+	for i := 1; i <= cards.NOTroop; i++ {
 		troops[i] = true
 	}
-	for i := cards.TROOP_NO + 1; i <= cards.TAC_NO+cards.TROOP_NO; i++ {
+	for i := cards.NOTroop + 1; i <= cards.NOTac+cards.NOTroop; i++ {
 		tacs[i] = true
 	}
 	return
@@ -55,7 +55,7 @@ func (d *Deck) Reset() {
 
 //PlayDraw updates the deck with a card drawn by the bot.
 func (d *Deck) PlayDraw(cardix int) {
-	if cardix <= cards.TROOP_NO {
+	if cards.IsTroop(cardix) {
 		nscout := len(d.scoutReturnTroops)
 		if nscout == 0 {
 			delete(d.troops, cardix)
@@ -79,7 +79,7 @@ func (d *Deck) OppPlay(cardix int) {
 		d.oppHand = slice.Remove(d.oppHand, cardix)
 	}
 	if nHand == len(d.oppHand) {
-		if cardix <= cards.TROOP_NO {
+		if cards.IsTroop(cardix) {
 			delete(d.troops, cardix)
 			d.oppTroops = d.oppTroops - 1
 		} else {
