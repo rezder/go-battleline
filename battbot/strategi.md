@@ -60,7 +60,7 @@ The v draws may not all be valid so the (v/x) must reduced with non valid combin
 Before the numbers can be divided and reveal the properbility of a combination.
 
 * n is equal to the remaining cards in the deck together with the cards on the oppent hand.
-* d is equal to the remaining cards in deck divided by 2 and rounded up for the player and down for the opponent as player draw first. The opponent also get is cards on thre hand.
+* d is equal to the remaining cards in deck divided by 2 and rounded up for the player and down for the opponent as player draw first. The opponent also get is cards on the hand.
 * mc >= c for c+y >= d
 * mc = d-y for c+y < d
 * y = n-v

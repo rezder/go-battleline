@@ -5,7 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	bat "github.com/rezder/go-battleline/battleline"
+	"github.com/rezder/go-battleline/battbot/gamepos"
 	"github.com/rezder/go-battleline/battserver/players"
 	pub "github.com/rezder/go-battleline/battserver/publist"
 	"github.com/rezder/go-error/cerrors"
@@ -155,7 +155,7 @@ func start(conn *websocket.Conn, doneCh <-chan struct{}, finConnCh chan<- struct
 	messCh := make(chan *JsonDataTemp)
 	messDoneCh := make(chan struct{})
 	go netRead(conn, messCh, messDoneCh)
-	var gamePos *Pos
+	var gamePos *gamepos.Pos
 Loop:
 	for {
 		select {
@@ -182,6 +182,7 @@ Loop:
 						act := players.NewAction()
 						act.ActType = players.ACT_INVACCEPT
 						act.Id = invite.InvitorId
+
 						ok := netWrite(conn, act)
 						if !ok {
 							close(messDoneCh)
@@ -191,37 +192,29 @@ Loop:
 				case players.JT_Mess:
 				case players.JT_Move:
 					if gamePos == nil {
-						gamePos = NewPos()
+						gamePos = gamepos.New()
 					}
 					mv, err := unmarshalMoveJSON(jsonDataTemp.Data)
+
 					if err != nil {
 						if cerrors.LogLevel() != cerrors.LOG_Debug {
-							log.Printf("Invite unmarshal error: %v", err)
+							log.Printf("Move unmarshal error: %v", err)
 						} else {
-							log.Printf("Invite unmarshal error: %+v", err)
+							log.Printf("Move unmarshal error: %+v", err)
 						}
 						close(messDoneCh)
 						break Loop
 					}
 
-					fmt.Printf("Recived Move %+v\n\n", mv)
-					if gamePos.Move(mv) {
+					if gamePos.UpdMove(mv) {
 						gamePos = nil
 					} else {
-						fmt.Printf("Updated pos: %+v\n\n", gamePos)
-						if gamePos.turn.MyTurn {
-							moveix := makeMove(gamePos)
-							if gamePos.turn.Moves != nil {
-								sm, ok := gamePos.turn.Moves[moveix[1]].(bat.MoveScoutReturn)
-								if ok {
-									gamePos.playHand.PlayMulti(sm.Tac)
-									gamePos.playHand.PlayMulti(sm.Troop)
-									gamePos.deck.PlayScoutReturn(sm.Troop, sm.Tac)
-								}
-							}
+						if gamePos.IsBotTurn() {
+							moveixs := gamePos.MakeMove()
 							act := players.NewAction()
 							act.ActType = players.ACT_MOVE
-							act.Move = moveix
+							act.Move = moveixs
+
 							ok := netWrite(conn, act)
 							if !ok {
 								close(messDoneCh)

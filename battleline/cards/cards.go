@@ -261,6 +261,21 @@ func IsEnv(ix int) bool {
 func IsMorale(ix int) bool {
 	return ix == TCAlexander || ix == TCDarius || ix == TC123 || ix == TC8
 }
+func MoraleMaxValue(cardix int) int {
+	switch cardix {
+	case TCAlexander:
+		fallthrough
+	case TCDarius:
+		return 10
+	case TC123:
+		return 3
+	case TC8:
+		return 8
+	default:
+		panic("Not a moral card")
+	}
+
+}
 
 //IsTac checks if a card index is a tactic card.
 func IsTac(ix int) bool {

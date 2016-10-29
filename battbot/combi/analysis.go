@@ -73,7 +73,7 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 
 			} //end switch
 		} else { //Only tacs
-			//TODO Only tactic cards on flag !! should not happen often we need strategi
+			//Should not bee needed
 			panic("Illegal argument flag most have troops, this have only moral tactic troops")
 		}
 	}
@@ -193,7 +193,7 @@ func anaSkirmishCombi(values []int, missingNo, d int, moralValues map[int]bool) 
 //this may not be the card that create the best probability for the sum. The lowest
 //usually is best to play. The idea was that it was the best player strategi, but
 //i am not sure, it may just be easier. It is also assumed all moral cards have
-//it higest value.
+//its higest value.
 //We transfer all cards to its value and hopfully keep track of which value belong to
 //which card. We often bunk values from hand and draw together as any of then can be
 //used in the sum.
@@ -211,27 +211,35 @@ func anaBattalion(ana *Analysis, nAll, dAll uint64, formationNo, strength int,
 		sum = sum - troop.Value()
 	}
 	elementNo := formationNo - (len(flagTroops) + len(flagMorales)) //must 1-3 as minimum one troop on flag.
-	values, factors := anaBattalionValues(handTroops, drawTroops, sum, elementNo)
-
-	if len(factors) != 0 {
-		handTroops, drawTroops = anaBattalionReduce(factors, handTroops, drawTroops)
-		values, factors = anaBattalionValues(handTroops, drawTroops, sum, elementNo) //to keep index in values and troop aligned.
-		if len(handTroops)+len(drawTroops) < elementNo {
-			ana.Prop = 0
+	if elementNo == 0 {
+		if sum == 0 {
+			ana.Prop = 1
 		} else {
-			var handMaxUsedValueix int
-			handMaxUsedValueix, ana.Prop, ana.HandCardixs = anaBattalionHandCombi(factors, handTroops, values, elementNo)
-			if ana.Prop != 1 {
-				if handMaxUsedValueix != -1 {
-					elementNo, sum, handTroops, drawTroops, ana.HandCardixs = anaBattalionHandMax(handMaxUsedValueix,
-						elementNo, sum, factors, values, handTroops, drawTroops)
-				}
-				ana.Valid = anaBattalionPerm(handTroops, drawTroops, sum, elementNo, nAll, dAll)
-				ana.Prop = float64(ana.Valid) / float64(ana.All)
-			}
+			ana.Prop = 0
 		}
 	} else {
-		ana.Prop = 0
+		values, factors := anaBattalionValues(handTroops, drawTroops, sum, elementNo)
+
+		if len(factors) != 0 {
+			handTroops, drawTroops = anaBattalionReduce(factors, handTroops, drawTroops)
+			values, factors = anaBattalionValues(handTroops, drawTroops, sum, elementNo) //to keep index in values and troop aligned.
+			if len(handTroops)+len(drawTroops) < elementNo {
+				ana.Prop = 0
+			} else {
+				var handMaxUsedValueix int
+				handMaxUsedValueix, ana.Prop, ana.HandCardixs = anaBattalionHandCombi(factors, handTroops, values, elementNo)
+				if ana.Prop != 1 {
+					if handMaxUsedValueix != -1 {
+						elementNo, sum, handTroops, drawTroops, ana.HandCardixs = anaBattalionHandMax(handMaxUsedValueix,
+							elementNo, sum, factors, values, handTroops, drawTroops)
+					}
+					ana.Valid = anaBattalionPerm(handTroops, drawTroops, sum, elementNo, nAll, dAll)
+					ana.Prop = float64(ana.Valid) / float64(ana.All)
+				}
+			}
+		} else {
+			ana.Prop = 0
+		}
 	}
 
 }
@@ -552,7 +560,7 @@ func anaCombiFlagCards(troops map[int][]int, flagCards []int, formation int) (va
 	var valueTroops []int
 	if len(troops[cards.COLNone]) == 0 {
 		colorFormation = true
-		valueTroops = troops[cards.COLGreen]
+		valueTroops = troops[cards.COLGreen] //if only morales card we never switch to a color and the prop will be wrong
 	} else {
 		valueTroops = troops[cards.COLNone]
 	}

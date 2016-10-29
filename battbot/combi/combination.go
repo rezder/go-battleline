@@ -4,6 +4,13 @@ import (
 	"github.com/rezder/go-battleline/battleline/cards"
 )
 
+var Combinations3, Combinations4 []*Combination
+
+func init() {
+	Combinations3 = createCombi(3)
+	Combinations4 = createCombi(4)
+}
+
 //Combination a battleline formation and strength
 type Combination struct {
 	Rank      int
@@ -13,9 +20,9 @@ type Combination struct {
 	Troops map[int][]int
 }
 
-//CreateCombi create all the possible combinations for the specified number of
+//createCombi create all the possible combinations for the specified number of
 //cards 3 or 4.
-func CreateCombi(cardsNo int) (combis []*Combination) {
+func createCombi(cardsNo int) (combis []*Combination) {
 	combis = make([]*Combination, 0, 49)
 	combis = append(combis, createCombiWedge(cardsNo)...)
 	combis = append(combis, createCombiPhalanx(cardsNo)...)
@@ -133,4 +140,20 @@ func createCombiSkirmish(cardsNo int) (combis []*Combination) {
 		combis = append(combis, &combi)
 	}
 	return combis
+}
+func LastFormationRank(formation cards.Formation, formationSize int) (rank int) {
+	combinations := Combinations3
+	if formationSize == 4 {
+		combinations = Combinations4
+	}
+	for _, c := range combinations {
+		if c.Formation.Value < formation.Value {
+			rank = c.Rank - 1
+			break
+		}
+	}
+	if rank == 0 {
+		rank = len(combinations) + 1
+	}
+	return rank
 }

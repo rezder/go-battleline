@@ -9,7 +9,7 @@ func TestCombi3(t *testing.T) {
 	//	for i, c := range CreateCombi(3) {
 	//	fmt.Printf("rank: %v,combi: %v\n", i, *c)
 	//}
-	combis := CreateCombi(3)
+	combis := createCombi(3)
 	t.Log(combis)
 	n := len(combis)
 
@@ -22,7 +22,7 @@ func TestCombi4(t *testing.T) {
 	//for i, c := range CreateCombi(4) {
 	//fmt.Printf("rank: %v,combi: %v\n", i, *c)
 	//}
-	combis := CreateCombi(4)
+	combis := createCombi(4)
 	n := len(combis)
 	t.Log(combis)
 	if n != 49 {
@@ -73,11 +73,20 @@ func TestAnaBad(t *testing.T) {
 	//t.Error("Forced error")
 }
 func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies []int) {
-	flagCards := []int{combination[0]}
+	flagCards := combination[:1]
 	handCards := make([]int, 7)
 	copy(handCards, dummies[:7])
 	combiTest(t, combiNo3, flagCards, handCards, dummies[7:], 3)
 	combiTest(t, combiNo4, flagCards, handCards, dummies[7:], 4)
+
+	prop := combiTest(t, combiNo3, combination[:3], handCards, dummies[7:], 3)
+	if prop != 1 {
+		t.Errorf("Combination: %v was not found", combination[:3])
+	}
+	prop = combiTest(t, combiNo4, combination[:4], handCards, dummies[7:], 4)
+	if prop != 1 {
+		t.Errorf("Combination: %v was not found", combination[:4])
+	}
 	for i := 1; i < 4; i++ {
 		handCards[i-1] = combination[i]
 		combiTest(t, combiNo3, flagCards, handCards, dummies[7:], 3)
@@ -101,14 +110,18 @@ func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies [
 
 	}
 }
-func combiTest(t *testing.T, combiNo int, flagCards, handCards, dummies []int, mud int) {
-	combi := CreateCombi(mud)
+func combiTest(t *testing.T, combiNo int, flagCards, handCards, dummies []int, mud int) float64 {
+	combi := Combinations4
+	if mud == 3 {
+		combi = Combinations3
+	}
 	drawSet := createDrawSet()
 	updateDraws(flagCards, handCards, dummies, drawSet)
 	drawNo := (len(drawSet) - 7) / 2
 	ana := Ana(combi[combiNo], flagCards, handCards, drawSet, drawNo, mud == 4)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[combiNo], flagCards, handCards, drawNo, ana)
+	return ana.Prop
 }
 
 func createDrawSet() map[int]bool {

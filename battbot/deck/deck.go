@@ -1,4 +1,4 @@
-package main
+package deck
 
 import (
 	bat "github.com/rezder/go-battleline/battleline"
@@ -8,7 +8,7 @@ import (
 
 //Deck contain all information of unknown cards.
 //That includes decks and the hand of the opponent.
-//It also tracs cards returned to deck when scout is played.
+//It also tracks cards returned to deck when scout is played.
 type Deck struct {
 	troops            map[int]bool
 	tacs              map[int]bool
@@ -32,6 +32,43 @@ func NewDeck() (deck *Deck) {
 	return deck
 }
 
+//Troops returns a all troops in the deck.
+func (deck *Deck) Troops() map[int]bool {
+	troops := make(map[int]bool)
+	for troop := range deck.troops {
+		troops[troop] = true
+	}
+	for _, troop := range deck.scoutReturnTroops {
+		troops[troop] = true
+	}
+	return troops
+}
+
+//OppHand returns the opponent hand it is copy.
+func (deck *Deck) OppHand() []int {
+	hand := make([]int, len(deck.oppHand))
+	copy(hand, deck.oppHand)
+	return hand
+}
+
+//OppDrawNo calculate the opponent number of unknown cards.
+func (deck *Deck) OppDrawNo() (no int) {
+	no = len(deck.troops)
+	no = no + len(deck.scoutReturnTroops)
+	no = no / 2
+	no = no + deck.oppTroops
+	return no
+}
+
+//BotDrawNo calculate the bots number of the unknown cards.
+func (deck *Deck) BotDrawNo() (no int) {
+	no = len(deck.troops)
+	no = no + len(deck.scoutReturnTroops)
+	no = no + 1
+	no = no / 2
+	return no
+}
+
 //initDecks initialize the deck content to all cards.
 func initDecks(troops map[int]bool, tacs map[int]bool) {
 	for i := 1; i <= cards.NOTroop; i++ {
@@ -51,6 +88,19 @@ func (d *Deck) Reset() {
 	d.scoutReturnTacs = d.scoutReturnTacs[:0]
 	d.scoutReturnTroops = d.scoutReturnTroops[:0]
 	d.oppHand = d.oppHand[:0]
+}
+
+//InitRemoveCard removes a cards from decks.
+//Warning does not include scout return it should be used
+//for init. moves.
+func (d *Deck) InitRemoveCards(cardixs []int) {
+	for _, cardix := range cardixs {
+		if cards.IsTroop(cardix) {
+			delete(d.troops, cardix)
+		} else {
+			delete(d.tacs, cardix)
+		}
+	}
 }
 
 //PlayDraw updates the deck with a card drawn by the bot.
@@ -130,12 +180,69 @@ func (d *Deck) PlayScoutReturn(troops []int, tacs []int) {
 	d.scoutReturnTacs = tacs
 }
 
-//DeckTacNo return the deck size but does not include known cards from scout return
+//DeckTacNo returns current the tactic card deck size.
 func (d *Deck) DeckTacNo() int {
-	return len(d.tacs) - d.oppTacs
+	return len(d.tacs) - d.oppTacs + len(d.scoutReturnTacs)
 }
 
-//DeckTroopNo return the deck size but does not include known cards from scout return
+//DeckTroopNo returns the current troop deck size.
 func (d *Deck) DeckTroopNo() int {
-	return len(d.troops) - d.oppTroops
+	return len(d.troops) - d.oppTroops + len(d.scoutReturnTroops)
+}
+
+//MaxValues returns the 3 max value a deck contain.
+func (d *Deck) MaxValues() (values []int) {
+	return maxValues(d.troops, d.scoutReturnTroops)
+}
+func maxValues(troops map[int]bool, scoutReturnTroops []int) (values []int) {
+	values = make([]int, 0, 4)
+	max := false
+	for troopix := range troops {
+		values, max = MaxValuesUpd(troopix, values)
+		if max {
+			break
+		}
+	}
+	if !max {
+		for _, troopix := range scoutReturnTroops {
+			values, max = MaxValuesUpd(troopix, values)
+			if max {
+				break
+			}
+		}
+	}
+	return values
+}
+
+// MaxValuesUpd update the max value list with a card.
+// #values
+func MaxValuesUpd(troopix int, values []int) (updValues []int, max bool) {
+	troop, _ := cards.DrTroop(troopix)
+	troopValue := troop.Value()
+	updValues = values
+	cardNo := 4
+	upd := false
+	for ix, value := range updValues {
+		if troopValue > value {
+			if len(values) < cardNo {
+				copy(updValues[ix+1:], updValues[ix:])
+			} else {
+				copy(updValues[ix+1:], updValues[ix:4])
+			}
+			updValues[ix] = troopValue
+			upd = true
+			break
+		}
+	}
+	if !upd && len(updValues) < cardNo {
+		updValues = append(updValues, troopValue)
+	}
+
+	if len(updValues) == cardNo && updValues[2] == 10 {
+		max = true
+	}
+	return updValues, max
+}
+func (deck *Deck) OppTacNo() int {
+	return deck.oppTacs
 }
