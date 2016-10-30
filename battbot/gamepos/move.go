@@ -1,6 +1,7 @@
 package gamepos
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
@@ -49,6 +50,11 @@ func makeMoveDeck(pos *Pos) (moveix int) {
 
 	return moveix
 }
+
+//makeMoveScoutReturn make the scout return move.
+//Strategi return redeploy, return leader if not usable.
+//return exces tactic cards priority traitor,deserter,leader,fog,mud,8,123
+//return troops minimum not in keep.
 func makeMoveScoutReturn(pos *Pos) (moveix int) {
 	var tacs []int
 	troops := []int{1, 2}
@@ -151,8 +157,9 @@ func prioritizedMove(
 	if cardix != 0 {
 		return cardix, move
 	}
+	cardix, move = priFlagHandLoop(prioritizedFlagixs, flagsAna, handAna, pfhfNewFlagRanked)
 	if cardix != 0 {
-		cardix, move = priFlagHandLoop(prioritizedFlagixs, flagsAna, handAna, pfhfNewFlagRanked)
+		return cardix, move
 	}
 	cardix, move = newFlagMove(prioritizedFlagixs, flagsAna, handAna)
 	if cardix != 0 {
@@ -176,6 +183,13 @@ func prioritizedMove(
 	return cardix, move
 
 }
+
+//lostFlagTacticMove handle the strategi of preventing a lost flag to become lost.
+//Morale strategi same as priTacticMove
+//Deserter strategi just remove the best troop if it gives a probability of a win.
+//Traitor strategi test removing each of the troops and add to hand a see if we get win on
+//any flag.
+//Fog and Mud test to if we get a wining probability.
 func lostFlagTacticMove(
 	flagsAna map[int]*flag.Analysis,
 	handTacs []int,
@@ -193,7 +207,9 @@ func lostFlagDumpMove(
 	handTroops []int) (cardix int, move bat.Move) {
 	lostFlagix := -1
 	for _, ana := range flagsAna {
+		fmt.Printf("IsLost flagix,bool: %v,%v\n", ana.Flagix, ana.IsLost)
 		if ana.IsPlayable && ana.IsLost {
+			fmt.Printf("IsLost flagix: %v\n", lostFlagix)
 			lostFlagix = ana.Flagix
 			break
 		}
@@ -327,10 +343,19 @@ func pfnfBestWinCard(flagAna *flag.Analysis) (troopix int, logTxt string) {
 
 func findMaxSum(cardSumProp map[int]float64) (troopix int) {
 	maxSumProp := float64(0)
+	troopValue := 0
 	for cix, sumProp := range cardSumProp {
 		if sumProp > maxSumProp {
 			troopix = cix
 			maxSumProp = sumProp
+			troop, _ := cards.DrTroop(troopix)
+			troopValue = troop.Value()
+		} else if sumProp == maxSumProp {
+			troop, _ := cards.DrTroop(troopix)
+			if troop.Value() > troopValue {
+				troopix = cix
+				troopValue = troop.Value()
+			}
 		}
 	}
 	return troopix
@@ -549,6 +574,7 @@ func newFlagTargetMove(handAna map[int][]*combi.Analysis, targetRank int) (troop
 		}
 	}
 	troopix = findMaxSum(troopSumProp)
+	fmt.Printf("Target :%v\nPropSum %v\ntroopix: %v\n", targetRank, troopSumProp, troopix)
 	return troopix
 }
 
@@ -589,8 +615,17 @@ func newFlagHigestRankMove(handAna map[int][]*combi.Analysis, keepFlagTroopixs m
 	return troopix, logTxt
 }
 
+//priTacticMove makes a tactic card move because no good troop move exist.
+//Only morale cards, scout and redeploy should be considered.
+//Fog,Mud,deserter,traitor is for defence.
+//Morale strategi: cards out if morale cards leads to a win play it.
+//Scout strategi: have many in keep try to get traitor. Got traitor or 3 tactics + scout play it.
+//Just play it if not playing try to get traitor(scout + 1 or more tactics)
+//Redeploy startegi is to complicated just keep it.
 func priTacticMove(flagixs []int, flagsAna map[int]*flag.Analysis, handTacs []int) (cardix int, move bat.Move) {
 	//TODO Tactic
+	//Scout strategi have many in keep try to get traitor. Got traitor or 3 tactics + scout play it.
+	//Just play it if not playing try to get traitor(scout + 1 or more tactics)
 	return cardix, move
 }
 
@@ -639,6 +674,7 @@ func keepFirstCard(keepTroops map[int]bool, troopixs []int) (firstTroopix int) {
 	return firstTroopix
 }
 func priDumpMove(flagixs []int, flagsAna map[int]*flag.Analysis, handTroopixs []int) (troopix int, move bat.Move) {
+	logTxt := ""
 	flagix := flagixs[len(flagixs)-1]
 	flagAna := flagsAna[flagix]
 	keepTroops := flagsAna[0].KeepFlagTroopixs
@@ -646,18 +682,22 @@ func priDumpMove(flagixs []int, flagsAna map[int]*flag.Analysis, handTroopixs []
 		for _, combiFlag := range flagAna.Analysis {
 			if len(combiFlag.HandCardixs) > 0 {
 				troopix = keepFirstCard(keepTroops, combiFlag.HandCardixs)
-				if cerrors.LogLevel() == cerrors.LOG_Debug {
-					log.Printf("Dump move card,flag: %v,%v\n", troopix, flagix)
-					log.Printf("Keeps: %v", keepTroops)
-				}
+				logTxt = "A combination card"
 				break
 			}
 		}
 		if troopix == 0 {
 			troopix = keepFirstCard(keepTroops, handTroopixs)
+			logTxt = "First card not in keep"
 		}
 	} else {
 		troopix = minTroop(handTroopixs)
+		logTxt = "Min troop"
+	}
+	if cerrors.LogLevel() == cerrors.LOG_Debug {
+		log.Printf("Dump move card,flag: %v,%v\n", troopix, flagix)
+		log.Println(logTxt)
+		log.Printf("Keeps: %v", keepTroops)
 	}
 	move = *bat.NewMoveCardFlag(flagix)
 	return troopix, move
