@@ -17,16 +17,31 @@ import (
 	"time"
 )
 
+const (
+	fileDown         = "html/pages/down.html"
+	fileLogIn        = "html/pages/login.html"
+	fileCreateClient = "html/pages/client.html"
+)
+
 type Server struct {
 	errCh       chan<- error
 	netListener *net.TCPListener
 	clients     *Clients
 	doneCh      chan struct{}
 	port        string
+	pages       *Pages
 }
 
 func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server, err error) {
 	s = new(Server)
+	pages := NewPages()
+	pages.addFile(fileLogIn)
+	pages.addFile(fileCreateClient)
+	err = pages.load()
+	if err != nil {
+		return s, err
+	}
+	s.pages = pages
 	s.port = port
 	s.errCh = errCh
 	dport := ":80"
@@ -58,7 +73,7 @@ func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server,
 }
 func (s *Server) Start() {
 	s.clients.gameServer.Start()
-	go start(s.errCh, s.netListener, s.clients, s.doneCh, s.port)
+	go start(s.errCh, s.netListener, s.clients, s.doneCh, s.port, s.pages)
 }
 func (s *Server) Stop() {
 	gameServer := s.clients.SetGameServer(nil) //Prevent new players
@@ -80,15 +95,13 @@ func (s *Server) Stop() {
 }
 
 // Start the server.
-func start(errCh chan<- error, netListener *net.TCPListener, clients *Clients,
-	doneCh chan struct{}, port string) {
-	pages := NewPages()
-	fileDown := "html/pages/down.html"
-	fileLogIn := "html/pages/login.html"
-	fileCreateClient := "html/pages/client.html"
-	pages.addFile(fileLogIn)
-	pages.addFile(fileCreateClient)
-	pages.load()
+func start(
+	errCh chan<- error,
+	netListener *net.TCPListener,
+	clients *Clients,
+	doneCh chan struct{},
+	port string,
+	pages *Pages) {
 	http.Handle("/", &logInHandler{clients, fileDown, fileLogIn})
 	http.Handle("/client", &clientHandler{clients, fileDown, fileCreateClient})
 	http.Handle("/in/game", &gameHandler{clients, errCh, port, fileDown})
@@ -175,15 +188,18 @@ type logInHandler struct {
 	fileLogIn string
 }
 
-func (l *logInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	l.clients.mu.RLock()
-	down := l.clients.gameServer == nil // not atomic
-	l.clients.mu.RUnlock()
+func serveFile(clients *Clients, file, fileDown string, w http.ResponseWriter, r *http.Request) {
+	clients.mu.RLock()
+	down := clients.gameServer == nil // not atomic
+	clients.mu.RUnlock()
 	if !down {
-		http.ServeFile(w, r, l.fileLogIn)
+		http.ServeFile(w, r, file)
 	} else {
-		http.ServeFile(w, r, l.fileDown)
+		http.ServeFile(w, r, fileDown)
 	}
+}
+func (l *logInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	serveFile(l.clients, l.fileLogIn, l.fileDown, w, r)
 }
 
 //logInPostHandler the login post handler.
@@ -265,14 +281,7 @@ type clientHandler struct {
 }
 
 func (c *clientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c.clients.mu.RLock()
-	down := c.clients.gameServer == nil // not atomic
-	c.clients.mu.RUnlock()
-	if !down {
-		http.ServeFile(w, r, c.fileCreateClient)
-	} else {
-		http.ServeFile(w, r, c.fileDown)
-	}
+	serveFile(c.clients, c.fileCreateClient, c.fileDown, w, r)
 }
 
 //clientPostHandler the new client post handler.

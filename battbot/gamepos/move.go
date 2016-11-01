@@ -1,7 +1,6 @@
 package gamepos
 
 import (
-	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
@@ -26,7 +25,7 @@ func makeMoveClaim(moves []bat.Move) (moveix int) {
 	return allix
 }
 func makeMoveDeck(pos *Pos) (moveix int) {
-	move := *bat.NewMoveDeck(bat.DECK_TROOP)
+	move := *bat.NewMoveDeck(bat.DECKTroop)
 	if len(pos.playHand.Tacs) == 0 {
 		botNo := playableTacNoBot(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
 		if botNo > 0 || pos.deck.OppTacNo() > 0 {
@@ -34,16 +33,16 @@ func makeMoveDeck(pos *Pos) (moveix int) {
 			handAna := flag.HandAnalyze(pos.playHand.Troops, pos.deck)
 			analyzeFlagsAddKeep(flagsAna, handAna)
 			if len(flagsAna[0].KeepFlagHandTroopixs) > 3 {
-				move = *bat.NewMoveDeck(bat.DECK_TAC)
+				move = *bat.NewMoveDeck(bat.DECKTac)
 			}
 		}
 
 	}
-	if move.Deck == bat.DECK_TROOP && pos.deck.DeckTroopNo() == 0 {
-		move = *bat.NewMoveDeck(bat.DECK_TAC)
+	if move.Deck == bat.DECKTroop && pos.deck.DeckTroopNo() == 0 {
+		move = *bat.NewMoveDeck(bat.DECKTac)
 	}
-	if move.Deck == bat.DECK_TAC && pos.deck.DeckTacNo() == 0 {
-		move = *bat.NewMoveDeck(bat.DECK_TROOP)
+	if move.Deck == bat.DECKTac && pos.deck.DeckTacNo() == 0 {
+		move = *bat.NewMoveDeck(bat.DECKTroop)
 	}
 
 	moveix = findMoveIndex(pos.turn.Moves, move)
@@ -83,7 +82,7 @@ func makeMoveHand(pos *Pos) (moveixs [2]int) {
 			moveixs[0] = cardix
 		} else {
 			moveixs[0] = 0
-			moveixs[1] = bat.SM_Pass
+			moveixs[1] = bat.SMPass
 
 		}
 	} else {
@@ -105,7 +104,7 @@ func makeMoveHand(pos *Pos) (moveixs [2]int) {
 	return moveixs
 }
 
-func analyzeFlags(flags [bat.FLAGS]*flag.Flag, botHandTroops []int, deck *botdeck.Deck) (
+func analyzeFlags(flags [bat.NOFlags]*flag.Flag, botHandTroops []int, deck *botdeck.Deck) (
 	flagsAna map[int]*flag.Analysis) {
 	flagsAna = make(map[int]*flag.Analysis)
 	deckMaxValues := deck.MaxValues()
@@ -207,9 +206,7 @@ func lostFlagDumpMove(
 	handTroops []int) (cardix int, move bat.Move) {
 	lostFlagix := -1
 	for _, ana := range flagsAna {
-		fmt.Printf("IsLost flagix,bool: %v,%v\n", ana.Flagix, ana.IsLost)
 		if ana.IsPlayable && ana.IsLost {
-			fmt.Printf("IsLost flagix: %v\n", lostFlagix)
 			lostFlagix = ana.Flagix
 			break
 		}
@@ -272,7 +269,7 @@ func keepTroops(combiAnas []*combi.Analysis, keepTroops map[int]bool) {
 	}
 }
 func prioritizeFlags(flagsAna map[int]*flag.Analysis) (flagixs []int) {
-	flagValues := make([]int, bat.FLAGS)
+	flagValues := make([]int, bat.NOFlags)
 	for _, ana := range flagsAna {
 		if ana.IsPlayable {
 			flagValues[ana.Flagix] = flagValues[ana.Flagix] + ana.OppTroopsNo
@@ -574,7 +571,6 @@ func newFlagTargetMove(handAna map[int][]*combi.Analysis, targetRank int) (troop
 		}
 	}
 	troopix = findMaxSum(troopSumProp)
-	fmt.Printf("Target :%v\nPropSum %v\ntroopix: %v\n", targetRank, troopSumProp, troopix)
 	return troopix
 }
 
@@ -773,7 +769,7 @@ func findMoveIndex(moves []bat.Move, move bat.Move) (moveix int) {
 //PlayableTac returns the numbers of playable tactic cards 0,1 or 2
 //and if a leader is playable.
 func playableTac(
-	flags [bat.FLAGS]*flag.Flag,
+	flags [bat.NOFlags]*flag.Flag,
 	botDishTac []int,
 	oppDishTac []int) (botNo, oppNo int, botLeader, oppLeader bool) {
 	botTacs := make([]int, 0, 5)
@@ -792,7 +788,7 @@ func playableTac(
 	return botNo, oppNo, botLeader, oppLeader
 }
 func playableTacNoBot(
-	flags [bat.FLAGS]*flag.Flag,
+	flags [bat.NOFlags]*flag.Flag,
 	botDishTac []int,
 	oppDishTac []int) (botTacNo int) {
 	botTacNo, _, _, _ = playableTac(flags, botDishTac, oppDishTac)

@@ -282,22 +282,53 @@ func TestFlagHost(t *testing.T) {
 	flagStd(t, []int{6, 19, 9}, []int{41, 32, 52}, 24, 5, &cards.FHost)
 	flagStd(t, []int{cards.TCMud, 18, 1, 9, 7}, []int{8, 18, 28, 7}, 25, 31, &cards.FHost)
 }
+func flagClaimsTest(t *testing.T, formation, unUsed, oppCards, env []int, playerix int) (ok bool, eks []int) {
+	t.Logf("UnUsed: %v", unUsed)
+	flag := New()
+	for _, cardix := range formation {
+		flag.Set(cardix, playerix)
+	}
+	for _, cardix := range oppCards {
+		flag.Set(cardix, opponent(playerix))
+	}
+	for _, cardix := range env {
+		flag.Set(cardix, playerix)
+	}
+	t.Logf("Flag: %+v", *flag)
+	ok, eks = flag.ClaimFlag(playerix, unUsed)
+	return ok, eks
+}
+func flagClaimsTestUsed(t *testing.T, formation, all, used, oppCards, env []int, playerix int) (ok bool, eks []int) {
+	unUsed := deleteCards(all, used)
+	unUsed = deleteCards(unUsed, formation)
+	unUsed = deleteCards(unUsed, oppCards)
+	ok, eks = flagClaimsTest(t, formation, unUsed, oppCards, env, playerix)
+	return ok, eks
+}
+func flagClaimExpectFail(t *testing.T, formation, unUsed, oppCards, env []int, playerix int) {
+	ok, _ := flagClaimsTest(t, formation, unUsed, oppCards, env, playerix)
+	if ok {
+		t.Errorf("Claim should have fail")
+	}
+}
+func flagClaimExpectSucces(t *testing.T, formation, unUsed, oppCards, env []int, playerix int) {
+	ok, eks := flagClaimsTest(t, formation, unUsed, oppCards, env, playerix)
+	if !ok { //ok
+		t.Errorf("Claim should have succed. but example exist: %v", eks)
+	}
+}
 func TestFlagClaims(t *testing.T) {
 	player1 := 0
+	player2 := opponent(player1)
 	all := make([]int, 60)
 	for i := 0; i < 60; i++ {
 		all[i] = i + 1
 	}
-	del := []int{9, 8, 7, 6, 20, 30, 50, 40}
-	unUsed := deleteCards(all, del)
-	t.Logf("UnUsed: %v", unUsed)
-	flag := New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(9, player1)
-	flag.Set(8, player1)
-	flag.Set(6, player1)
-	flag.Set(7, player1)
-	ok, res := flag.ClaimFlag(player1, unUsed)
+	formation := []int{9, 8, 7, 6}
+	used := []int{20, 30, 50, 40}
+	env := []int{cards.TCMud}
+	var oppCards []int
+	ok, res := flagClaimsTestUsed(t, formation, all, used, oppCards, env, player1)
 	if !ok {
 		if res != nil {
 			exp := []int{60, 59, 58, 57}
@@ -310,161 +341,95 @@ func TestFlagClaims(t *testing.T) {
 		} else {
 			t.Errorf("Should have a result")
 		}
-	} else { //ok
-		t.Errorf("Should fail")
 	}
-	del = []int{9, 18, 7, 6, 20, 30, 50, 40}
-	unUsed = deleteCards(all, del)
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(9, player1)
-	flag.Set(18, player1)
-	flag.Set(6, player1)
-	flag.Set(7, player1)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if ok { //ok
-		t.Errorf("Should have fail")
+	formation = []int{9, 18, 6, 7}
+	used = []int{20, 30, 50, 40}
+	env = []int{cards.TCMud}
+	oppCards = nil
+	ok, _ = flagClaimsTestUsed(t, formation, all, used, oppCards, env, player1)
+	if ok {
+		t.Errorf("Claim should have fail")
 	}
-	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(9, player1)
-	flag.Set(18, player1)
-	flag.Set(6, player1)
-	flag.Set(7, player1)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if !flag.Players[player1].Won { //ok
-		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
-	}
-	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(9, player1)
-	flag.Set(8, player1)
-	flag.Set(6, player1)
-	flag.Set(7, player1)
-	player2 := 1
-	flag.Set(9, player2)
-	flag.Set(18, player2)
-	t.Logf("Pree wedge sim exit Flag %+v", flag)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if !flag.Players[player1].Won { //ok
-		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
-	}
-	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(9, player1)
-	flag.Set(8, player1)
-	flag.Set(5, player1)
-	flag.Set(7, player1)
 
-	flag.Set(9, player2)
-	flag.Set(18, player2)
-	t.Logf("Pree battalion sim exit Flag %+v", flag)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if !flag.Players[player1].Won { //ok
-		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
-	}
-	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(17, player1)
-	flag.Set(27, player1)
-	flag.Set(37, player1)
-	flag.Set(7, player1)
+	formation = []int{9, 18, 6, 7}
+	unUsed := []int{1, 11, 22, 46, 55, 56}
+	env = []int{cards.TCMud}
+	oppCards = nil
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
 
-	flag.Set(9, player2)
-	flag.Set(18, player2)
-	t.Logf("Pree phalanx sim exit Flag %+v", flag)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if !flag.Players[player1].Won { //ok
-		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
-	}
+	formation = []int{9, 8, 6, 7}
 	unUsed = []int{1, 11, 22, 46, 55, 56}
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(6, player1)
-	flag.Set(15, player1)
-	flag.Set(4, player1)
-	flag.Set(3, player1)
+	env = []int{cards.TCMud}
+	oppCards = []int{29, 18}
+	t.Logf("Pree wedge sim exit player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
 
-	flag.Set(9, player2)
-	flag.Set(11, player2)
-	t.Logf("Pree Line sim exit Flag %+v", flag)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if !flag.Players[player1].Won { //ok
-		t.Errorf("Should have succed. Ok: %v, res: %v\n", ok, res)
-	}
+	formation = []int{9, 8, 5, 7}
+	unUsed = []int{1, 11, 22, 46, 55, 56}
+	env = []int{cards.TCMud}
+	oppCards = []int{29, 18}
+	t.Logf("Pree battalion sim exit player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
+
+	formation = []int{17, 27, 37, 7}
+	unUsed = []int{1, 11, 22, 46, 55, 56}
+	env = []int{cards.TCMud}
+	oppCards = []int{29, 18}
+	t.Logf("Pree phalanx sim exit player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
+
+	formation = []int{6, 15, 4, 3}
+	unUsed = []int{1, 11, 22, 46, 55, 56}
+	env = []int{cards.TCMud}
+	oppCards = []int{9, 21}
+	t.Logf("Pree Line sim exit player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
+
+	formation = []int{6, 15, 4, 3}
 	unUsed = []int{1, 18, 16, 46, 55, 56}
-	t.Logf("UnUsed: %v", unUsed)
-	flag = New()
-	flag.Set(cards.TCMud, player1)
-	flag.Set(6, player1)
-	flag.Set(15, player1)
-	flag.Set(4, player1)
-	flag.Set(3, player1)
+	env = []int{cards.TCMud}
+	oppCards = []int{17, 9}
+	t.Logf("Fail pree Line sim exit player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectFail(t, formation, unUsed, oppCards, env, player1)
 
-	flag.Set(17, player2)
-	flag.Set(9, player2)
-	t.Logf("Fail pree Line sim exit Flag %+v", flag)
-	ok, res = flag.ClaimFlag(player1, unUsed)
-	if flag.Players[player1].Won { //ok
-		t.Errorf("Should have failed. Ok: %v, res: %v\n", ok, res)
-	}
+	formation = []int{59, 60, 58}
 	unUsed = []int{1, 18, 16, 46, 55, 56}
-	t.Logf("UnUsed: %v\n", unUsed)
-	flag = New()
-	flag.Set(40, player1)
-	flag.Set(39, player1)
+	env = nil
+	oppCards = []int{40, 39}
+	t.Logf("Max formation player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player2)
 
-	flag.Set(59, player2)
-	flag.Set(60, player2)
-	flag.Set(58, player2)
-	t.Logf("Max formation %+v", flag)
-	ok, res = flag.ClaimFlag(player2, unUsed)
-	if !flag.Players[player2].Won { //ok
-		t.Errorf("Should have succeded. Ok: %v, res: %v\n", ok, res)
-	}
+	formation = []int{59, 60, 58}
 	unUsed = []int{1, 18, 16, 46, 55, 56}
-	t.Logf("UnUsed: %v\n", unUsed)
-	flag = New()
-	flag.Set(40, player1)
-	flag.Set(38, player1)
-	flag.Set(39, player1)
+	env = nil
+	oppCards = []int{40, 38, 39}
+	t.Logf("Same formation player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player2)
 
-	flag.Set(59, player2)
-	flag.Set(60, player2)
-	flag.Set(58, player2)
-	t.Logf("Same formation %+v", flag)
-	ok, res = flag.ClaimFlag(player2, unUsed)
-	if !flag.Players[player2].Won { //ok
-		t.Errorf("Should have succeded. Ok: %v, res: %v\n", ok, res)
-	}
 }
 func deleteCards(source []int, del []int) (res []int) {
-	res = make([]int, len(source)-len(del))
-	r := 0
-	var delete bool
-	for _, v := range source {
-		delete = false
-		for j, d := range del {
-			if d == v {
-				delete = true
-				del = append(del[:j], del[j+1:]...)
-				break
+	if len(del) != 0 {
+		res = make([]int, len(source)-len(del))
+		r := 0
+		var delete bool
+		copyDel := make([]int, len(del))
+		copy(copyDel, del)
+		for _, v := range source {
+			delete = false
+			for j, d := range copyDel {
+				if d == v {
+					delete = true
+					copyDel = append(copyDel[:j], copyDel[j+1:]...)
+					break
+				}
+			}
+			if !delete {
+				res[r] = v
+				r++
 			}
 		}
-		if !delete {
-			res[r] = v
-			r++
-		}
+	} else {
+		res = source
 	}
 	return res
 }

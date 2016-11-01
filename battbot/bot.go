@@ -91,6 +91,9 @@ func login(scheme string, addrPort string, addr string, name string,
 	client.Jar = jar
 	resp, err := client.PostForm(scheme+"://"+addrPort+"/form/login",
 		url.Values{"txtUserName": {name}, "pwdPassword": {pw}})
+	if err != nil {
+		return cookies, err
+	}
 	url, err := url.Parse(scheme + "://" + addr + "/in/game")
 	if err != nil {
 		return cookies, err
@@ -224,7 +227,13 @@ Loop:
 					}
 				case players.JT_BenchMove:
 				case players.JT_CloseCon:
+					var closeCon players.CloseCon
+					err := json.Unmarshal(jsonDataTemp.Data, &closeCon)
+					if err == nil {
+						log.Printf("Server closed connection: %v", closeCon.Reason)
+					}
 					close(messDoneCh)
+
 					break Loop
 				case players.JT_ClearInvites:
 				default:

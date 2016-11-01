@@ -261,6 +261,8 @@ func IsEnv(ix int) bool {
 func IsMorale(ix int) bool {
 	return ix == TCAlexander || ix == TCDarius || ix == TC123 || ix == TC8
 }
+
+//MoraleMaxValue returns the maximum value a morale card can have.
 func MoraleMaxValue(cardix int) int {
 	switch cardix {
 	case TCAlexander:

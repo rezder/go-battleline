@@ -3,7 +3,6 @@ package battleline
 import (
 	"bytes"
 	"encoding/gob"
-	math "github.com/rezder/go-math/int"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,49 +10,80 @@ import (
 	"testing"
 )
 
+func saveGame(t *testing.T, name string, game *Game, savePos bool) (err error) {
+	file, err := os.Create(name)
+	if err != nil {
+		t.Errorf("Create file error. File :%v Error: %v", name, err.Error())
+		return err
+	}
+
+	err = Save(game, file, savePos)
+	if err != nil {
+		t.Errorf("Save game file error. File :%v, Error: %v", file, err.Error())
+		file.Close()
+		return err
+	}
+	err = file.Close()
+	if err != nil {
+		t.Errorf("Closing file error. File :%v, Error: %v", file, err.Error())
+	}
+	return err
+}
+
+func loadGame(t *testing.T, name string) (game *Game, err error) {
+	file, err := os.Open(name)
+	if err != nil {
+		t.Errorf("Open file error. File :%v, Error: %v", name, err.Error())
+		return game, err
+	}
+	game, err = Load(file)
+	if err != nil {
+		t.Errorf("Load game file error. File :%v, Error: %v", name, err.Error())
+		file.Close()
+		return game, err
+	}
+	err = file.Close()
+	if err != nil {
+		t.Errorf("Closing file error. File :%v, Error: %v", file, err.Error())
+		return game, err
+	}
+	return game, err
+}
+
+// compareSavedGame compare a saved game with the game and WARNING delete the file
+func compareSavedGame(t *testing.T, name string, game *Game) {
+	loadGame, err := loadGame(t, name)
+	if err != nil {
+		return
+	}
+	err = os.Remove(name)
+	if err != nil {
+		t.Errorf("Remove game file error. File :%v, Error: %v", name, err.Error())
+		return
+	}
+	t.Logf("Comparing game in file: %v", name)
+	compGames(game, loadGame, t)
+
+	return
+
+}
 func TestGameSave(t *testing.T) {
 	fileNamePos := "test/savePos.gob"
 	fileName := "test/save.gob"
 	game := New([2]int{1, 2})
 	game.Start(1)
-	filePos, errPos := os.Create(fileNamePos)
-	file, err := os.Create(fileName)
-	//f,err:=os.Open(fileName)
 	GobRegistor()
-	if err == nil && errPos == nil {
-		err = Save(game, file, false)
-		errPos = Save(game, filePos, true)
-		file.Close()
-		filePos.Close()
-		if err != nil {
-			t.Errorf("Save game file error. File :%v, Error: %v", fileName, err.Error())
-		} else {
-			file, err = os.Open(fileName)
-			loadGame, err := Load(file)
-			if err != nil {
-				t.Errorf("Load game file error. File :%v, Error: %v", fileName, err.Error())
-			} else {
-				t.Logf("Comparing game in file: %v", fileName)
-				compGames(game, loadGame, t)
-				os.Remove(fileName)
-			}
-		}
-		if errPos != nil {
-			t.Errorf("Save game file error. File :%v, Error: %v", fileNamePos, errPos.Error())
-		} else {
-			filePos, err = os.Open(fileNamePos)
-			loadGamePos, err := Load(filePos)
-			if err != nil {
-				t.Errorf("Load game file error. File :%v, Error: %v", fileNamePos, err.Error())
-			} else {
-				t.Logf("Comparing game in file: %v", fileNamePos)
-				compGames(game, loadGamePos, t)
-				os.Remove(fileNamePos)
-			}
-		}
-	} else {
-		t.Errorf("Create file error. Files :%v,%v Error: %v", fileName, fileNamePos, err.Error())
+	err := saveGame(t, fileName, game, false)
+	if err != nil {
+		return
 	}
+	err = saveGame(t, fileNamePos, game, true)
+	if err != nil {
+		return
+	}
+	compareSavedGame(t, fileNamePos, game)
+	compareSavedGame(t, fileName, game)
+
 }
 func TestDecodeGame(t *testing.T) {
 	GobRegistor()
@@ -67,6 +97,7 @@ func TestDecodeGame(t *testing.T) {
 	err := e.Encode(game)
 	if err != nil {
 		t.Errorf("Error encoding: %v", err)
+		return
 	}
 
 	var loadGame Game
@@ -113,15 +144,6 @@ func moveHandDeck(game *Game, card int, flag int, deck int) {
 	game.Move(game.Pos.GetMoveix(0, move))
 
 }
-func saveGame(fileName string, game *Game) (err error) {
-	file, err := os.Create(fileName)
-	if err == nil {
-		GobRegistor()
-		err = Save(game, file, true)
-		file.Close()
-	}
-	return err
-}
 
 type TestPos struct {
 	Pos map[int]*GamePos
@@ -139,52 +161,63 @@ func TestGames(t *testing.T) {
 	fileMap := make(map[string]bool)
 	newGames := make([]string, 0, 0)
 	files, err := ioutil.ReadDir(dirName)
-	if err == nil {
-		for _, fileInfo := range files {
-			if strings.Contains(fileInfo.Name(), "pos") {
-				fileMap[fileInfo.Name()] = true
-			}
-		}
-		for _, fileInfo := range files {
-			if !strings.Contains(fileInfo.Name(), "pos") {
-				if !fileMap["pos"+fileInfo.Name()] {
-					newGames = append(newGames, fileInfo.Name())
-				}
-			}
-		}
-		createGameTest(fileMap, newGames, dirName, t)
-		for fileName, _ := range fileMap {
-			file, err := os.Open(filepath.Join(dirName, fileName[3:]))
-			defer file.Close()
-			if err == nil {
-				game, err := Load(file)
-				if err == nil {
-					posFile, err := os.Open(filepath.Join(dirName, fileName))
-					defer posFile.Close()
-					decoder := gob.NewDecoder(posFile)
-					testPos := *new(TestPos)
-					err = decoder.Decode(&testPos)
-					if err == nil {
-						gameMoveLoop(game, func(gamePos *GamePos, move int) {
-							pos, found := testPos.Pos[move]
-							if found {
-								if !game.Pos.Equal(pos) {
-									t.Errorf("Move: %v failed in file: %v", move, fileName)
-								}
-							}
-						})
-					}
-				} else {
-					t.Errorf("Error loading file: %v. Error: %v", fileName, err)
-				}
-			} else {
-				t.Errorf("Error testing file: %v. Error: %v", fileName, err)
-			}
-		}
-	} else {
+	if err != nil {
 		t.Errorf("Error listing directory: %v. Error: %v", dirName, err)
+		return
 	}
+
+	for _, fileInfo := range files {
+		if strings.Contains(fileInfo.Name(), "pos") {
+			fileMap[fileInfo.Name()] = true
+		}
+	}
+	for _, fileInfo := range files {
+		if !strings.Contains(fileInfo.Name(), "pos") {
+			if !fileMap["pos"+fileInfo.Name()] {
+				newGames = append(newGames, fileInfo.Name())
+			}
+		}
+	}
+	createGameTest(fileMap, newGames, dirName, t)
+	for fileName := range fileMap {
+		game, err := loadGame(t, filepath.Join(dirName, fileName[3:]))
+		if err == nil {
+			testPos, err := loadGamePositions(t, filepath.Join(dirName, fileName))
+			if err == nil {
+				gameMoveLoop(game, func(gamePos *GamePos, move int) {
+					pos, found := testPos.Pos[move]
+					if found {
+						if !game.Pos.Equal(pos) {
+							t.Errorf("Move: %v failed in file: %v", move, fileName)
+						}
+					}
+				})
+			}
+		}
+	}
+
 }
+func loadGamePositions(t *testing.T, name string) (pos *TestPos, err error) {
+	posFile, err := os.Open(name)
+	if err != nil {
+		t.Errorf("Error opning file: %v. Error: %v", name, err)
+		return pos, err
+	}
+	decoder := gob.NewDecoder(posFile)
+	testPos := *new(TestPos)
+	err = decoder.Decode(&testPos)
+	if err != nil {
+		posFile.Close()
+		t.Errorf("Error decoding file: %v. Error: %v", name, err)
+		return pos, err
+	}
+	err = posFile.Close()
+	if err != nil {
+		t.Errorf("Error closing file: %v. Error: %v", name, err)
+	}
+	return &testPos, err
+}
+
 func gameMoveLoop(game *Game, posFunc func(*GamePos, int)) {
 	game.Pos = NewGamePos()
 	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
@@ -197,9 +230,9 @@ func gameMoveLoop(game *Game, posFunc func(*GamePos, int)) {
 	game.Moves = make([][2]int, 0, len(moves))
 	for i, move := range moves {
 		switch {
-		case move[1] == SM_Giveup:
+		case move[1] == SMGiveUp:
 			game.Quit(game.Pos.Player)
-		case move[1] == SM_Pass:
+		case move[1] == SMPass:
 			game.Pass()
 		case move[1] >= 0:
 			if move[0] > 0 {
@@ -225,47 +258,43 @@ func createPos(game *Game) (testPos *TestPos) {
 }
 func createGameTest(fileMap map[string]bool, newGames []string, dirName string, t *testing.T) {
 	for _, fileName := range newGames {
-		file, err := os.Open(filepath.Join(dirName, fileName))
 		//file, err := os.OpenFile(filepath.Join(dirName, fileName), os.O_RDWR, 0666)
+		game, err := loadGame(t, filepath.Join(dirName, fileName))
 		if err == nil {
-			game, err := Load(file)
-			file.Close()
+			err = saveGame(t, filepath.Join(dirName, fileName), game, false) //remove possition
 			if err == nil {
-				//dataConversion(game)
-				file, err = os.Create(filepath.Join(dirName, fileName))
+				//	t.Logf("File: %v\nGame Pos:%v\nDeck:%v", fileName, game.Pos, game.InitDeckTroop)
+				testPos := createPos(game)
+				fileNamePos := ("pos" + fileName)
+				err = saveTestPos(t, fileNamePos, testPos)
 				if err == nil {
-					err = Save(game, file, false)
-					file.Close()
-					if err == nil {
-						//	t.Logf("File: %v\nGame Pos:%v\nDeck:%v", fileName, game.Pos, game.InitDeckTroop)
-						testPos := createPos(game)
-						fileNamePos := ("pos" + fileName)
-						posFile, err := os.Create(filepath.Join(dirName, fileNamePos))
-						if err == nil {
-							err = testPos.Save(posFile)
-							posFile.Close()
-							if err == nil {
-								fileMap[fileNamePos] = true
-							} else {
-								t.Errorf("Error saving file: %v. Error: %v", fileName, err)
-							}
-						} else {
-							t.Errorf("Error creating file: %v. Error: %v", fileName, err)
-						}
-					} else {
-						t.Errorf("Error saving file: %v. Error: %v", fileName, err)
-					}
-				} else {
-					t.Errorf("Error creating file: %v. Error: %v", fileName, err)
+					fileMap[fileNamePos] = true
 				}
-			} else {
-				t.Errorf("Error loading file: %v. Error: %v", fileName, err)
 			}
-		} else {
-			t.Errorf("Error opening file: %v. Error: %v", fileName, err)
 		}
 	}
 }
+func saveTestPos(t *testing.T, name string, testPos *TestPos) (err error) {
+	file, err := os.Create(name)
+	if err != nil {
+		t.Errorf("Create file error. File :%v Error: %v", name, err.Error())
+		return err
+	}
+
+	err = testPos.Save(file)
+	if err != nil {
+		t.Errorf("Save test possition file error. File :%v, Error: %v", file, err.Error())
+		file.Close()
+		return err
+	}
+	err = file.Close()
+	if err != nil {
+		t.Errorf("Closing file error. File :%v, Error: %v", file, err.Error())
+	}
+	return err
+}
+
+//dataConversion was use with a data error
 func dataConversion(game *Game) {
 	for i, move := range game.Moves {
 		if move[1] >= 0 {

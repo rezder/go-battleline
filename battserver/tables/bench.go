@@ -81,7 +81,7 @@ func NewMoveBench(view *MoveBenchView, ini bool) (move *pub.MoveBench) {
 // BenchPos the complete data that describe a game position for
 // a watcher.
 type BenchPos struct {
-	Flags      [bat.FLAGS]*Flag //Player 0 flags
+	Flags      [bat.NOFlags]*Flag //Player 0 flags
 	DishTroops [2][]int
 	DishTacs   [2][]int
 	Hands      [2][]bool
@@ -97,13 +97,10 @@ func NewBenchPos(pos *bat.GamePos, ids [2]int) (bench *BenchPos) {
 	}
 	for i, dish := range pos.Dishs {
 		bench.DishTroops[i] = make([]int, len(dish.Troops))
-		for j, v := range dish.Troops {
-			bench.DishTroops[i][j] = v
-		}
+		copy(bench.DishTroops[i], dish.Troops)
+
 		bench.DishTacs[i] = make([]int, len(dish.Tacs))
-		for j, v := range dish.Tacs {
-			bench.DishTacs[i][j] = v
-		}
+		copy(bench.DishTacs[i], dish.Tacs)
 	}
 
 	for i, hand := range pos.Hands {

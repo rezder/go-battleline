@@ -6,28 +6,12 @@ import (
 	slice "github.com/rezder/go-slice/int"
 )
 
-const (
-	DISH_TACS   = 6
-	DISH_TROOPS = 3
-)
-
-type Hand struct {
+type TroopTac struct {
 	Troops []int
 	Tacs   []int
 }
 
-func NewHand() (hand *Hand) {
-	hand = new(Hand)
-	hand.Troops = initEmptyHand()
-	hand.Tacs = initEmptyHand()
-	return hand
-}
-
-//Return a empty slice the capacity of a max hand.
-func initEmptyHand() []int {
-	return make([]int, 0, HAND+2)
-}
-func (hand *Hand) Equal(other *Hand) (equal bool) {
+func (hand *TroopTac) Equal(other *TroopTac) (equal bool) {
 	if other == nil && hand == nil {
 		equal = true
 	} else if other != nil && hand != nil {
@@ -40,25 +24,49 @@ func (hand *Hand) Equal(other *Hand) (equal bool) {
 
 	return equal
 }
-func (hand *Hand) Copy() (c *Hand) {
+func (hand *TroopTac) Copy() (c *TroopTac) {
 	if hand != nil {
-		c = new(Hand)
+		c = new(TroopTac)
+		c.Troops = make([]int, len(hand.Troops), cap(hand.Troops))
 		if len(hand.Troops) != 0 {
-			c.Troops = make([]int, len(hand.Troops), HAND+2)
 			copy(c.Troops, hand.Troops)
-		} else {
-			c.Troops = initEmptyHand()
 		}
+		c.Tacs = make([]int, len(hand.Tacs), cap(hand.Tacs))
 		if len(hand.Tacs) != 0 {
-			c.Tacs = make([]int, len(hand.Tacs), HAND+2)
 			copy(c.Tacs, hand.Tacs)
-		} else {
-			c.Tacs = initEmptyHand()
 		}
 
 	}
 	return c
 }
+
+//Hand a battleline hand.
+type Hand TroopTac
+
+func (hand *Hand) Copy() *Hand {
+	tt := TroopTac(*hand)
+	h := Hand(*tt.Copy())
+	return &h
+}
+func (hand *Hand) Equal(other *Hand) bool {
+	tt := TroopTac(*hand)
+	ott := TroopTac(*other)
+	ttp := &tt
+	return ttp.Equal(&ott)
+}
+
+func NewHand() (hand *Hand) {
+	hand = new(Hand)
+	hand.Troops = initEmptyHand()
+	hand.Tacs = initEmptyHand()
+	return hand
+}
+
+//initEmptyHand returns a empty slice the capacity of a max hand.
+func initEmptyHand() []int {
+	return make([]int, 0, 9)
+}
+
 func (hand *Hand) String() (txt string) {
 	if hand == nil {
 		txt = "Hand{nil}"
@@ -68,7 +76,7 @@ func (hand *Hand) String() (txt string) {
 	return txt
 }
 
-//play removes a card from the hand.
+//Play removes a card from the hand.
 func (hand *Hand) Play(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
 	if cardTac != nil {
@@ -80,14 +88,14 @@ func (hand *Hand) Play(cardix int) {
 	}
 }
 
-//playMulti removes cards from hand.
+//PlayMulti removes cards from hand.
 func (hand *Hand) PlayMulti(cardixs []int) {
 	for _, cardix := range cardixs {
 		hand.Play(cardix)
 	}
 }
 
-//draw adds card to hand.
+//Draw adds card to hand.
 func (hand *Hand) Draw(cardix int) {
 	cardTac, _ := cards.DrTactic(cardix)
 	if cardTac != nil {
@@ -99,7 +107,7 @@ func (hand *Hand) Draw(cardix int) {
 	}
 }
 
-//size the total number of cards in hand.
+//Size the total number of cards in hand.
 func (hand *Hand) Size() int {
 	res := 0
 	if hand != nil {
@@ -108,10 +116,8 @@ func (hand *Hand) Size() int {
 	return res
 }
 
-type Dish struct {
-	Tacs   []int
-	Troops []int
-}
+//Dish a container for dished troops and tactics.
+type Dish TroopTac
 
 func NewDish() (dish *Dish) {
 	dish = new(Dish)
@@ -120,42 +126,21 @@ func NewDish() (dish *Dish) {
 	return dish
 }
 func dishInitTacs() []int {
-	return make([]int, 0, DISH_TACS)
+	return make([]int, 0, 6)
 }
 func dishInitTroops() []int {
-	return make([]int, 0, DISH_TROOPS)
+	return make([]int, 0, 3)
 }
-func (dish *Dish) Equal(other *Dish) (equal bool) {
-	if other == nil && dish == nil {
-		equal = true
-	} else if other != nil && dish != nil {
-		if dish == other {
-			equal = true
-		} else if slice.Equal(other.Troops, dish.Troops) && slice.Equal(other.Tacs, dish.Tacs) {
-			equal = true
-		}
-	}
-
-	return equal
+func (dish *Dish) Copy() *Dish {
+	tt := TroopTac(*dish)
+	d := Dish(*tt.Copy())
+	return &d
 }
-
-func (dish *Dish) Copy() (c *Dish) {
-	if dish != nil {
-		c = new(Dish)
-		if len(dish.Troops) != 0 {
-			c.Troops = make([]int, len(dish.Troops), DISH_TROOPS)
-			copy(c.Troops, dish.Troops)
-		} else {
-			c.Troops = dishInitTroops()
-		}
-		if len(dish.Tacs) != 0 {
-			c.Tacs = make([]int, len(dish.Tacs), DISH_TACS)
-			copy(c.Tacs, dish.Tacs)
-		} else {
-			c.Tacs = dishInitTacs()
-		}
-	}
-	return c
+func (dish *Dish) Equal(other *Dish) bool {
+	tt := TroopTac(*dish)
+	ott := TroopTac(*other)
+	ttp := &tt
+	return ttp.Equal(&ott)
 }
 func (dish *Dish) String() (txt string) {
 	if dish == nil {
@@ -166,7 +151,7 @@ func (dish *Dish) String() (txt string) {
 	return txt
 }
 
-//dishCard add card to the dish.
+//DishCard add card to the dish.
 func (dish *Dish) DishCard(cardix int) {
 	if tac, _ := cards.DrTactic(cardix); tac != nil {
 		dish.Tacs = append(dish.Tacs, cardix)

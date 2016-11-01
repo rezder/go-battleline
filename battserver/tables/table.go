@@ -101,7 +101,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		}
 		playerChs[1] <- move2
 		benchCh <- moveBench
-		if game.Pos.State == bat.TURN_FINISH || game.Pos.State == bat.TURN_QUIT || isSaveMove {
+		if game.Pos.State == bat.TURNFinish || game.Pos.State == bat.TURNQuit || isSaveMove {
 			break
 		}
 	}
@@ -147,7 +147,7 @@ func updateClaim(pos *bat.GamePos, claimFailMap map[string][]int, claimView *Mov
 	if len(claimFailMap) != 0 {
 		claimView.FailMap = claimFailMap
 	}
-	if pos.State == bat.TURN_FINISH {
+	if pos.State == bat.TURNFinish {
 		claimView.Win = true
 	}
 	move = *claimView
@@ -235,7 +235,7 @@ func initMove(resumeGame *bat.Game, ids [2]int, moveChans [2]chan [2]int) (game 
 
 //PlayPos a player position for starting a old game.
 type PlayPos struct {
-	Flags         [bat.FLAGS]*Flag
+	Flags         [bat.NOFlags]*Flag
 	OppDishTroops []int
 	OppDishTacs   []int
 	DishTroops    []int
@@ -264,22 +264,20 @@ func NewPlayPos(pos *bat.GamePos, playerix int) (posView *PlayPos) {
 	posView.OppDishTroops, posView.OppDishTacs = copyDish(pos, opp)
 	posView.DishTroops, posView.DishTacs = copyDish(pos, playerix)
 
-	troops := len(pos.Hands[opp].Troops)
-	posView.OppHand = make([]bool, troops+len(pos.Hands[opp].Tacs))
+	troopsNo := len(pos.Hands[opp].Troops)
+	posView.OppHand = make([]bool, troopsNo+len(pos.Hands[opp].Tacs))
 	for i, _ := range pos.Hands[opp].Troops {
 		posView.OppHand[i] = true
 	}
 	for i, _ := range pos.Hands[opp].Tacs {
-		posView.OppHand[i+troops] = false
+		posView.OppHand[i+troopsNo] = false
 	}
-	troops = len(pos.Hands[playerix].Troops)
-	posView.Hand = make([]int, troops+len(pos.Hands[playerix].Tacs))
-	for i, v := range pos.Hands[playerix].Troops {
-		posView.Hand[i] = v
-	}
-	for i, v := range pos.Hands[playerix].Tacs {
-		posView.Hand[i+troops] = v
-	}
+	troopsNo = len(pos.Hands[playerix].Troops)
+	tacsNo := len(pos.Hands[playerix].Tacs)
+	posView.Hand = make([]int, troopsNo+tacsNo)
+	copy(posView.Hand, pos.Hands[playerix].Troops)
+	copy(posView.Hand[troopsNo:], pos.Hands[playerix].Tacs)
+
 	posView.DeckTroops = len(pos.DeckTroop.Remaining())
 	posView.DeckTacs = len(pos.DeckTac.Remaining())
 

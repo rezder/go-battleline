@@ -1,4 +1,4 @@
-//Package flag contains a battleline flag.
+//flag contains a battleline flag.
 package flag
 
 import (
@@ -612,6 +612,166 @@ func evalFormationT1LineLeader(troops []*cards.Troop, skipValue int) (leader int
 	return leader
 }
 
+//evalFormationLeader8 find the formation and the leader value for a flag
+//with a leader and the 8 morale tactic card.
+//troops must be sorted biggest first.
+//vLeader is the value that leader takes."
+func evalFormationLeader8(troops []*cards.Troop, tac1, tac2 int) (formation *cards.Formation, vLeader int) {
+	_, color := evalFormationValueColor(troops)
+
+	if len(troops) == 1 {
+		if troops[0].Value() == 10 {
+			formation = &cards.FWedge
+			vLeader = 9
+		} else if troops[0].Value() == 9 {
+			formation = &cards.FWedge
+			vLeader = 10
+		} else if troops[0].Value() == 8 {
+			formation = &cards.FPhalanx
+			vLeader = 8
+		} else if troops[0].Value() == 7 {
+			formation = &cards.FWedge
+			vLeader = 9
+		} else if troops[0].Value() == 6 {
+			formation = &cards.FWedge
+			vLeader = 7
+		} else {
+			formation = &cards.FBattalion
+			vLeader = 10
+		}
+
+	} else { // Two troops
+		if troops[0].Value() == 10 && troops[1].Value() == 9 {
+			formation = &cards.FWedge
+			vLeader = 7
+		} else if troops[0].Value() == 10 && troops[1].Value() == 7 {
+			formation = &cards.FWedge
+			vLeader = 9
+		} else if troops[0].Value() == 9 && troops[1].Value() == 7 {
+			formation = &cards.FWedge
+			vLeader = 10
+		} else if troops[0].Value() == 9 && troops[1].Value() == 6 {
+			formation = &cards.FWedge
+			vLeader = 7
+		} else if troops[0].Value() == 7 && troops[1].Value() == 6 {
+			formation = &cards.FWedge
+			vLeader = 9
+		} else if troops[0].Value() == 7 && troops[1].Value() == 5 {
+			formation = &cards.FWedge
+			vLeader = 6
+		} else if troops[0].Value() == 6 && troops[1].Value() == 5 {
+			formation = &cards.FWedge
+			vLeader = 7
+		} else {
+			formation = &cards.FBattalion
+			vLeader = 10
+		}
+		if troops[0].Value() == 8 && troops[1].Value() == 8 {
+			formation = &cards.FPhalanx
+			vLeader = 8
+		} else {
+			if !color {
+				if formation == &cards.FWedge {
+					formation = &cards.FSkirmish
+				} else {
+					formation = &cards.FHost
+				}
+			}
+		}
+	}
+	return formation, vLeader
+}
+
+//evalFormationLeader123 finds a formation and the leader value for a flag
+//with a leader and the 123 morale tactic card.
+//troops must be sorted biggest first.
+//vLeader is the value that leader takes."
+//v123 is the value 123 takes
+func evalFormationLeader123(troops []*cards.Troop, tac1, tac2 int) (formation *cards.Formation, v123, vLeader int) {
+	if len(troops) == 1 {
+		if troops[0].Value() < 6 {
+			formation = &cards.FWedge
+			if troops[0].Value() == 1 {
+				v123 = 2
+				vLeader = 3
+			} else if troops[0].Value() == 2 {
+				v123 = 3
+				vLeader = 4
+			} else if troops[0].Value() == 3 {
+				v123 = 2
+				vLeader = 4
+			} else if troops[0].Value() == 4 {
+				v123 = 3
+				vLeader = 5
+			} else if troops[0].Value() == 5 {
+				v123 = 3
+				vLeader = 4
+			}
+		} else {
+			formation = &cards.FBattalion
+			vLeader = 10
+			v123 = 3
+		}
+	} else { // two troops
+		value, color := evalFormationValueColor(troops)
+		if value && troops[0].Value() < 4 {
+			vLeader = troops[0].Value()
+			v123 = troops[0].Value()
+			formation = &cards.FPhalanx
+		} else if troops[0].Value() == 3 && troops[1].Value() == 2 {
+			v123 = 1
+			vLeader = 4
+		} else if troops[0].Value() == 4 && troops[1].Value() == 1 {
+			v123 = 2
+			vLeader = 3
+		} else if troops[0].Value() == 3 && troops[1].Value() == 1 {
+			v123 = 2
+			vLeader = 4
+		} else if troops[0].Value() == 5 && troops[1].Value() == 3 {
+			v123 = 2
+			vLeader = 4
+		} else if troops[0].Value() == 4 && troops[1].Value() == 3 {
+			v123 = 2
+			vLeader = 5
+		} else if troops[0].Value() == 2 && troops[1].Value() == 1 {
+			v123 = 3
+			vLeader = 4
+		} else if troops[0].Value() == 6 && troops[1].Value() == 5 {
+			v123 = 3
+			vLeader = 4
+		} else if troops[0].Value() == 4 && troops[1].Value() == 2 {
+			v123 = 3
+			vLeader = 5
+		} else if troops[0].Value() == 6 && troops[1].Value() == 4 {
+			v123 = 3
+			vLeader = 5
+		} else if troops[0].Value() == 5 && troops[1].Value() == 4 {
+			v123 = 3
+			vLeader = 6
+		}
+		if formation == nil { //no phalanx
+			if color {
+				if v123 != 0 { //line
+					formation = &cards.FWedge
+				} else {
+					formation = &cards.FBattalion
+					v123 = 3
+					vLeader = 10
+				}
+			} else {
+				if v123 != 0 { //line
+					formation = &cards.FSkirmish
+				} else {
+					formation = &cards.FHost
+					v123 = 3
+					vLeader = 10
+				}
+			}
+		}
+	}
+	return formation, v123, vLeader
+}
+
 // evalFormationT2 evaluate a formation with two jokers.
 // troops must be sorted biggest first.
 // v123 is the value that the 123 joker takes in the formation.
@@ -619,151 +779,10 @@ func evalFormationT1LineLeader(troops []*cards.Troop, skipValue int) (leader int
 func evalFormationT2(troops []*cards.Troop, tac1 int, tac2 int) (formation *cards.Formation, v123 int, vLeader int) {
 	switch {
 	case (tac1 == cards.TCAlexander || tac1 == cards.TCDarius) && tac2 == cards.TC8:
-		_, color := evalFormationValueColor(troops)
-
-		if len(troops) == 1 {
-			if troops[0].Value() == 10 {
-				formation = &cards.FWedge
-				vLeader = 9
-			} else if troops[0].Value() == 9 {
-				formation = &cards.FWedge
-				vLeader = 10
-			} else if troops[0].Value() == 8 {
-				formation = &cards.FPhalanx
-				vLeader = 8
-			} else if troops[0].Value() == 7 {
-				formation = &cards.FWedge
-				vLeader = 9
-			} else if troops[0].Value() == 6 {
-				formation = &cards.FWedge
-				vLeader = 7
-			} else {
-				formation = &cards.FBattalion
-				vLeader = 10
-			}
-
-		} else { // Two troops
-			if troops[0].Value() == 10 && troops[1].Value() == 9 {
-				formation = &cards.FWedge
-				vLeader = 7
-			} else if troops[0].Value() == 10 && troops[1].Value() == 7 {
-				formation = &cards.FWedge
-				vLeader = 9
-			} else if troops[0].Value() == 9 && troops[1].Value() == 7 {
-				formation = &cards.FWedge
-				vLeader = 10
-			} else if troops[0].Value() == 9 && troops[1].Value() == 6 {
-				formation = &cards.FWedge
-				vLeader = 7
-			} else if troops[0].Value() == 7 && troops[1].Value() == 6 {
-				formation = &cards.FWedge
-				vLeader = 9
-			} else if troops[0].Value() == 7 && troops[1].Value() == 5 {
-				formation = &cards.FWedge
-				vLeader = 6
-			} else if troops[0].Value() == 6 && troops[1].Value() == 5 {
-				formation = &cards.FWedge
-				vLeader = 7
-			} else {
-				formation = &cards.FBattalion
-				vLeader = 10
-			}
-			if troops[0].Value() == 8 && troops[1].Value() == 8 {
-				formation = &cards.FPhalanx
-				vLeader = 8
-			} else {
-				if !color {
-					if formation == &cards.FWedge {
-						formation = &cards.FSkirmish
-					} else {
-						formation = &cards.FHost
-					}
-				}
-			}
-		}
+		formation, vLeader = evalFormationLeader8(troops, tac1, tac2)
 
 	case (tac1 == cards.TCAlexander || tac1 == cards.TCDarius) && tac2 == cards.TC123:
-		if len(troops) == 1 {
-			if troops[0].Value() < 6 {
-				formation = &cards.FWedge
-				if troops[0].Value() == 1 {
-					v123 = 2
-					vLeader = 3
-				} else if troops[0].Value() == 2 {
-					v123 = 3
-					vLeader = 4
-				} else if troops[0].Value() == 3 {
-					v123 = 2
-					vLeader = 4
-				} else if troops[0].Value() == 4 {
-					v123 = 3
-					vLeader = 5
-				} else if troops[0].Value() == 5 {
-					v123 = 3
-					vLeader = 4
-				}
-			} else {
-				formation = &cards.FBattalion
-				vLeader = 10
-				v123 = 3
-			}
-		} else { // two troops
-			value, color := evalFormationValueColor(troops)
-			if value && troops[0].Value() < 4 {
-				vLeader = troops[0].Value()
-				v123 = troops[0].Value()
-				formation = &cards.FPhalanx
-			} else if troops[0].Value() == 3 && troops[1].Value() == 2 {
-				v123 = 1
-				vLeader = 4
-			} else if troops[0].Value() == 4 && troops[1].Value() == 1 {
-				v123 = 2
-				vLeader = 3
-			} else if troops[0].Value() == 3 && troops[1].Value() == 1 {
-				v123 = 2
-				vLeader = 4
-			} else if troops[0].Value() == 5 && troops[1].Value() == 3 {
-				v123 = 2
-				vLeader = 4
-			} else if troops[0].Value() == 4 && troops[1].Value() == 3 {
-				v123 = 2
-				vLeader = 5
-			} else if troops[0].Value() == 2 && troops[1].Value() == 1 {
-				v123 = 3
-				vLeader = 4
-			} else if troops[0].Value() == 6 && troops[1].Value() == 5 {
-				v123 = 3
-				vLeader = 4
-			} else if troops[0].Value() == 4 && troops[1].Value() == 2 {
-				v123 = 3
-				vLeader = 5
-			} else if troops[0].Value() == 6 && troops[1].Value() == 4 {
-				v123 = 3
-				vLeader = 5
-			} else if troops[0].Value() == 5 && troops[1].Value() == 4 {
-				v123 = 3
-				vLeader = 6
-			}
-			if formation == nil { //no phalanx
-				if color {
-					if v123 != 0 { //line
-						formation = &cards.FWedge
-					} else {
-						formation = &cards.FBattalion
-						v123 = 3
-						vLeader = 10
-					}
-				} else {
-					if v123 != 0 { //line
-						formation = &cards.FSkirmish
-					} else {
-						formation = &cards.FHost
-						v123 = 3
-						vLeader = 10
-					}
-				}
-			}
-		}
+		formation, v123, vLeader = evalFormationLeader123(troops, tac1, tac2)
 	case tac1 == cards.TC8 && tac2 == cards.TC123:
 		_, color := evalFormationValueColor(troops)
 		if color {
@@ -913,125 +932,13 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 						opTroops = append(opTroops, opTroop)
 					}
 				}
+
 				if len(opTroops) > 1 {
-					value, color := evalFormationValueColor(opTroops)
-					line, _ := evalFormationT1Line(opTroops) // could be better but for now ok. must be sorted
-					wedge := line && color
-					switch player.Formation {
-					case &cards.FWedge:
-						if !wedge {
-							ok = true
-						}
-					case &cards.FPhalanx:
-						if !wedge && !value {
-							ok = true
-						} else {
-							m := 3
-							if mud {
-								m = 4
-							}
-							if value && opTroops[0].Value()*m < player.Strenght {
-								ok = true
-							}
-						}
-					case &cards.FBattalion:
-						if !wedge && !value && !color {
-							ok = true
-						}
-					case &cards.FSkirmish:
-						if !color && !value && !line {
-							ok = true
-						}
-					}
+					ok = claimFlagOppentPlayedCard(player.Formation, player.Strenght, opTroops, mud)
 				}
 
 				if !ok {
-					playedCards := played(opPlayer.Troops[:])
-					opCards := make([]int, 4) // copy
-					copy(opCards, opPlayer.Troops[:])
-					sortInt(opCards)
-					simNoCards := 3 - playedCards
-					simPlayedCards := 3
-					if mud {
-						simNoCards = simNoCards + 1
-						simPlayedCards = 4
-					}
-					simCards := make([]int, 4) //copy
-					switch simNoCards {
-					case 1:
-						ok = true
-						for _, card := range unPlayCards {
-							copy(simCards, opCards)
-							simCards[len(opCards)-1] = card
-							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.Formation.Value ||
-								(simFormation.Value == player.Formation.Value && simStrenght > player.Strenght) {
-								eks = simCards
-								ok = false
-								break
-							}
-						}
-					case 2:
-						match := math.Perm2(len(unPlayCards), func(v [2]int) bool {
-							copy(simCards, opCards)
-							simCards[len(opCards)-1] = unPlayCards[v[1]]
-							simCards[len(opCards)-2] = unPlayCards[v[0]]
-							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.Formation.Value {
-								eks = simCards
-								return true
-							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
-								eks = simCards
-								return true
-							} else {
-								return false
-							}
-						})
-						if match[0] == -1 {
-							ok = true
-						}
-					case 3:
-						match := math.Perm3(len(unPlayCards), func(v [3]int) bool {
-							copy(simCards, opCards)
-							simCards[len(opCards)-1] = unPlayCards[v[2]]
-							simCards[len(opCards)-2] = unPlayCards[v[1]]
-							simCards[len(opCards)-3] = unPlayCards[v[0]]
-							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.Formation.Value {
-								eks = simCards
-								return true
-							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
-								eks = simCards
-								return true
-							} else {
-								return false
-							}
-						})
-						if match[0] == -1 {
-							ok = true
-						}
-					case 4:
-						match := math.Perm4(len(unPlayCards), func(v [4]int) bool {
-							copy(simCards, opCards)
-							simCards[len(opCards)-1] = unPlayCards[v[3]]
-							simCards[len(opCards)-2] = unPlayCards[v[2]]
-							simCards[len(opCards)-3] = unPlayCards[v[1]]
-							simCards[len(opCards)-4] = unPlayCards[v[0]]
-							simFormation, simStrenght := evalSim(mud, fog, simCards, simPlayedCards)
-							if simFormation.Value > player.Formation.Value {
-								eks = simCards
-								return true
-							} else if simFormation.Value == player.Formation.Value && simStrenght > player.Strenght {
-								eks = simCards
-								return true
-							} else {
-								return false
-							}
-						})
-						if match[0] == -1 {
-							ok = true
-						}
-					}
+					ok, eks = claimFlagSimulation(player.Formation, player.Strenght, opPlayer.Troops, mud, fog, unPlayCards)
 
 				}
 			}
@@ -1041,6 +948,146 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 		player.Won = true
 	}
 	return ok, eks
+}
+
+//claimFlagSimulation simulate all formation to check for wining formation.
+//that would falsify the claim.
+//ok true if no formation exist.
+func claimFlagSimulation(
+	formation *cards.Formation,
+	strenght int,
+	oppTroopixs [4]int,
+	isMud, isFog bool,
+	unPlayCards []int) (ok bool, eks []int) {
+
+	playedCards := played(oppTroopixs[:])
+	opCards := make([]int, 4) // copy
+	copy(opCards, oppTroopixs[:])
+	simNoCards := 3 - playedCards
+	simPlayedCards := 3
+	if isMud {
+		simNoCards = simNoCards + 1
+		simPlayedCards = 4
+	}
+	simCards := make([]int, 4) //copy
+	switch simNoCards {
+	case 1:
+		ok = true
+		for _, card := range unPlayCards {
+			copy(simCards, opCards)
+			simCards[len(opCards)-1] = card
+			simFormation, simStrenght := evalSim(isMud, isFog, simCards, simPlayedCards)
+			if simFormation.Value > formation.Value ||
+				(simFormation.Value == formation.Value && simStrenght > strenght) {
+				eks = simCards
+				ok = false
+				break
+			}
+		}
+	case 2:
+		match := math.Perm2(len(unPlayCards), func(v [2]int) bool {
+			copy(simCards, opCards)
+			simCards[len(opCards)-1] = unPlayCards[v[1]]
+			simCards[len(opCards)-2] = unPlayCards[v[0]]
+			simFormation, simStrenght := evalSim(isMud, isFog, simCards, simPlayedCards)
+			if simFormation.Value > formation.Value {
+				eks = simCards
+				return true
+			} else if simFormation.Value == formation.Value && simStrenght > strenght {
+				eks = simCards
+				return true
+			} else {
+				return false
+			}
+		})
+		if match[0] == -1 {
+			ok = true
+		}
+	case 3:
+		match := math.Perm3(len(unPlayCards), func(v [3]int) bool {
+			copy(simCards, opCards)
+			simCards[len(opCards)-1] = unPlayCards[v[2]]
+			simCards[len(opCards)-2] = unPlayCards[v[1]]
+			simCards[len(opCards)-3] = unPlayCards[v[0]]
+			simFormation, simStrenght := evalSim(isMud, isFog, simCards, simPlayedCards)
+			if simFormation.Value > formation.Value {
+				eks = simCards
+				return true
+			} else if simFormation.Value == formation.Value && simStrenght > strenght {
+				eks = simCards
+				return true
+			} else {
+				return false
+			}
+		})
+		if match[0] == -1 {
+			ok = true
+		}
+	case 4:
+		match := math.Perm4(len(unPlayCards), func(v [4]int) bool {
+			copy(simCards, opCards)
+			simCards[len(opCards)-1] = unPlayCards[v[3]]
+			simCards[len(opCards)-2] = unPlayCards[v[2]]
+			simCards[len(opCards)-3] = unPlayCards[v[1]]
+			simCards[len(opCards)-4] = unPlayCards[v[0]]
+			simFormation, simStrenght := evalSim(isMud, isFog, simCards, simPlayedCards)
+			if simFormation.Value > formation.Value {
+				eks = simCards
+				return true
+			} else if simFormation.Value == formation.Value && simStrenght > strenght {
+				eks = simCards
+				return true
+			} else {
+				return false
+			}
+		})
+		if match[0] == -1 {
+			ok = true
+		}
+	}
+
+	return ok, eks
+}
+
+//claimFlagOppentPlayedCard checks if a flag can be claimed base on caclulated max formation.
+//These calculation need on cards to be played and does no include
+//Host just a sum.
+func claimFlagOppentPlayedCard(
+	formation *cards.Formation,
+	strenght int,
+	opTroops []*cards.Troop,
+	isMud bool) (ok bool) {
+
+	value, color := evalFormationValueColor(opTroops)
+	line, _ := evalFormationT1Line(opTroops) // could be better but for now ok. must be sorted
+	wedge := line && color
+	switch formation {
+	case &cards.FWedge:
+		if !wedge {
+			ok = true
+		}
+	case &cards.FPhalanx:
+		if !wedge && !value {
+			ok = true
+		} else {
+			m := 3
+			if isMud {
+				m = 4
+			}
+			if value && opTroops[0].Value()*m < strenght {
+				ok = true
+			}
+		}
+	case &cards.FBattalion:
+		if !wedge && !value && !color {
+			ok = true
+		}
+	case &cards.FSkirmish:
+		if !color && !value && !line {
+			ok = true
+		}
+	}
+	return ok
 }
 
 //UsedTac collects the used tactic cards.

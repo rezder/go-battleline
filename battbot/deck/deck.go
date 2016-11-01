@@ -22,7 +22,7 @@ type Deck struct {
 //NewDeck creates a new deck.
 func NewDeck() (deck *Deck) {
 	deck = new(Deck)
-	deck.oppTroops = bat.HAND
+	deck.oppTroops = bat.NOHandInit
 	deck.troops = make(map[int]bool)
 	deck.tacs = make(map[int]bool)
 	initDecks(deck.troops, deck.tacs)
@@ -82,7 +82,7 @@ func initDecks(troops map[int]bool, tacs map[int]bool) {
 
 //Reset reset the deck to its initial state.
 func (d *Deck) Reset() {
-	d.oppTroops = bat.HAND
+	d.oppTroops = bat.NOHandInit
 	d.oppTacs = 0
 	initDecks(d.troops, d.tacs)
 	d.scoutReturnTacs = d.scoutReturnTacs[:0]

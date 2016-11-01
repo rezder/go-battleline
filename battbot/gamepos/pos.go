@@ -14,7 +14,7 @@ import (
 //Pos is a game position.
 type Pos struct {
 	playHand *bat.Hand
-	flags    [bat.FLAGS]*flag.Flag
+	flags    [bat.NOFlags]*flag.Flag
 	playDish *bat.Dish
 	oppDish  *bat.Dish
 	deck     *deck.Deck
@@ -49,7 +49,7 @@ func (pos *Pos) Reset() {
 //UpdMove update position with a move.
 //Return true if game is done.
 func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
-	if moveView.State == bat.TURN_FINISH || moveView.State == bat.TURN_QUIT {
+	if moveView.State == bat.TURNFinish || moveView.State == bat.TURNQuit {
 		done = true
 	} else {
 		pos.turn = moveView.Turn
@@ -114,7 +114,7 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 				pos.playHand.Draw(moveView.DeltCardix)
 				pos.deck.PlayDraw(moveView.DeltCardix)
 			} else { //Opponent
-				pos.deck.OppDraw(move.Deck == bat.DECK_TROOP)
+				pos.deck.OppDraw(move.Deck == bat.DECKTroop)
 			}
 		case tables.MoveClaimView:
 			if len(move.Claimed) > 0 {

@@ -26,10 +26,10 @@ func (pages *Pages) addFile(file string) {
 }
 
 //addDir adds all html files from a directory
-func (pages *Pages) addDir(dir string) {
+func (pages *Pages) addDir(dir string) (err error) {
 	dirInfo, err := ioutil.ReadDir(dir)
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 	for _, fInfo := range dirInfo {
 		if filepath.Ext(fInfo.Name()) == ".html" {
@@ -37,18 +37,20 @@ func (pages *Pages) addDir(dir string) {
 			pages.list[filepath.Join(dir, fInfo.Name())] = nil
 		}
 	}
+	return err
 }
 
 //load the files.
-func (pages *Pages) load() {
+func (pages *Pages) load() (err error) {
 	for name, _ := range pages.list {
 		b, err := ioutil.ReadFile(name)
-		if err == nil {
-			pages.list[name] = b
-		} else {
-			panic(err.Error())
+		if err != nil {
+			return err
 		}
+		pages.list[name] = b
+
 	}
+	return err
 }
 
 //loadLock loads the file before loading activate the write lock.

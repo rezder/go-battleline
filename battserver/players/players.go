@@ -321,8 +321,8 @@ type GameState struct {
 
 //waitingForServer the player is waiting for the server to return a move.
 func (state *GameState) waitingForServer() (res bool) {
-	if state.respCh != nil && state.lastMove.State != bat.TURN_FINISH &&
-		state.lastMove.State != bat.TURN_QUIT {
+	if state.respCh != nil && state.lastMove.State != bat.TURNFinish &&
+		state.lastMove.State != bat.TURNQuit {
 		if state.lastMove.MyTurn {
 			if state.hasMoved || state.closed {
 				res = true
@@ -336,8 +336,8 @@ func (state *GameState) waitingForServer() (res bool) {
 
 //waitingForClient the client to make a move.
 func (state *GameState) waitingForClient() (res bool) {
-	if state.respCh != nil && state.lastMove.State != bat.TURN_FINISH &&
-		state.lastMove.State != bat.TURN_QUIT {
+	if state.respCh != nil && state.lastMove.State != bat.TURNFinish &&
+		state.lastMove.State != bat.TURNQuit {
 		if state.lastMove.MyTurn {
 			if !state.hasMoved || !state.closed {
 				res = true

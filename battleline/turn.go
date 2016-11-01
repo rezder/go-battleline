@@ -9,20 +9,27 @@ import (
 )
 
 const (
-	TURN_FLAG = 0
-	TURN_HAND = 1
-	//TURN_SCOUT2 player picks second of tree scout cards.
-	TURN_SCOUT2 = 2
-	//TURN_SCOUT2 player picks last of tree scout cards.
-	TURN_SCOUT1 = 3
-	//TURN_SCOUTR player return 3 cards to decks.
-	TURN_SCOUTR = 4
-	TURN_DECK   = 5
-	TURN_FINISH = 6
-	TURN_QUIT   = 7
+	//TURNFlag player claim flags.
+	TURNFlag = 0
+	//TURNHand player plays a card from hand.
+	TURNHand = 1
+	//TURNScout2 player picks second of tree scout cards.
+	TURNScout2 = 2
+	//TURNScout1 player picks last of tree scout cards.
+	TURNScout1 = 3
+	//TURNScoutR player return 3 cards to decks.
+	TURNScoutR = 4
+	//TURNDeck playe pick a card from a deck.
+	TURNDeck = 5
+	//TURNFinish game is over.
+	TURNFinish = 6
+	//TURNQuit player quit game is over.
+	TURNQuit = 7
 
-	DECK_TAC   = 1
-	DECK_TROOP = 2
+	//DECKTac the tactic card deck.
+	DECKTac = 1
+	//DECKTroop the troop card deck.
+	DECKTroop = 2
 )
 
 // Turn hold the information of a turn, whos turn is it, what kind of turn (State) and
@@ -36,11 +43,11 @@ type Turn struct {
 }
 
 //start set up the first turn.
-func (turn *Turn) start(starter int, hand *Hand, flags *[FLAGS]*flag.Flag, deckTac *deck.Deck,
+func (turn *Turn) start(starter int, hand *Hand, flags *[NOFlags]*flag.Flag, deckTac *deck.Deck,
 	deckTroop *deck.Deck, dishs *[2]*Dish) {
 
 	turn.Player = starter
-	turn.State = TURN_HAND
+	turn.State = TURNHand
 	turn.MovesHand, _ = getMoveHand(starter, hand, flags, deckTac, deckTroop,
 		dishs[starter].Tacs, dishs[opponent(starter)].Tacs)
 }
@@ -151,27 +158,27 @@ func (turn *Turn) Opp() int {
 
 //quit set the state to quit.
 func (turn *Turn) quit() {
-	turn.State = TURN_QUIT
+	turn.State = TURNQuit
 }
 
 // next role the turn over to the next turn that need player action.
-func (turn *Turn) next(handScout bool, hands *[2]*Hand, flags *[FLAGS]*flag.Flag, deckTac *deck.Deck,
+func (turn *Turn) next(handScout bool, hands *[2]*Hand, flags *[NOFlags]*flag.Flag, deckTac *deck.Deck,
 	deckTroop *deck.Deck, dishs *[2]*Dish) {
 	turn.Player, turn.State, turn.MovePass, turn.Moves, turn.MovesHand = updateTurn(turn.Player,
 		turn.State, hands, flags, deckTac, deckTroop, dishs, handScout)
 }
 
 //updateTurn role the turn over to the next turn that need player action.
-func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*flag.Flag,
+func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[NOFlags]*flag.Flag,
 	deckTac *deck.Deck, deckTroop *deck.Deck, dishs *[2]*Dish, handScout bool) (player int, state int,
 	movePass bool, moves []Move, movesHand map[int][]Move) {
 	player = oldPlayer
 	switch oldState {
-	case TURN_FLAG:
+	case TURNFlag:
 		if !win(flags, oldPlayer) {
 			handMap, pass := getMoveHand(player, hands[player], flags, deckTac, deckTroop,
 				dishs[player].Tacs, dishs[opponent(player)].Tacs)
-			state = TURN_HAND
+			state = TURNHand
 			if len(handMap) != 0 {
 				movesHand = handMap
 				movePass = pass
@@ -180,13 +187,13 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 					deckTac, deckTroop, dishs, false) //I think there always is a move right!!!
 			}
 		} else {
-			state = TURN_FINISH
+			state = TURNFinish
 		}
-	case TURN_HAND:
+	case TURNHand:
 		if handScout {
-			state = TURN_SCOUT2
+			state = TURNScout2
 		} else { //deck
-			state = TURN_DECK
+			state = TURNDeck
 		}
 		moves = getMoveDeck(deckTac, deckTroop, hands[player], state)
 		if len(moves) == 0 {
@@ -194,8 +201,8 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 				deckTroop, dishs, false)
 		}
 
-	case TURN_DECK:
-		state = TURN_FLAG
+	case TURNDeck:
+		state = TURNFlag
 		player = opponent(oldPlayer)
 		moves = getMoveClaim(player, flags)
 		if len(moves) == 0 {
@@ -203,26 +210,26 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 				deckTac, deckTroop, dishs, false)
 		}
 
-	case TURN_FINISH:
+	case TURNFinish:
 		panic("There is no turn after finish")
 
-	case TURN_SCOUT1:
-		state = TURN_SCOUTR
+	case TURNScout1:
+		state = TURNScoutR
 		moves = getMoveScoutReturn(hands[player])
 		if len(moves) == 0 {
 			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
 				deckTac, deckTroop, dishs, false)
 		}
-	case TURN_SCOUT2:
-		state = TURN_SCOUT1
+	case TURNScout2:
+		state = TURNScout1
 		moves = getMoveDeck(deckTac, deckTroop, hands[player], state)
 		if len(moves) == 0 {
 			player, state, movePass, moves, movesHand = updateTurn(player, state, hands, flags,
 				deckTac, deckTroop, dishs, false)
 
 		}
-	case TURN_SCOUTR:
-		state = TURN_FLAG
+	case TURNScoutR:
+		state = TURNFlag
 		player = opponent(oldPlayer)
 		moves = getMoveClaim(player, flags)
 		if len(moves) == 0 {
@@ -234,7 +241,7 @@ func updateTurn(oldPlayer int, oldState int, hands *[2]*Hand, flags *[FLAGS]*fla
 }
 
 //win check if a player have met the criteria for wining a game.
-func win(flags *[FLAGS]*flag.Flag, playerix int) (w bool) {
+func win(flags *[NOFlags]*flag.Flag, playerix int) (w bool) {
 	total := 0
 	row := 0
 	for _, fla := range flags {
@@ -255,58 +262,61 @@ func win(flags *[FLAGS]*flag.Flag, playerix int) (w bool) {
 	return w
 }
 
-// getMoveHand returns the possible hand moves.
-func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *deck.Deck,
-	troopDeck *deck.Deck, dishTac []int, oppDishTac []int) (m map[int][]Move, pass bool) {
-	m = make(map[int][]Move)
-	troopSpace := make([]int, 0, FLAGS)
-
-	used := make([]int, 0, 5)
-	oppUsed := make([]int, 0, 5)
-	var usedv [2][]int
-	notClaimed := make([]int, 0, FLAGS)
+//getMoveHandAnayzeFlag
+func getMoveHandAnayzeFlag(flags *[NOFlags]*flag.Flag, playerix int) (notClaimedFlagixs, playableFlagixs, playTacixs, oppTacixs []int) {
+	playableFlagixs = make([]int, 0, NOFlags)
+	playTacixs = make([]int, 0, 5)
+	oppTacixs = make([]int, 0, 5)
+	notClaimedFlagixs = make([]int, 0, NOFlags)
+	var usedTacixs [2][]int
 	for i, flag := range flags {
 		if !flag.Claimed() {
-			notClaimed = append(notClaimed, i)
+			notClaimedFlagixs = append(notClaimedFlagixs, i)
 			if flag.Free()[playerix] {
-				troopSpace = append(troopSpace, i)
+				playableFlagixs = append(playableFlagixs, i)
 			}
 		}
-		usedv = flag.UsedTac()
-		used = append(used, usedv[playerix]...)
-		oppUsed = append(oppUsed, usedv[opponent(playerix)]...)
+		usedTacixs = flag.UsedTac()
+		playTacixs = append(playTacixs, usedTacixs[playerix]...)
+		oppTacixs = append(oppTacixs, usedTacixs[opponent(playerix)]...)
 
 	}
-	for _, tac := range oppDishTac {
-		oppUsed = append(oppUsed, tac)
-	}
-	for _, tac := range dishTac {
-		used = append(used, tac)
-	}
+	return notClaimedFlagixs, playableFlagixs, playTacixs, oppTacixs
+}
+func getMoveHandAnayzeTacs(playFlagTacs, oppFlagTacs, playDishTacs, oppDishTacs []int) (playTac, playLeader bool) {
+	oppTacixs := append(oppFlagTacs, oppDishTacs...)
+	playTacixs := append(playFlagTacs, playDishTacs...)
 
-	playedLeader := slice.Contain(used, cards.TCAlexander)
-	if (!playedLeader) && slice.Contain(used, cards.TCDarius) {
+	playedLeader := slice.Contain(playTacixs, cards.TCAlexander)
+	if (!playedLeader) && slice.Contain(playTacixs, cards.TCDarius) {
 		playedLeader = true
 	}
+	playLeader = !playedLeader
 
-	playedTac := len(used)
-	oppPlayedTac := len(oppUsed)
+	playTac = len(playTacixs) <= len(oppTacixs)
+	return playTac, playLeader
+}
 
-	playTac := playedTac <= oppPlayedTac
+// getMoveHand returns the possible hand moves.
+func getMoveHand(playerix int, hand *Hand, flags *[NOFlags]*flag.Flag, tacDeck *deck.Deck,
+	troopDeck *deck.Deck, playDishTacs []int, oppDishTacs []int) (m map[int][]Move, pass bool) {
+	m = make(map[int][]Move)
+	notClaimedFlagixs, playableFlagixs, playFlagTacixs, oppFlagTacixs := getMoveHandAnayzeFlag(flags, playerix)
+	playTac, playLeader := getMoveHandAnayzeTacs(playFlagTacixs, oppFlagTacixs, playDishTacs, oppDishTacs)
 	var moves []Move
 	for _, v := range hand.Tacs {
 		if playTac {
 			switch v {
 			case cards.TC123, cards.TC8:
-				moves = getCardFlagMoves(troopSpace)
+				moves = getCardFlagMoves(playableFlagixs)
 			case cards.TCAlexander, cards.TCDarius:
-				if !playedLeader {
-					moves = getCardFlagMoves(troopSpace)
+				if playLeader {
+					moves = getCardFlagMoves(playableFlagixs)
 				} else {
 					moves = nil
 				}
 			case cards.TCFog, cards.TCMud:
-				moves = getCardFlagMoves(notClaimed)
+				moves = getCardFlagMoves(notClaimedFlagixs)
 			case cards.TCDeserter:
 				moves = getDeserterMoves(flags, opponent(playerix))
 			case cards.TCRedeploy:
@@ -321,9 +331,9 @@ func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *de
 			}
 		}
 	}
-	if len(troopSpace) > 0 && len(hand.Troops) > 0 {
+	if len(playableFlagixs) > 0 && len(hand.Troops) > 0 {
 		for _, troop := range hand.Troops {
-			moves = getCardFlagMoves(troopSpace)
+			moves = getCardFlagMoves(playableFlagixs)
 			if len(moves) != 0 {
 				m[troop] = moves
 			}
@@ -344,17 +354,17 @@ func getMoveHand(playerix int, hand *Hand, flags *[FLAGS]*flag.Flag, tacDeck *de
 func getScoutMoves(tac *deck.Deck, troop *deck.Deck) (moves []Move) {
 	moves = make([]Move, 0, 2)
 	if !tac.Empty() {
-		moves = append(moves, *NewMoveDeck(DECK_TAC))
+		moves = append(moves, *NewMoveDeck(DECKTac))
 	}
 	if !troop.Empty() {
-		moves = append(moves, *NewMoveDeck(DECK_TROOP))
+		moves = append(moves, *NewMoveDeck(DECKTroop))
 	}
 	return moves
 }
 
 // getTraitorMoves returns the possible traiter moves.
-func getTraitorMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
-	moves = make([]Move, 0, (FLAGS*3+3)*FLAGS) //270
+func getTraitorMoves(flags *[NOFlags]*flag.Flag, playerix int) (moves []Move) {
+	moves = make([]Move, 0, (NOFlags*3+3)*NOFlags) //270
 	for oppFlagix, oppFlag := range flags {
 		if !oppFlag.Claimed() {
 			for flagix, flag := range flags {
@@ -372,8 +382,8 @@ func getTraitorMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 }
 
 // getRedeployMoves returns the possible redeploy moves.
-func getRedeployMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
-	moves = make([]Move, 0, (FLAGS*3+3)*(FLAGS+1)) //300
+func getRedeployMoves(flags *[NOFlags]*flag.Flag, playerix int) (moves []Move) {
+	moves = make([]Move, 0, (NOFlags*3+3)*(NOFlags+1)) //300
 	for outFlagix, outFlag := range flags {
 		if !outFlag.Claimed() {
 			for inFlagix, inFlag := range flags {
@@ -398,8 +408,8 @@ func getRedeployMoves(flags *[FLAGS]*flag.Flag, playerix int) (moves []Move) {
 }
 
 // getDeserterMoves retunrs the possible deserter moves.
-func getDeserterMoves(flags *[FLAGS]*flag.Flag, opp int) (moves []Move) {
-	moves = make([]Move, 0, FLAGS*3+3)
+func getDeserterMoves(flags *[NOFlags]*flag.Flag, opp int) (moves []Move) {
+	moves = make([]Move, 0, NOFlags*3+3)
 	for flagix, flag := range flags {
 		if !flag.Claimed() {
 			for _, troop := range flag.Troops(opp) {
@@ -430,7 +440,7 @@ func getCardFlagMoves(flags []int) (moves []Move) {
 func getMoveScoutReturn(hand *Hand) (m []Move) {
 	nta := len(hand.Tacs)
 	nto := len(hand.Troops)
-	ret := nta + nto - HAND
+	ret := nta + nto - NOHandInit
 	if ret == 2 {
 		m = make([]Move, 0, 72)
 	} else {
@@ -482,8 +492,8 @@ func getMoveScoutReturn(hand *Hand) (m []Move) {
 // getMoveClaim returns all the possible claim flag moves.
 // There is no validation, that is it is not checked if a claim will
 // succede only that it is possible to make.
-func getMoveClaim(playerix int, flags *[FLAGS]*flag.Flag) (m []Move) {
-	posFlags := make([]int, 0, FLAGS)
+func getMoveClaim(playerix int, flags *[NOFlags]*flag.Flag) (m []Move) {
+	posFlags := make([]int, 0, NOFlags)
 	for i, flag := range flags {
 		if !flag.Claimed() {
 			if flag.Formations()[playerix] != nil {
@@ -587,12 +597,12 @@ func claimCombiNo(flagsNo int) (no int) {
 // getMoveDeck returns all the possible move deck.
 func getMoveDeck(tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Hand, turnState int) (m []Move) {
 	m = make([]Move, 0, 2)
-	if turnState != TURN_DECK || (turnState == TURN_DECK && hand.Size() < 7) {
+	if turnState != TURNDeck || (turnState == TURNDeck && hand.Size() < 7) {
 		if !tacDeck.Empty() {
-			m = append(m, *NewMoveDeck(DECK_TAC))
+			m = append(m, *NewMoveDeck(DECKTac))
 		}
 		if !troopDeck.Empty() {
-			m = append(m, *NewMoveDeck(DECK_TROOP))
+			m = append(m, *NewMoveDeck(DECKTroop))
 		}
 	}
 	return m

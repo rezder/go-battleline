@@ -46,7 +46,7 @@ func (s *Server) Stop() {
 		log.Println("Closing start game channel on tables")
 	}
 	close(s.StartGameChCl.Close)
-	_ = <-s.doneCh
+	<-s.doneCh
 	if cerrors.IsVerbose() {
 		log.Println("Receiving done from tables")
 	}

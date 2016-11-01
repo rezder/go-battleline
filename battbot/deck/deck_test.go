@@ -7,13 +7,14 @@ import (
 func TestMaxValues(t *testing.T) {
 	troops := make(map[int]bool)
 	troops[10] = true
-	troops[19] = tru
+	troops[19] = true
 	troops[37] = true
 	troops[28] = true
+	troops[6] = true
 	scoutReturnTroops := make([]int, 2)
 	scoutReturnTroops[0] = 40
 	scoutReturnTroops[1] = 17
-	testMaxValueCheck(t, troops, scoutReturnTroops, 29)
+	testMaxValueCheck(t, troops, scoutReturnTroops, 36)
 
 }
 func TestMaxValuesMax(t *testing.T) {
@@ -22,10 +23,11 @@ func TestMaxValuesMax(t *testing.T) {
 	troops[20] = true
 	troops[30] = true
 	troops[28] = true
+	troops[3] = true
 	scoutReturnTroops := make([]int, 2)
 	scoutReturnTroops[0] = 40
 	scoutReturnTroops[1] = 17
-	testMaxValueCheck(t, troops, scoutReturnTroops, 30)
+	testMaxValueCheck(t, troops, scoutReturnTroops, 38)
 }
 func testMaxValueCheck(t *testing.T, troops map[int]bool, scr []int, exp int) {
 	values := maxValues(troops, scr)

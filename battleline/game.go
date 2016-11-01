@@ -1,4 +1,4 @@
-// The battleline card game.
+//Package battleline contains the card game battleline.
 package battleline
 
 import (
@@ -11,16 +11,17 @@ import (
 )
 
 const (
-	//The numbers of flags
-	FLAGS = 9
-	//The numbers starting cards
-	HAND = 7
-	//Special move pass
-	SM_Pass = -1
-	//Special move give up
-	SM_Giveup = -2
+	//NOFlags is the numbers of flags
+	NOFlags = 9
+	//NOHandInit number of cards in init hand.
+	NOHandInit = 7
+	//SMPass is the move pass
+	SMPass = -1
+	//SMGiveUp is the move give up
+	SMGiveUp = -2
 )
 
+//Game The struct that holds all information about a game
 type Game struct {
 	PlayerIds     [2]int
 	Pos           *GamePos
@@ -59,7 +60,7 @@ func (game *Game) Equal(other *Game) (equal bool) {
 	return equal
 }
 
-//calcPos calculate the current posistion from the initial position and
+//CalcPos calculate the current posistion from the initial position and
 //the moves. The new position replace the old position.
 func (game *Game) CalcPos() {
 	game.Pos = NewGamePos()
@@ -73,9 +74,9 @@ func (game *Game) CalcPos() {
 	game.Moves = make([][2]int, 0, len(moves))
 	for _, move := range moves {
 		switch {
-		case move[1] == SM_Giveup:
+		case move[1] == SMGiveUp:
 			game.Quit(game.Pos.Player)
-		case move[1] == SM_Pass:
+		case move[1] == SMPass:
 			game.Pass()
 		case move[1] >= 0:
 			if move[0] > 0 {
@@ -106,14 +107,14 @@ func (game *Game) addMove(cardix int, moveix int) {
 func (game *Game) Quit(playerix int) {
 	game.Pos.quit()
 	game.Pos.Info = ""
-	game.addMove(0, SM_Giveup)
+	game.addMove(0, SMGiveUp)
 }
 
 //Pass player choose not to make a move.
 func (game *Game) Pass() {
 	if game.Pos.MovePass {
 		game.Pos.Info = ""
-		game.addMove(0, SM_Pass)
+		game.addMove(0, SMPass)
 		game.Pos.next(false, &game.Pos.Hands, &game.Pos.Flags, &game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
 	} else {
 		panic("Calling pass when not possible")
@@ -129,30 +130,30 @@ func (game *Game) Move(move int) (dealtix int, claimFailMap map[string][]int) {
 	pos.Info = ""
 	switch pos.State {
 
-	case TURN_FLAG:
+	case TURNFlag:
 		moveC, ok := pos.Moves[move].(MoveClaim)
 		if ok {
 			claimFailMap = moveClaimFlag(pos.Player, moveC.Flags, &pos.Flags, &pos.Hands, &pos.DeckTroop)
 		} else {
 			panic("There should be only claim moves")
 		}
-	case TURN_SCOUT1, TURN_SCOUT2, TURN_DECK:
+	case TURNScout1, TURNScout2, TURNDeck:
 		moveD, ok := pos.Moves[move].(MoveDeck)
 		if ok {
 			dealtix = moveDeck(moveD, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 		} else {
 			panic("There should be only pick deck moves ")
 		}
-	case TURN_SCOUTR:
+	case TURNScoutR:
 		moveSctR, ok := pos.Moves[move].(MoveScoutReturn)
 		if ok {
 			moveScoutRet(&moveSctR, &pos.DeckTac, &pos.DeckTroop, pos.Hands[pos.Player])
 		} else {
 			panic("There should not only scout return deck moves ")
 		}
-	case TURN_HAND:
+	case TURNHand:
 		panic(" There should be now hand move here, pass hand move is not handle her")
-	case TURN_FINISH:
+	case TURNFinish:
 		panic("Calling move when the game is finish is point less")
 	default:
 		panic("Unexpected turn state")
@@ -187,7 +188,7 @@ func moveScoutRet(move *MoveScoutReturn, deckTack *deck.Deck, deckTroop *deck.De
 //moveClaimFlag make a claim flag move.
 //claims is the flag indexs that should be claimed if possible.
 //#flags
-func moveClaimFlag(playerix int, claimixs []int, flags *[FLAGS]*flag.Flag, hands *[2]*Hand,
+func moveClaimFlag(playerix int, claimixs []int, flags *[NOFlags]*flag.Flag, hands *[2]*Hand,
 	deckTroop *deck.Deck) (claimFailMap map[string][]int) {
 	unPlayCards := simTroops(deckTroop, hands[0].Troops, hands[1].Troops)
 	claimFailMap = make(map[string][]int)
@@ -205,18 +206,18 @@ func moveClaimFlag(playerix int, claimixs []int, flags *[FLAGS]*flag.Flag, hands
 //#troopDeck
 //#hand
 func moveDeck(deck MoveDeck, tacDeck *deck.Deck, troopDeck *deck.Deck, hand *Hand) (dealt int) {
-	switch int(deck.Deck) {
-	case DECK_TAC:
+	switch deck.Deck {
+	case DECKTac:
 		dealt = deckDealTactic(tacDeck)
 		hand.Draw(dealt)
-	case DECK_TROOP:
+	case DECKTroop:
 		dealt = deckDealTroop(troopDeck)
 		hand.Draw(dealt)
 	}
 	return dealt
 }
 
-//MovesHand play a card from hand.
+//MoveHand play a card from hand.
 //dealtix the delt cardix when the scout card is played.
 //dishixs the dished cards witch may results of a redeploy or desert of the mud card.
 //in case of redeploy it also holds the redeploy card if it is dished.
@@ -226,7 +227,7 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, dishixs []int) 
 	pos.Info = ""
 	scout := false
 	var err error
-	if pos.State == TURN_HAND {
+	if pos.State == TURNHand {
 		pos.Hands[pos.Player].Play(cardix)
 		switch move := pos.MovesHand[cardix][moveix].(type) {
 		case MoveCardFlag:
@@ -263,9 +264,9 @@ func (game *Game) MoveHand(cardix int, moveix int) (dealtix int, dishixs []int) 
 //the mud card two extra dish cards is possible.
 //#flags
 //#dish
-func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
+func moveRedeploy(move *MoveRedeploy, flags *[NOFlags]*flag.Flag, playerix int,
 	dishs *[2]*Dish) (dishixs []int, err error) {
-	var outFlag *flag.Flag = flags[move.OutFlag]
+	outFlag := flags[move.OutFlag]
 	m0ix, m1ix, err := outFlag.Remove(move.OutCard, playerix)
 	if err != nil {
 		return dishixs, err
@@ -279,7 +280,7 @@ func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
 		dishixs = append(dishixs, m1ix)
 	}
 	if move.InFlag != -1 {
-		var inFlag *flag.Flag = flags[move.InFlag]
+		inFlag := flags[move.InFlag]
 		err = inFlag.Set(move.OutCard, playerix)
 	} else {
 		dishs[playerix].DishCard(move.OutCard)
@@ -290,13 +291,13 @@ func moveRedeploy(move *MoveRedeploy, flags *[FLAGS]*flag.Flag, playerix int,
 
 //moveTraitor handle the traitor move.
 //#flags
-func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, playerix int) (err error) {
-	var outFlag *flag.Flag = flags[move.OutFlag]
+func moveTraitor(move *MoveTraitor, flags *[NOFlags]*flag.Flag, playerix int) (err error) {
+	outFlag := flags[move.OutFlag]
 	_, _, err = outFlag.Remove(move.OutCard, opponent(playerix)) //Only troop can be a traitor so no mudix
 	if err != nil {
 		return err
 	}
-	var inFlag *flag.Flag = flags[move.InFlag]
+	inFlag := flags[move.InFlag]
 	err = inFlag.Set(move.OutCard, playerix)
 	return err
 }
@@ -304,9 +305,9 @@ func moveTraitor(move *MoveTraitor, flags *[FLAGS]*flag.Flag, playerix int) (err
 //moveDeserter handle the deserter move.
 //#flags
 //#dishs
-func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int,
+func moveDeserter(move *MoveDeserter, flags *[NOFlags]*flag.Flag, oppix int,
 	dishs *[2]*Dish) (dishixs []int, err error) {
-	var flag *flag.Flag = flags[move.Flag]
+	flag := flags[move.Flag]
 	m0ix, m1ix, err := flag.Remove(move.Card, oppix)
 	if err != nil {
 		return dishixs, err
@@ -325,7 +326,7 @@ func moveDeserter(move *MoveDeserter, flags *[FLAGS]*flag.Flag, oppix int,
 
 //GamePos a game position.
 type GamePos struct {
-	Flags     [FLAGS]*flag.Flag
+	Flags     [NOFlags]*flag.Flag
 	Dishs     [2]*Dish
 	Hands     [2]*Hand
 	DeckTac   deck.Deck
@@ -424,9 +425,9 @@ func simTroops(deck *deck.Deck, troops1 []int, troops2 []int) (troops []int) {
 func opponent(playerix int) int {
 	if playerix == 0 {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
+
 }
 
 // deal deals the initial hands.
@@ -434,7 +435,7 @@ func opponent(playerix int) int {
 //#deck.
 func deal(hands *[2]*Hand, deck *deck.Deck) {
 	for _, hand := range hands {
-		for i := 0; i < HAND; i++ {
+		for i := 0; i < NOHandInit; i++ {
 			hand.Draw(deckDealTroop(deck))
 		}
 	}
@@ -511,7 +512,7 @@ func Save(game *Game, file *os.File, savePos bool) (err error) {
 //Load load a game.
 func Load(file *os.File) (game *Game, err error) {
 	decoder := gob.NewDecoder(file)
-	var g Game = *new(Game)
+	g := *new(Game)
 
 	err = decoder.Decode(&g)
 	if err != nil {
