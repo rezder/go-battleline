@@ -1,4 +1,3 @@
-// A server for battleline
 package tables
 
 import (
@@ -18,7 +17,7 @@ import (
 //Start a table with a game.
 //If resumeGame is nil a new game is started.
 func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchChCl, resumeGame *bat.Game,
-	finishCh chan *FinishTableData, save bool, savedir string, errCh chan<- error) {
+	finishCh chan *FinishTableData, save bool, saveDir string, errCh chan<- error) {
 
 	var moveChs [2]chan [2]int
 	moveChs[0] = make(chan [2]int)
@@ -57,10 +56,10 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		if !open {
 			isSaveMove = true
 			move = *NewMoveSave()
-		} else if moveix[1] == pub.SM_Quit {
+		} else if moveix[1] == pub.SMQuit {
 			game.Quit(game.Pos.Player)
 			move = *NewMoveQuit()
-		} else if moveix[1] == pub.SM_Pass {
+		} else if moveix[1] == pub.SMPass {
 			game.Pass()
 			move = *NewMovePass()
 		} else if moveix[0] > 0 {
@@ -106,23 +105,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		}
 	}
 	if save {
-		hour, min, _ := time.Now().Clock()
-		fileName := fmt.Sprintf("game%vvs%v%v%v.gob", ids[0], ids[1], hour, min)
-		fileNamePath := filepath.Join(savedir, fileName)
-		file, err := os.Create(fileNamePath)
-		//defer file.Close()//close even if panic. Double close produce a error
-		//but we are not listening it is possible to add the close error to err of a returning function
-		//but id do not think i care.
-		if err == nil {
-			defer file.Close()
-			err = bat.Save(game, file, true)
-			if err != nil {
-				errCh <- cerrors.Wrap(err, 17, "Saving server games")
-			}
-		} else {
-			err = cerrors.Wrap(err, 18, "Create server games file")
-			errCh <- err
-		}
+		saveGame(ids, game, errCh, saveDir)
 	}
 	close(playerChs[0])
 	close(playerChs[1])
@@ -133,6 +116,25 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		finData.game = game
 	}
 	finishCh <- finData // may be buffered tables will close bench before closing tables
+}
+func saveGame(ids [2]int, game *bat.Game, errCh chan<- error, saveDir string) {
+	hour, min, _ := time.Now().Clock()
+	fileName := fmt.Sprintf("game%vvs%v%v%v.gob", ids[0], ids[1], hour, min)
+	fileNamePath := filepath.Join(saveDir, fileName)
+	file, err := os.Create(fileNamePath)
+	//defer file.Close()//close even if panic. Double close produce a error
+	//but we are not listening it is possible to add the close error to err of a returning function
+	//but id do not think i care.
+	if err == nil {
+		defer file.Close()
+		err = bat.Save(game, file, true)
+		if err != nil {
+			errCh <- cerrors.Wrap(err, 17, "Saving server games")
+		}
+	} else {
+		err = cerrors.Wrap(err, 18, "Create server games file")
+		errCh <- err
+	}
 }
 
 //updateClaim update the MoveClaimView with the succesfully claim flags and the win
@@ -250,9 +252,9 @@ type PlayPos struct {
 func opp(playerix int) int {
 	if playerix == 0 {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
+
 }
 func NewPlayPos(pos *bat.GamePos, playerix int) (posView *PlayPos) {
 	opp := opp(playerix)
@@ -266,10 +268,10 @@ func NewPlayPos(pos *bat.GamePos, playerix int) (posView *PlayPos) {
 
 	troopsNo := len(pos.Hands[opp].Troops)
 	posView.OppHand = make([]bool, troopsNo+len(pos.Hands[opp].Tacs))
-	for i, _ := range pos.Hands[opp].Troops {
+	for i := range pos.Hands[opp].Troops {
 		posView.OppHand[i] = true
 	}
-	for i, _ := range pos.Hands[opp].Tacs {
+	for i := range pos.Hands[opp].Tacs {
 		posView.OppHand[i+troopsNo] = false
 	}
 	troopsNo = len(pos.Hands[playerix].Troops)
@@ -333,12 +335,12 @@ func (pp *PlayPos) Equal(other *PlayPos) (equal bool) {
 // Flag a battleline flag.
 type Flag struct {
 	OppFlag    bool
+	NeuFlag    bool
+	PlayFlag   bool
 	OppTroops  []int
 	OppEnvs    []int
-	NeuFlag    bool
 	PlayEnvs   []int
 	PlayTroops []int
-	PlayFlag   bool
 }
 
 func NewFlag(flag *flag.Flag, playerix int) (view *Flag) {

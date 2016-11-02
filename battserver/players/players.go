@@ -1,4 +1,4 @@
-//The players server. Keeps track of login players.
+//Package players server. Keeps track of login players.
 package players
 
 import (
@@ -13,28 +13,28 @@ import (
 )
 
 const (
-	ACT_MESS       = 1
-	ACT_INVITE     = 2
-	ACT_INVACCEPT  = 3
-	ACT_INVDECLINE = 4
-	ACT_INVRETRACT = 5
-	ACT_MOVE       = 6
-	ACT_QUIT       = 7
-	ACT_WATCH      = 8
-	ACT_WATCHSTOP  = 9
-	ACT_LIST       = 10
-	ACT_SAVE       = 11
+	ACTMess       = 1
+	ACTInvite     = 2
+	ACTInvAccept  = 3
+	ACTInvDecline = 4
+	ACTInvRetract = 5
+	ACTMove       = 6
+	ACTQuit       = 7
+	ACTWatch      = 8
+	ACTWatchStop  = 9
+	ACTList       = 10
+	ACTSave       = 11
 
-	JT_Mess         = 1
-	JT_Invite       = 2
-	JT_Move         = 3
-	JT_BenchMove    = 4
-	JT_List         = 5
-	JT_CloseCon     = 6
-	JT_ClearInvites = 7
+	JTMess         = 1
+	JTInvite       = 2
+	JTMove         = 3
+	JTBenchMove    = 4
+	JTList         = 5
+	JTCloseCon     = 6
+	JTClearInvites = 7
 
-	WRTBUFF_SIZE = 10
-	WRTBUFF_LIM  = 8
+	wrtBuffSIZE  = 10
+	wrtBuffLIMIT = 8
 )
 
 type Server struct {
@@ -62,7 +62,7 @@ func (s *Server) Stop() {
 		log.Println("Closing players join channel")
 	}
 	close(s.JoinCh)
-	_ = <-s.finishedCh
+	<-s.finishedCh
 	if cerrors.IsVerbose() {
 		log.Println("Receiving players finished")
 	}
@@ -92,7 +92,13 @@ Loop:
 				messCh := make(chan *pub.MesData)
 				p.joinServer(inviteCh, messCh, leaveCh, pubList, startGameChCl)
 				p.joinedCh <- p
-				list[p.id] = &pub.PlayerData{p.id, p.name, inviteCh, p.doneComCh, messCh, p.bootCh}
+				list[p.id] = &pub.PlayerData{
+					ID:      p.id,
+					Name:    p.name,
+					Invite:  inviteCh,
+					DoneCom: p.doneComCh,
+					Message: messCh,
+					BootCh:  p.bootCh}
 				publish(list, pubList)
 				if disPlayers[p.id] {
 					close(p.bootCh)
@@ -111,11 +117,11 @@ Loop:
 		case disData := <-disableCh:
 			if !done {
 				if !disData.Disable {
-					delete(disPlayers, disData.PlayerId)
+					delete(disPlayers, disData.PlayerID)
 				} else {
-					if !disPlayers[disData.PlayerId] {
-						disPlayers[disData.PlayerId] = true
-						p, found := list[disData.PlayerId]
+					if !disPlayers[disData.PlayerID] {
+						disPlayers[disData.PlayerID] = true
+						p, found := list[disData.PlayerID]
 						if found {
 							close(p.BootCh)
 						}
@@ -168,20 +174,20 @@ func NewPlayer(id int, name string, ws *websocket.Conn, errCh chan<- error,
 }
 
 // joinServer add the players server information.
-func (p *Player) joinServer(inviteCh <-chan *pub.Invite, messCh <-chan *pub.MesData,
+func (player *Player) joinServer(inviteCh <-chan *pub.Invite, messCh <-chan *pub.MesData,
 	leaveCh chan<- int, pubList *pub.List, startGameChCl *pub.StartGameChCl) {
-	p.leaveCh = leaveCh
-	p.pubList = pubList
-	p.inviteCh = inviteCh
-	p.messCh = messCh
-	p.tableStChCl = startGameChCl
+	player.leaveCh = leaveCh
+	player.pubList = pubList
+	player.inviteCh = inviteCh
+	player.messCh = messCh
+	player.tableStChCl = startGameChCl
 }
 
 // Start a player server.
 // The server will not wait for its started go routine to finsh but it will send
 // the kill signal to them.
 func (player *Player) Start() {
-	sendCh := make(chan interface{}, WRTBUFF_SIZE)
+	sendCh := make(chan interface{}, wrtBuffSIZE)
 	wrtBrookCh := make(chan struct{})
 	wrtDoneCh := make(chan struct{})
 	readList := player.pubList.Read()
@@ -220,24 +226,24 @@ Loop:
 			if open {
 				upd := false
 				switch act.ActType {
-				case ACT_MESS:
+				case ACTMess:
 					upd = actMessage(act, readList, sendCh, player.id, player.name)
-				case ACT_INVITE:
+				case ACTInvite:
 					upd = actSendInvite(sendInvites, inviteResponse, player.doneComCh,
 						act, readList, sendCh, player.id, player.name, gameState)
-				case ACT_INVACCEPT:
+				case ACTInvAccept:
 					upd = actAccInvite(receivedInvites, act, sendCh, gameReceiveCh, player.doneComCh,
 						player.id, gameState)
-				case ACT_INVDECLINE:
+				case ACTInvDecline:
 					upd = actDeclineInvite(receivedInvites, act, player.id)
-				case ACT_INVRETRACT:
+				case ACTInvRetract:
 					actRetractInvite(sendInvites, act)
-				case ACT_MOVE:
+				case ACTMove:
 					if cerrors.IsVerbose() {
 						log.Printf("handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
 					}
 					actMove(act, gameState, sendCh, player.errCh, player.id)
-				case ACT_SAVE:
+				case ACTSave:
 					if gameState.waitingForClient() || gameState.waitingForServer() {
 						gameState.closeChannel()
 					} else {
@@ -245,19 +251,19 @@ Loop:
 						sendSysMess(sendCh, errTxt)
 						player.errCh <- cerrors.Wrap(NewPlayerErr(errTxt, player.id), 19, "")
 					}
-				case ACT_QUIT:
+				case ACTQuit:
 					if gameState.waitingForClient() {
-						gameState.respCh <- [2]int{0, pub.SM_Quit}
+						gameState.respCh <- [2]int{0, pub.SMQuit}
 					} else {
 						sendSysMess(sendCh, "Quitting game out of turn is not possible.")
 						player.errCh <- cerrors.Wrap(NewPlayerErr("Quitting game out of turn", player.id), 20, "")
 					}
-				case ACT_WATCH:
+				case ACTWatch:
 					upd = actWatch(watchGames, act, watchGameCh, player.doneComCh, readList,
 						sendCh, player.id)
-				case ACT_WATCHSTOP:
+				case ACTWatchStop:
 					actWatchStop(watchGames, act, sendCh, player.id)
-				case ACT_LIST:
+				case ACTList:
 					upd = true
 				default:
 					player.errCh <- cerrors.Wrap(NewPlayerErr("Action do not exist", player.id), 21, "")
@@ -283,10 +289,10 @@ Loop:
 				sendCh <- wgd.initMove
 			}
 		case invite := <-player.inviteCh:
-			readList = playerExist(player.pubList, readList, invite.InvitorId, sendCh)
-			_, found := readList[strconv.Itoa(invite.InvitorId)]
+			readList = playerExist(player.pubList, readList, invite.InvitorID, sendCh)
+			_, found := readList[strconv.Itoa(invite.InvitorID)]
 			if found {
-				receivedInvites[invite.InvitorId] = invite
+				receivedInvites[invite.InvitorID] = invite
 				sendCh <- invite
 			}
 
@@ -385,17 +391,17 @@ func (state *GameState) closeChannel() {
 
 //actRetractInvite retract an invite
 func actRetractInvite(sendInvites map[int]*pub.Invite, act *Action) {
-	invite, found := sendInvites[act.Id]
+	invite, found := sendInvites[act.ID]
 	if found {
 		close(invite.Retract)
-		delete(sendInvites, act.Id)
+		delete(sendInvites, act.ID)
 	}
 }
 
 //handleInviteResponse handle a invite response.
 //# sendInvites
 func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
-	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}, playerId int, doneComCh chan struct{},
+	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}, playerID int, doneComCh chan struct{},
 	gameReceiveCh chan<- *pub.MoveView, tableStChCl *pub.StartGameChCl) {
 	_, found := sendInvites[response.Responder] //if not found we rejected but he did not get the msg yet
 	if found {
@@ -406,7 +412,7 @@ func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
 		} else {
 			moveRecCh := make(chan *pub.MoveView, 1)
 			tableData := new(pub.StartGameData)
-			tableData.PlayerIds = [2]int{playerId, response.Responder}
+			tableData.PlayerIds = [2]int{playerID, response.Responder}
 			tableData.PlayerChs = [2]chan<- *pub.MoveView{moveRecCh, response.GameCh}
 			select {
 			case tableStChCl.Channel <- tableData:
@@ -426,14 +432,14 @@ func handleInviteResponse(response *pub.InviteResponse, invite *pub.Invite,
 // #gameState
 func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *pub.List,
 	readList map[string]*pub.Data, gameState *GameState, receivedInvites map[int]*pub.Invite,
-	sendInvites map[int]*pub.Invite, playerId int) (updReadList map[string]*pub.Data) {
+	sendInvites map[int]*pub.Invite, playerID int) (updReadList map[string]*pub.Data) {
 	updReadList = readList
 	if move == nil {
 		gameState.removeGame()
 	} else {
 		if !gameState.hasGame() { //Init move
 			gameState.addGame(move.MoveCh, move)
-			clearInvites(receivedInvites, sendInvites, playerId)
+			clearInvites(receivedInvites, sendInvites, playerID)
 			sendCh <- ClearInvites("All invites was clear as game starts.")
 			sendCh <- move
 			updReadList = pubList.Read()
@@ -451,42 +457,42 @@ func handleGameReceive(move *pub.MoveView, sendCh chan<- interface{}, pubList *p
 //# sendInvites
 //# gameState
 func handleCloseDown(doneComCh chan struct{}, gameState *GameState,
-	watchGames map[int]*pub.WatchChCl, playerId int, receivedInvites map[int]*pub.Invite,
+	watchGames map[int]*pub.WatchChCl, playerID int, receivedInvites map[int]*pub.Invite,
 	sendInvites map[int]*pub.Invite, sendCh chan<- interface{}, wrtDoneCh chan struct{}, playerCloseConn bool) {
 	close(doneComCh)
 	gameState.closeChannel()
 	if len(watchGames) > 0 {
 		for _, ch := range watchGames {
-			stopWatch(ch, playerId)
+			stopWatch(ch, playerID)
 		}
 	}
-	clearInvites(receivedInvites, sendInvites, playerId)
+	clearInvites(receivedInvites, sendInvites, playerID)
 
 	sendCh <- CloseCon{playerCloseConn, "Server close the connection"}
-	_ = <-wrtDoneCh
+	<-wrtDoneCh
 }
 
 //actWatch handle client action watch a game.
 //# watchGames
 func actWatch(watchGames map[int]*pub.WatchChCl, act *Action,
 	startWatchGameCh chan<- *startWatchGameData, gameDoneCh chan struct{}, readList map[string]*pub.Data,
-	sendCh chan<- interface{}, playerId int) (updList bool) {
-	_, found := watchGames[act.Id] // This test only works for game started, the bench server should reject
+	sendCh chan<- interface{}, playerID int) (updList bool) {
+	_, found := watchGames[act.ID] // This test only works for game started, the bench server should reject
 	// any repeat request to start game.
 	if found {
-		txt := fmt.Sprintf("Start watching id: %v faild as you are already watching", act.Id)
+		txt := fmt.Sprintf("Start watching id: %v faild as you are already watching", act.ID)
 		sendSysMess(sendCh, txt)
 	} else {
 		watch := new(pub.WatchData)
 		benchCh := make(chan *pub.MoveBench, 1)
-		watch.Id = playerId
+		watch.ID = playerID
 		watch.Send = benchCh
 		watchChCl := pub.NewWatchChCl()
 		select {
 		case watchChCl.Channel <- watch:
-			go watchGameListen(watchChCl, benchCh, startWatchGameCh, gameDoneCh, sendCh, act.Id, playerId)
+			go watchGameListen(watchChCl, benchCh, startWatchGameCh, gameDoneCh, sendCh, act.ID, playerID)
 		case <-watchChCl.Close:
-			txt := fmt.Sprintf("Player id: %v do not have a active game", act.Id)
+			txt := fmt.Sprintf("Player id: %v do not have a active game", act.ID)
 			sendSysMess(sendCh, txt)
 			updList = true
 		}
@@ -499,18 +505,17 @@ func actWatch(watchGames map[int]*pub.WatchChCl, act *Action,
 // in normal state it will stop resending but keep reading until connection is closed.
 func watchGameListen(watchChCl *pub.WatchChCl, benchCh <-chan *pub.MoveBench,
 	startWatchGameCh chan<- *startWatchGameData, doneCh chan struct{}, sendCh chan<- interface{},
-	watchId int, playerId int) {
+	watchID int, playerID int) {
 
 	initMove, initOpen := <-benchCh
 	if initOpen {
 		stData := new(startWatchGameData)
-		stData.player = watchId
+		stData.player = watchID
 		stData.initMove = initMove
 		stData.chCl = watchChCl
-		select {
-		case startWatchGameCh <- stData:
-		case <-doneCh:
-			stopWatch(watchChCl, playerId)
+		isDone := sendStartWatchData(startWatchGameCh, doneCh, stData)
+		if isDone {
+			stopWatch(watchChCl, playerID)
 		}
 		writeStop := false
 	Loop:
@@ -530,39 +535,50 @@ func watchGameListen(watchChCl *pub.WatchChCl, benchCh <-chan *pub.MoveBench,
 					}
 				} else { //Game is finished.
 					stData = new(startWatchGameData)
-					stData.player = watchId
-					select {
-					case startWatchGameCh <- stData:
-					case <-doneCh:
-					}
+					stData.player = watchID
+					sendStartWatchData(startWatchGameCh, doneCh, stData)
+					break Loop
+				}
+			} else {
+				if !open {
 					break Loop
 				}
 			}
 		}
 	} else {
-		txt := fmt.Sprintf("Failed to start watching game with player id %v\n.There could be two reason for this one your already started watching or the game is finished.", watchId)
+		txt := fmt.Sprintf("Failed to start watching game with player id %v\n.There could be two reason for this one your already started watching or the game is finished.", watchID)
 		sendSysMessGo(sendCh, doneCh, txt)
 	}
 
 }
+func sendStartWatchData(startWatchGameCh chan<- *startWatchGameData,
+	doneCh chan struct{},
+	stData *startWatchGameData) (isDone bool) {
+	select {
+	case startWatchGameCh <- stData:
+	case <-doneCh:
+		isDone = true
+	}
+	return isDone
+}
 
 // actWatchStop stop watching a game.
 func actWatchStop(watchGames map[int]*pub.WatchChCl, act *Action,
-	sendCh chan<- interface{}, playerId int) {
-	watchChCl, found := watchGames[act.Id]
+	sendCh chan<- interface{}, playerID int) {
+	watchChCl, found := watchGames[act.ID]
 	if found {
-		stopWatch(watchChCl, playerId)
-		delete(watchGames, act.Id)
+		stopWatch(watchChCl, playerID)
+		delete(watchGames, act.ID)
 	} else {
-		txt := fmt.Sprintf("Stop watching player %v failed", act.Id)
+		txt := fmt.Sprintf("Stop watching player %v failed", act.ID)
 		sendSysMess(sendCh, txt)
 	}
 }
 
 // stopWatch sends the stop watch signal if possibel.
-func stopWatch(watchChCl *pub.WatchChCl, playerId int) {
+func stopWatch(watchChCl *pub.WatchChCl, playerID int) {
 	watch := new(pub.WatchData)
-	watch.Id = playerId
+	watch.ID = playerID
 	watch.Send = nil //stop
 	select {
 	case watchChCl.Channel <- watch:
@@ -576,7 +592,7 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}, errCh
 		valid := false
 		lastMove := gameState.lastMove
 		if lastMove.MovesPass {
-			if act.Move[1] == pub.SM_Pass {
+			if act.Move[1] == pub.SMPass {
 				valid = true
 			}
 		}
@@ -611,7 +627,7 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}, errCh
 func actAccInvite(recInvites map[int]*pub.Invite, act *Action, sendCh chan<- interface{},
 	startGame chan<- *pub.MoveView, doneCh chan struct{}, id int, gameState *GameState) (upd bool) {
 
-	invite, found := recInvites[act.Id]
+	invite, found := recInvites[act.ID]
 	if found {
 		if !gameState.hasGame() {
 			resp := new(pub.InviteResponse)
@@ -632,13 +648,13 @@ func actAccInvite(recInvites map[int]*pub.Invite, act *Action, sendCh chan<- int
 					upd = true
 				}
 			}
-			delete(recInvites, invite.InvitorId)
+			delete(recInvites, invite.InvitorID)
 		} else {
 			txt := fmt.Sprintf("Invite from %v was not accepted as game is in progress", invite.InvitorName)
 			sendSysMess(sendCh, txt)
 		}
 	} else {
-		txt := fmt.Sprintf("Invite id %v do not exist.", act.Id)
+		txt := fmt.Sprintf("Invite id %v do not exist.", act.ID)
 		sendSysMess(sendCh, txt)
 	}
 	return upd
@@ -652,9 +668,8 @@ func gameListen(gameCh chan<- *pub.MoveView, doneCh chan struct{}, moveRecCh <-c
 	sendCh chan<- interface{}, invite *pub.Invite) {
 	initMove, initOpen := <-moveRecCh
 	if initOpen {
-		select {
-		case gameCh <- initMove:
-		case <-doneCh:
+		isDone := sendMoveGameCh(gameCh, doneCh, initMove)
+		if isDone {
 			close(initMove.MoveCh)
 		}
 		var writeStop bool
@@ -664,28 +679,16 @@ func gameListen(gameCh chan<- *pub.MoveView, doneCh chan struct{}, moveRecCh <-c
 			if !writeStop {
 				if open {
 					if move.MyTurn {
-						select {
-						case gameCh <- move:
-						case <-doneCh:
-							writeStop = true
-						}
+						writeStop = sendMoveGameCh(gameCh, doneCh, move)
 					} else {
-						select {
-						case <-doneCh: //sendCh is buffered and closed at a later stage
-							writeStop = true
-						default:
-							select {
-							case sendCh <- move:
-							case <-doneCh:
-								writeStop = true
-							}
-						}
+						writeStop = sendMoveSendCh(sendCh, doneCh, move)
 					}
 				} else {
-					select {
-					case gameCh <- nil:
-					case <-doneCh:
-					}
+					sendMoveGameCh(gameCh, doneCh, nil)
+					break Loop
+				}
+			} else {
+				if !open {
 					break Loop
 				}
 			}
@@ -695,24 +698,52 @@ func gameListen(gameCh chan<- *pub.MoveView, doneCh chan struct{}, moveRecCh <-c
 		sendCh <- invite
 	}
 }
+func sendMoveSendCh(
+	sendCh chan<- interface{},
+	doneCh chan struct{},
+	move *pub.MoveView) (isDone bool) {
+	select {
+	case <-doneCh: //sendCh is buffered and closed at a later stage
+		isDone = true
+	default:
+		select {
+		case sendCh <- move:
+		case <-doneCh:
+			isDone = true
+		}
+	}
+	return isDone
+}
+func sendMoveGameCh(
+	gameCh chan<- *pub.MoveView,
+	doneCh chan struct{},
+	move *pub.MoveView) (isDone bool) {
+	select {
+	case gameCh <- move:
+	case <-doneCh:
+		isDone = true
+	}
+	return isDone
+
+}
 
 //actSendInvite send a invite.
 func actSendInvite(invites map[int]*pub.Invite, respCh chan<- *pub.InviteResponse, doneCh chan struct{},
 	act *Action, readList map[string]*pub.Data, sendCh chan<- interface{}, id int, name string,
 	gameState *GameState) (upd bool) {
 	invite := new(pub.Invite)
-	invite.InvitorId = id
+	invite.InvitorID = id
 	invite.InvitorName = name
-	p, found := readList[strconv.Itoa(act.Id)]
+	p, found := readList[strconv.Itoa(act.ID)]
 	if found {
-		invite.ReceiverId = p.Id
+		invite.ReceiverID = p.ID
 		if !gameState.hasGame() {
 			invite.Response = respCh
 			invite.Retract = make(chan struct{})
 			invite.DoneComCh = doneCh
 			select {
 			case p.Invite <- invite:
-				invites[p.Id] = invite
+				invites[p.ID] = invite
 			case <-p.DoneCom:
 				invite.Rejected = true
 				sendCh <- invite
@@ -729,7 +760,7 @@ func actSendInvite(invites map[int]*pub.Invite, respCh chan<- *pub.InviteRespons
 	} else {
 		invite.Rejected = true
 		sendCh <- invite
-		m := fmt.Sprintf("Invite to Id: %v failed could not find player", act.Id)
+		m := fmt.Sprintf("Invite to Id: %v failed could not find player", act.ID)
 		sendSysMess(sendCh, m)
 		upd = true
 	}
@@ -739,7 +770,7 @@ func actSendInvite(invites map[int]*pub.Invite, respCh chan<- *pub.InviteRespons
 // actMessage send a message.
 func actMessage(act *Action, readList map[string]*pub.Data, sendCh chan<- interface{},
 	id int, name string) (upd bool) {
-	p, found := readList[strconv.Itoa(act.Id)]
+	p, found := readList[strconv.Itoa(act.ID)]
 	if found {
 		mess := new(pub.MesData)
 		mess.Sender = id
@@ -748,12 +779,12 @@ func actMessage(act *Action, readList map[string]*pub.Data, sendCh chan<- interf
 		select {
 		case p.Message <- mess:
 		case <-p.DoneCom:
-			m := fmt.Sprintf("Message to Id: %v failed", act.Id)
+			m := fmt.Sprintf("Message to Id: %v failed", act.ID)
 			sendSysMess(sendCh, m)
 			upd = true
 		}
 	} else {
-		m := fmt.Sprintf("Message to Id: %v failed", act.Id)
+		m := fmt.Sprintf("Message to Id: %v failed", act.ID)
 		sendSysMess(sendCh, m)
 		upd = true
 	}
@@ -761,19 +792,19 @@ func actMessage(act *Action, readList map[string]*pub.Data, sendCh chan<- interf
 }
 
 // actDeclineInvite decline a invite.
-func actDeclineInvite(receivedInvites map[int]*pub.Invite, act *Action, playerId int) (upd bool) {
-	invite, found := receivedInvites[act.Id]
+func actDeclineInvite(receivedInvites map[int]*pub.Invite, act *Action, playerID int) (upd bool) {
+	invite, found := receivedInvites[act.ID]
 	if found {
-		upd = declineInvite(invite, playerId)
-		delete(receivedInvites, invite.InvitorId)
+		upd = declineInvite(invite, playerID)
+		delete(receivedInvites, invite.InvitorID)
 	}
 	return upd
 }
 
 // declineInvite send the decline signal to opponent.
-func declineInvite(invite *pub.Invite, playerId int) (upd bool) {
+func declineInvite(invite *pub.Invite, playerID int) (upd bool) {
 	resp := new(pub.InviteResponse)
-	resp.Responder = playerId
+	resp.Responder = playerID
 	resp.GameCh = nil
 	select {
 	case <-invite.Retract:
@@ -824,10 +855,10 @@ func sendSysMessGo(sendCh chan<- interface{}, doneCh chan struct{}, txt string) 
 
 // clearInvites clear invites. Retract all send and cancel all recieved.
 func clearInvites(receivedInvites map[int]*pub.Invite, sendInvites map[int]*pub.Invite,
-	playerId int) {
+	playerID int) {
 	if len(receivedInvites) != 0 {
 		resp := new(pub.InviteResponse)
-		resp.Responder = playerId
+		resp.Responder = playerID
 		resp.GameCh = nil
 		for _, invite := range receivedInvites {
 			select {
@@ -835,7 +866,7 @@ func clearInvites(receivedInvites map[int]*pub.Invite, sendInvites map[int]*pub.
 			case <-invite.Retract:
 			}
 		}
-		for id, _ := range receivedInvites {
+		for id := range receivedInvites {
 			delete(receivedInvites, id)
 		}
 	}
@@ -843,7 +874,7 @@ func clearInvites(receivedInvites map[int]*pub.Invite, sendInvites map[int]*pub.
 		for _, invite := range sendInvites {
 			close(invite.Retract)
 		}
-		for id, _ := range sendInvites {
+		for id := range sendInvites {
 			delete(receivedInvites, id)
 		}
 	}
@@ -879,12 +910,12 @@ Loop:
 			}
 		}
 		if !broke && !playerStop {
-			err := websocket.JSON.Send(ws, netWrite_AddJsonType(data))
+			err := websocket.JSON.Send(ws, netWriteAddJSONType(data))
 			if err != nil {
 				errCh <- cerrors.Wrap(err, 24, "Websocket send")
 				broke = true
 			} else {
-				if len(dataCh) > WRTBUFF_LIM {
+				if len(dataCh) > wrtBuffLIMIT {
 					broke = true
 				}
 			}
@@ -899,25 +930,25 @@ Loop:
 	close(doneCh)
 }
 
-//netWrite_AddJsonType adds the json type to interface values.
-func netWrite_AddJsonType(data interface{}) (jdata *JsonData) {
+//netWriteAddJsonType adds the json type to interface values.
+func netWriteAddJSONType(data interface{}) (jdata *JsonData) {
 	jdata = new(JsonData)
 	jdata.Data = data
 	switch data.(type) {
 	case map[string]*pub.Data:
-		jdata.JsonType = JT_List
+		jdata.JsonType = JTList
 	case *pub.Invite:
-		jdata.JsonType = JT_Invite
+		jdata.JsonType = JTInvite
 	case *pub.MesData:
-		jdata.JsonType = JT_Mess
+		jdata.JsonType = JTMess
 	case *pub.MoveView:
-		jdata.JsonType = JT_Move
+		jdata.JsonType = JTMove
 	case *pub.MoveBench:
-		jdata.JsonType = JT_BenchMove
+		jdata.JsonType = JTBenchMove
 	case CloseCon:
-		jdata.JsonType = JT_CloseCon
+		jdata.JsonType = JTCloseCon
 	case ClearInvites:
-		jdata.JsonType = JT_ClearInvites
+		jdata.JsonType = JTClearInvites
 	default:
 		txt := fmt.Sprintf("Message not implemented yet: %v\n", data)
 		panic(txt)
@@ -961,14 +992,14 @@ Loop:
 // Action the client action.
 type Action struct {
 	ActType int
-	Id      int
+	ID      int
 	Move    [2]int
 	Mess    string
 }
 
 func NewAction() (a *Action) {
 	a = new(Action)
-	a.Move = [2]int{0, pub.SM_None}
+	a.Move = [2]int{0, pub.SMNone}
 	return a
 }
 
@@ -982,7 +1013,7 @@ type startWatchGameData struct {
 
 //PlayerErr a error message that include the player id.
 type PlayerErr struct {
-	PlayerId int
+	PlayerID int
 	Txt      string
 }
 
@@ -990,12 +1021,12 @@ func NewPlayerErr(txt string, id int) (err error) {
 	return &PlayerErr{id, txt}
 }
 func (err *PlayerErr) Error() string {
-	return fmt.Sprintf(err.Txt+" Error reported on player id: %v", err.PlayerId)
+	return fmt.Sprintf(err.Txt+" Error reported on player id: %v", err.PlayerID)
 }
 
 type DisData struct {
 	Disable  bool
-	PlayerId int
+	PlayerID int
 }
 
 //JsonData a json wrapper for export of interface values via json.

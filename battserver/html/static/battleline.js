@@ -1768,12 +1768,12 @@ var batt={};
         }
         invites.recieved=function(invite){
             if(invite.Rejected){
-                let name=invites.delete(invite.ReceiverId,true);
+                let name=invites.delete(invite.ReceiverID,true);
                 if(name){
                     msg.recieved({Message:name+" declined your invitation."});
                 }
             }else{
-                invites.replace(invite.InvitorId,invite.InvitorName,false);
+                invites.replace(invite.InvitorID,invite.InvitorName,false);
             }
         };
         exp.invites.recieved=invites.recieved;
@@ -1941,7 +1941,7 @@ var batt={};
                                 btn.onclick=function(event){
                                     if (!game.isPlaying()){
                                         let cells=event.target.parentNode.parentNode.cells;
-                                        let [idix,nameix]=getFieldsIx(["Id","Name"],pTableHeaders);
+                                        let [idix,nameix]=getFieldsIx(["ID","Name"],pTableHeaders);
                                         let idNo=parseInt(cells[idix].textContent);
                                         let name=cells[nameix].textContent;
                                         let send=true;
@@ -1967,7 +1967,7 @@ var batt={};
                                 let btn = document.createElement("BUTTON");
                                 btn.onclick=function(event){
                                     let cells=event.target.parentNode.parentNode.cells;
-                                    let [idix,nameix]=getFieldsIx(["Id","Name"],pTableHeaders);
+                                    let [idix,nameix]=getFieldsIx(["ID","Name"],pTableHeaders);
                                     msg.addPlayer(cells[idix].textContent,cells[nameix].textContent);
                                 };
                                 let newTxtNode=document.createTextNode("M");
@@ -2006,7 +2006,7 @@ var batt={};
         function actionBuilder(aType){
             let res={ActType:aType};
             res.id=function(idNo){
-                res.Id=idNo;
+                res.ID=idNo;
                 return res;
             };
             res.move=function(cardix,flagix){
@@ -2023,8 +2023,8 @@ var batt={};
             };
             function build(){
                 let act={ActType:this.ActType};
-                if (this.Id){
-                    act.Id=this.Id;
+                if (this.ID){
+                    act.ID=this.ID;
                 }
                 if (this.Move){
                     act.Move=this.Move;

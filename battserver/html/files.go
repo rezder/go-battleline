@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-// A html file cache with a read write log.
+// Pages is a html file cache with a read write log.
 type Pages struct {
 	*sync.RWMutex
 	list map[string][]byte
@@ -42,8 +42,9 @@ func (pages *Pages) addDir(dir string) (err error) {
 
 //load the files.
 func (pages *Pages) load() (err error) {
-	for name, _ := range pages.list {
-		b, err := ioutil.ReadFile(name)
+	var b []byte
+	for name := range pages.list {
+		b, err = ioutil.ReadFile(name)
 		if err != nil {
 			return err
 		}
@@ -54,10 +55,10 @@ func (pages *Pages) load() (err error) {
 }
 
 //loadLock loads the file before loading activate the write lock.
-func (pages *Pages) loadLock() {
+func (pages *Pages) loadLock() error {
 	pages.Lock()
 	defer pages.Unlock()
-	pages.load()
+	return pages.load()
 }
 
 //readPage reads a page using read lock.

@@ -44,13 +44,13 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	fmt.Println("Server up and running. Close with ctrl+c")
-	_ = <-stop
+	<-stop
 	if cerrors.IsVerbose() {
 		log.Println("Server closed with interrupt signal")
 	}
 	httpServer.Stop()
 	close(errCh)
-	_ = <-finErrCh
+	<-finErrCh
 
 }
 

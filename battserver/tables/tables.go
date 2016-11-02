@@ -1,4 +1,4 @@
-//The tables server.
+//Package tables contains the tables server.
 //Keeping track of the games being played.
 package tables
 
@@ -13,9 +13,13 @@ import (
 )
 
 const (
-	SAVE_GamesFile = "data/savegames.gob"
+	//SAVEGamesFile the file where unfinished games are saved.
+	SAVEGamesFile = "data/savegames.gob"
 )
 
+//Server the battleline tables sever
+//Keeps track of games being played. Who is playing, who is watching
+//and saved unfinished games. It here you ask to start a game.
 type Server struct {
 	save          bool
 	saveDir       string
@@ -26,6 +30,7 @@ type Server struct {
 	saveGames     *SaveGames
 }
 
+//New creates a battleline tables server.
 func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *Server, err error) {
 	s = new(Server)
 	s.pubList = pubList
@@ -38,9 +43,13 @@ func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *S
 	s.saveGames, err = loadSaveGames()
 	return s, err
 }
+
+//Start starts the tables server.
 func (s *Server) Start() {
 	go start(s.StartGameChCl, s.pubList, s.doneCh, s.save, s.saveDir, s.errCh, s.saveGames)
 }
+
+//Stop stops the tables server.
 func (s *Server) Stop() {
 	if cerrors.IsVerbose() {
 		log.Println("Closing start game channel on tables")
@@ -68,43 +77,38 @@ Loop:
 			delete(games, fin.ids[0])
 			delete(games, fin.ids[1])
 			if fin.game != nil {
-				saveGames.Games[gameId(fin.ids)] = fin.game
+				saveGames.Games[gameID(fin.ids)] = fin.game
 			}
 			if done && len(games) == 0 {
 				break Loop
 			}
 			publish(games, pubList)
 		case start := <-startCh:
-			_, found := games[start.PlayerIds[0]]
-			if found {
+
+			if IsPlaying(start.PlayerIds, games) {
 				close(start.PlayerChs[0])
 				close(start.PlayerChs[1])
 			} else {
-				_, found = games[start.PlayerIds[1]]
-				if found {
-					close(start.PlayerChs[0])
-					close(start.PlayerChs[1])
-				} else {
-					game, old := saveGames.Games[gameId(start.PlayerIds)]
-					if old {
-						delete(saveGames.Games, gameId(start.PlayerIds))
-						if game.PlayerIds != start.PlayerIds {
-							start.PlayerIds = [2]int{start.PlayerIds[1], start.PlayerIds[0]}
-							start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1],
-								start.PlayerChs[0]}
-						}
-						if game.Pos == nil {
-							game.CalcPos()
-						}
+				game, old := saveGames.Games[gameID(start.PlayerIds)]
+				if old {
+					delete(saveGames.Games, gameID(start.PlayerIds))
+					if game.PlayerIds != start.PlayerIds {
+						start.PlayerIds = [2]int{start.PlayerIds[1], start.PlayerIds[0]}
+						start.PlayerChs = [2]chan<- *pub.MoveView{start.PlayerChs[1],
+							start.PlayerChs[0]}
 					}
-					watch := pub.NewWatchChCl()
-					go table(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh, save,
-						saveDir, errCh)
-					games[start.PlayerIds[0]] = NewGameData(start.PlayerIds[1], watch)
-					games[start.PlayerIds[1]] = NewGameData(start.PlayerIds[0], watch)
-					publish(games, pubList)
+					if game.Pos == nil {
+						game.CalcPos()
+					}
 				}
+				watch := pub.NewWatchChCl()
+				go table(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh, save,
+					saveDir, errCh)
+				games[start.PlayerIds[0]] = NewGameData(start.PlayerIds[1], watch)
+				games[start.PlayerIds[1]] = NewGameData(start.PlayerIds[0], watch)
+				publish(games, pubList)
 			}
+
 		case <-startGameChCl.Close:
 			if len(games) == 0 {
 				break Loop
@@ -120,6 +124,14 @@ Loop:
 		errCh <- err
 	}
 	close(doneCh)
+}
+func IsPlaying(ids [2]int, games map[int]*pub.GameData) bool {
+	_, found := games[ids[0]]
+	if !found {
+		_, found = games[ids[1]]
+	}
+
+	return found
 }
 
 // publish the current games list.
@@ -139,8 +151,8 @@ func NewGameData(opp int, watch *pub.WatchChCl) (g *pub.GameData) {
 	return g
 }
 
-// gameId makes a unique game id.
-func gameId(players [2]int) (id string) {
+//gameID makes a unique game id.
+func gameID(players [2]int) (id string) {
 	if players[0] > players[1] {
 		id = strconv.Itoa(players[0]) + strconv.Itoa(players[1])
 	} else {
@@ -160,6 +172,8 @@ type SaveGames struct {
 	Games map[string]*bat.Game
 }
 
+//NewSaveGames creates a SaveGames structur.
+//To use Gob we single structur tow same multible games.
 func NewSaveGames() (sg *SaveGames) {
 	sg = new(SaveGames)
 	sg.Games = make(map[string]*bat.Game)
@@ -181,7 +195,7 @@ func (games *SaveGames) copyClearPos() (c *SaveGames) {
 	return c
 }
 func (games *SaveGames) save() (err error) {
-	file, err := os.Create(SAVE_GamesFile)
+	file, err := os.Create(SAVEGamesFile)
 	if err != nil {
 		err = cerrors.Wrap(err, 15, "Create games file")
 		return err
@@ -192,7 +206,7 @@ func (games *SaveGames) save() (err error) {
 	return err
 }
 func loadSaveGames() (games *SaveGames, err error) {
-	file, err := os.Open(SAVE_GamesFile)
+	file, err := os.Open(SAVEGamesFile)
 	if err == nil {
 		defer file.Close()
 		decoder := gob.NewDecoder(file)

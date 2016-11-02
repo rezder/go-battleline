@@ -1,4 +1,4 @@
-// The http server
+// Package html contain the http server.
 package html
 
 import (
@@ -23,6 +23,7 @@ const (
 	fileCreateClient = "html/pages/client.html"
 )
 
+//Server a http server.
 type Server struct {
 	errCh       chan<- error
 	netListener *net.TCPListener
@@ -32,6 +33,7 @@ type Server struct {
 	pages       *Pages
 }
 
+//New creates a new Server.
 func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server, err error) {
 	s = new(Server)
 	pages := NewPages()
@@ -71,10 +73,14 @@ func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server,
 	}
 	return s, err
 }
+
+//Start starts the server.
 func (s *Server) Start() {
 	s.clients.gameServer.Start()
 	go start(s.errCh, s.netListener, s.clients, s.doneCh, s.port, s.pages)
 }
+
+//Stop stops the server.
 func (s *Server) Stop() {
 	gameServer := s.clients.SetGameServer(nil) //Prevent new players
 	if gameServer != nil {
@@ -83,12 +89,15 @@ func (s *Server) Stop() {
 	if cerrors.IsVerbose() {
 		log.Println("Close net listner.")
 	}
-	s.netListener.Close()
-	_ = <-s.doneCh
+	err := s.netListener.Close()
+	if err != nil {
+		s.errCh <- err
+	}
+	<-s.doneCh
 	if cerrors.IsVerbose() {
 		log.Println("Recieve done from http server.")
 	}
-	err := s.clients.save() //no lock is used.
+	err = s.clients.save() //no lock is used.
 	if err != nil {
 		s.errCh <- err
 	}
@@ -130,7 +139,7 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 		if down {
 			err = errors.New("Game server down")
 		} else if !ok {
-			err = errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
+			err = fmt.Errorf("Failed session id! Ip: %v", r.RemoteAddr)
 			err = cerrors.Wrap(err, 6, "Websocket handshake")
 			errCh <- err
 		}
@@ -173,10 +182,10 @@ func getCookies(r *http.Request) (name string, sid string, err error) {
 		if errC == nil {
 			sid = sidC.Value
 		} else {
-			err = errors.New(fmt.Sprintf("Missing cookie! Ip: %v", r.RemoteAddr))
+			err = fmt.Errorf("Missing cookie! Ip: %v", r.RemoteAddr)
 		}
 	} else {
-		err = errors.New(fmt.Sprintf("Missing cookie! Ip: %v", r.RemoteAddr))
+		err = fmt.Errorf("Missing cookie! Ip: %v", r.RemoteAddr)
 	}
 	return name, sid, err
 }
@@ -223,7 +232,7 @@ func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			txt := fmt.Sprintf("Login failed! %v", err.Error())
 			addToForm(txt, g.fileLogIn, g.pages, w)
-			err = errors.New(fmt.Sprintf("Login failed! %v Ip: %v", err.Error(), r.RemoteAddr))
+			err = fmt.Errorf("Login failed! %v Ip: %v", err.Error(), r.RemoteAddr)
 			g.errCh <- cerrors.Wrap(err, 10, "")
 		}
 	} else {
@@ -268,7 +277,7 @@ func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, g.fileDown)
 	} else {
 		http.Redirect(w, r, "/", 303)
-		err = errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
+		err = fmt.Errorf("Failed session id! Ip: %v", r.RemoteAddr)
 		g.errCh <- cerrors.Wrap(err, 12, "Serving game html file")
 	}
 }
@@ -306,7 +315,7 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			addToForm(err.Error(), handler.fileCreateClient, handler.pages, w)
 		case *ErrSize:
 			w.WriteHeader(http.StatusBadRequest)
-			errSize := errors.New(fmt.Sprintf("Data was submited with out our page validation! Ip: %v", r.RemoteAddr))
+			errSize := fmt.Errorf("Data was submited with out our page validation! Ip: %v", r.RemoteAddr)
 			handler.errCh <- cerrors.Wrap(errSize, 13, "Serve new client")
 		default:
 			addToForm("Unexpected error.", handler.fileCreateClient, handler.pages, w)
@@ -330,7 +339,10 @@ func addToForm(txt string, fileName string, pages *Pages, w http.ResponseWriter)
 	if !found {
 		panic("html file do not have a body")
 	} else {
-		html.Render(w, startNode)
+		err = html.Render(w, startNode)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 }
 

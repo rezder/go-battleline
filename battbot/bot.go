@@ -168,8 +168,8 @@ Loop:
 		case jsonDataTemp, open := <-messCh:
 			if open {
 				switch jsonDataTemp.JsonType {
-				case players.JT_List:
-				case players.JT_Invite:
+				case players.JTList:
+				case players.JTInvite:
 					if gamePos == nil {
 						var invite pub.Invite
 						err := json.Unmarshal(jsonDataTemp.Data, &invite)
@@ -183,8 +183,8 @@ Loop:
 							break Loop
 						}
 						act := players.NewAction()
-						act.ActType = players.ACT_INVACCEPT
-						act.Id = invite.InvitorId
+						act.ActType = players.ACTInvAccept
+						act.ID = invite.InvitorID
 
 						ok := netWrite(conn, act)
 						if !ok {
@@ -192,8 +192,8 @@ Loop:
 							break Loop
 						}
 					}
-				case players.JT_Mess:
-				case players.JT_Move:
+				case players.JTMess:
+				case players.JTMove:
 					if gamePos == nil {
 						gamePos = gamepos.New()
 					}
@@ -215,7 +215,7 @@ Loop:
 						if gamePos.IsBotTurn() {
 							moveixs := gamePos.MakeMove()
 							act := players.NewAction()
-							act.ActType = players.ACT_MOVE
+							act.ActType = players.ACTMove
 							act.Move = moveixs
 
 							ok := netWrite(conn, act)
@@ -225,8 +225,8 @@ Loop:
 							}
 						}
 					}
-				case players.JT_BenchMove:
-				case players.JT_CloseCon:
+				case players.JTBenchMove:
+				case players.JTCloseCon:
 					var closeCon players.CloseCon
 					err := json.Unmarshal(jsonDataTemp.Data, &closeCon)
 					if err == nil {
@@ -235,7 +235,7 @@ Loop:
 					close(messDoneCh)
 
 					break Loop
-				case players.JT_ClearInvites:
+				case players.JTClearInvites:
 				default:
 					txt := fmt.Sprintf("Message not implemented yet for %v\n", jsonDataTemp.JsonType)
 					panic(txt)

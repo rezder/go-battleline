@@ -31,10 +31,16 @@ func TestParseHtml(t *testing.T) {
 		defer file.Close()
 		err = html.Render(file, startNode)
 		if err != nil {
+			file.Close()
 			t.Errorf("Error rending html file: %v", err.Error())
 		}
+		err = file.Close()
+		if err != nil {
+			t.Errorf("Error closing html file: %v", err.Error())
+		}
+
 	} else {
-		t.Errorf("Error creating file", err.Error())
+		t.Errorf("Error creating file: %v", err.Error())
 	}
 }
 func TestGobClient(t *testing.T) {

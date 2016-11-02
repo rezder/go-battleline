@@ -16,12 +16,12 @@ Loop:
 	for {
 		select {
 		case p := <-watchChCl.Channel:
-			_, found := watchers[p.Id]
+			_, found := watchers[p.ID]
 			del := p.Send == nil
 			if found && del {
-				delete(watchers, p.Id)
+				delete(watchers, p.ID)
 			} else if !found && !del {
-				watchers[p.Id] = p.Send
+				watchers[p.ID] = p.Send
 				if initMove != nil {
 					p.Send <- initMove
 				}
@@ -106,10 +106,10 @@ func NewBenchPos(pos *bat.GamePos, ids [2]int) (bench *BenchPos) {
 	for i, hand := range pos.Hands {
 		troops := len(hand.Troops)
 		bench.Hands[i] = make([]bool, troops+len(hand.Tacs))
-		for j, _ := range hand.Troops {
+		for j := range hand.Troops {
 			bench.Hands[i][j] = true
 		}
-		for j, _ := range hand.Tacs {
+		for j := range hand.Tacs {
 			bench.Hands[i][j+troops] = false
 		}
 	}

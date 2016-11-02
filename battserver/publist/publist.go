@@ -1,4 +1,4 @@
-/*publist is used to keep public list of player information.
+/*Package publist is used to keep public list of player information.
 The list is synchronized with read write lock. Data comes from the two servers.
 The data from the server should be a snapshot(copy) and the Read data is a pointer
 to the current list and that list is never update, but replaced when updated.
@@ -15,9 +15,14 @@ import (
 
 const (
 	//Special move
-	SM_Pass = -1
-	SM_Quit = -2
-	SM_None = -3 // maybe used to track fails in json or other file serialization
+
+	//SMPass the special move pass
+	SMPass = -1
+	//SMQuit the special move quit
+	SMQuit = -2
+	//SMNone used to track fails in json or other file serialization
+	//It is not a move.
+	SMNone = -3
 )
 
 //List is the structure that maintain the public data.
@@ -75,7 +80,7 @@ func (list *List) update() {
 	publist := make(map[string]*Data)
 	for key, v := range list.players {
 		data = new(Data)
-		data.Id = v.Id
+		data.ID = v.ID
 		data.Name = v.Name
 		data.Invite = v.Invite
 		data.DoneCom = v.DoneCom
@@ -103,16 +108,17 @@ type GameData struct {
 
 //WatchData is the information send to a table to start watching a game.
 type WatchData struct {
-	Id   int               //This me
+	ID   int               //This me
 	Send chan<- *MoveBench //Send here. Remember to close.
 }
 
-//The watch channel and its close channel.
+//WatchChCl watch channel and its close channel.
 type WatchChCl struct {
 	Channel chan *WatchData
 	Close   chan struct{}
 }
 
+//NewWatchChCl creates a new watch channel.
 func NewWatchChCl() (w *WatchChCl) {
 	w = new(WatchChCl)
 	w.Channel = make(chan *WatchData)
@@ -130,7 +136,7 @@ type MoveBench struct {
 
 //PlayerData the public list player information.
 type PlayerData struct {
-	Id      int
+	ID      int
 	Name    string
 	Invite  chan<- *Invite
 	DoneCom chan struct{}   //Used by all send to player
@@ -143,9 +149,9 @@ type PlayerData struct {
 //This make the standard select unreliable. Use a select with default to check if retracted and
 //the receiver must count on receiving retracted responses.
 type Invite struct {
-	InvitorId   int
+	InvitorID   int
 	InvitorName string
-	ReceiverId  int
+	ReceiverID  int
 	Rejected    bool                   //TODO MAYBE add reason
 	Response    chan<- *InviteResponse `json:"-"` //Common for all invitaion
 	Retract     chan struct{}          `json:"-"` //Per invite
@@ -182,12 +188,13 @@ type MoveView struct {
 // Turn a player turn.
 type Turn struct {
 	MyTurn    bool
+	MovesPass bool
 	State     int
 	Moves     []bat.Move
 	MovesHand map[string][]bat.Move
-	MovesPass bool
 }
 
+// NewTurn creates a Turn.
 func NewTurn(turn *bat.Turn, playerix int) (disp *Turn) {
 	disp = new(Turn)
 	disp.MyTurn = turn.Player == playerix
@@ -209,6 +216,7 @@ func NewTurn(turn *bat.Turn, playerix int) (disp *Turn) {
 	return disp
 }
 
+//Equal compares for equal with another Turn.
 func (t *Turn) Equal(other *Turn) (equal bool) {
 	if other == nil && t == nil {
 		equal = true
@@ -261,7 +269,7 @@ func (t *Turn) Equal(other *Turn) (equal bool) {
 
 //Data the public list data a combination of tabel and player information.
 type Data struct {
-	Id      int
+	ID      int
 	Name    string
 	Invite  chan<- *Invite  `json:"-"`
 	DoneCom chan struct{}   `json:"-"` //Used by the player
@@ -283,6 +291,7 @@ type StartGameChCl struct {
 	Close   chan struct{}
 }
 
+//NewStartGameChCl creates a StartGameChCl.
 func NewStartGameChCl() (sgc *StartGameChCl) {
 	sgc = new(StartGameChCl)
 	sgc.Channel = make(chan *StartGameData)
