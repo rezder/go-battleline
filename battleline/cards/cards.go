@@ -262,6 +262,11 @@ func IsMorale(ix int) bool {
 	return ix == TCAlexander || ix == TCDarius || ix == TC123 || ix == TC8
 }
 
+//IsLeader checks if card is morale leader tactic card.
+func IsLeader(ix int) bool {
+	return ix == TCAlexander || ix == TCDarius
+}
+
 //MoraleMaxValue returns the maximum value a morale card can have.
 func MoraleMaxValue(cardix int) int {
 	switch cardix {

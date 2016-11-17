@@ -1,6 +1,7 @@
 package combi
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battleline/cards"
 	math "github.com/rezder/go-math/int"
 	slice "github.com/rezder/go-slice/int"
@@ -13,6 +14,15 @@ type Analysis struct {
 	All         uint64
 	HandCardixs []int
 	Prop        float64
+}
+
+func (ana *Analysis) String() string {
+	if ana == nil {
+		return "<nil>"
+	}
+	txt := fmt.Sprintf("{Rank:%v Prob:%v Formation:%v Strenght:%v Valid:%v All:%v Hand:%v}",
+		ana.Comb.Rank, ana.Prop, ana.Comb.Formation.Name, ana.Comb.Strength, ana.Valid, ana.All, ana.HandCardixs)
+	return txt
 }
 
 //Ana analyze a combination.

@@ -1,6 +1,7 @@
 package flag
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battleline/cards"
@@ -8,28 +9,69 @@ import (
 )
 
 type Analysis struct {
-	Flagix               int
-	TargetRank           int
-	TargetSum            int
-	OppTroopsNo          int
-	BotTroopNo           int
-	FormationSize        int
-	IsTargetRanked       bool
-	IsTargetMade         bool
-	IsLost               bool
-	IsNewFlag            bool
-	IsPlayable           bool
-	IsClaimed            bool
-	IsFog                bool
-	Analysis             []*combi.Analysis
-	SumCards             []int
-	KeepFlagTroopixs     map[int]bool
-	KeepFlagHandTroopixs map[int]bool
+	Flagix         int
+	TargetRank     int
+	TargetSum      int
+	OppTroopsNo    int
+	BotTroopNo     int
+	FormationSize  int
+	FlagValue      int
+	IsTargetRanked bool
+	IsTargetMade   bool
+	IsLost         bool
+	IsNewFlag      bool
+	IsPlayable     bool
+	IsClaimed      bool
+	IsFog          bool
+	IsLoosingGame  bool
+	Analysis       []*combi.Analysis
+	SumCards       []int
+	Flag           *Flag
 }
 
-func NewAnalysis(flag *Flag, botHandTroops []int, deckMaxValues []int, deck *botdeck.Deck, flagix int) (fa *Analysis) {
+func (ana *Analysis) String() string {
+	if ana == nil {
+		return "<nil>"
+	}
+	combiAna := "<nil>"
+	if ana.Analysis != nil {
+		positive := make([]*combi.Analysis, 0, 0)
+		for _, c := range ana.Analysis {
+			if c.Prop > 0 {
+				positive = append(positive, c)
+			}
+		}
+		if len(positive) == 0 {
+			combiAna = "[]"
+		} else {
+			combiAna = "["
+			for i, c := range positive {
+				if i == 4 {
+					break
+				}
+				if i != 0 {
+					combiAna = combiAna + " "
+				}
+				combiAna = combiAna + c.String()
+			}
+			combiAna = combiAna + "]"
+		}
+	}
+	txt := fmt.Sprintf("{Flag:%v Target:%v FlagValue:%v TargetSum:%v Lost %v LooseGame:%v SumCards:%v Combination: %v", ana.Flagix+1, ana.TargetRank, ana.FlagValue, ana.TargetSum, ana.IsLost, ana.IsLoosingGame, ana.SumCards, combiAna)
+	return txt
+}
+
+func NewAnalysis(
+	flag *Flag,
+	botHandTroops []int,
+	deckMaxValues []int,
+	deck *botdeck.Deck,
+	flagix int,
+	isBotFirst bool) (fa *Analysis) {
+
 	fa = new(Analysis)
 	fa.Flagix = flagix
+	fa.Flag = flag
 	if flag.IsClaimed() {
 		fa.IsClaimed = true
 	} else {
@@ -40,7 +82,7 @@ func NewAnalysis(flag *Flag, botHandTroops []int, deckMaxValues []int, deck *bot
 				fa.IsTargetMade = true
 			}
 			fa.TargetRank = calcMaxRank(flag.OppTroops, deck.OppHand(),
-				deck.Troops(), deck.OppDrawNo(), flag.IsMud())
+				deck.Troops(), deck.OppDrawNo(!isBotFirst), flag.IsMud())
 		}
 		oppDeckValues := make([]int, len(deckMaxValues))
 		copy(oppDeckValues, deckMaxValues)
@@ -60,7 +102,7 @@ func NewAnalysis(flag *Flag, botHandTroops []int, deckMaxValues []int, deck *bot
 		} else {
 			if !flag.IsFog() {
 				fa.Analysis = rankAnalyze(flag.PlayTroops, botHandTroops,
-					deck.Troops(), deck.BotDrawNo(), flag.IsMud())
+					deck.Troops(), deck.BotDrawNo(isBotFirst), flag.IsMud())
 			}
 		}
 		botDeckValues := make([]int, len(deckMaxValues))
@@ -81,15 +123,44 @@ func NewAnalysis(flag *Flag, botHandTroops []int, deckMaxValues []int, deck *bot
 
 	return fa
 }
-func (ana *Analysis) AddKeepTroops(keepFlagTroopixs, keepFlagHandTroopixs map[int]bool) {
-	ana.KeepFlagHandTroopixs = keepFlagHandTroopixs
-	ana.KeepFlagTroopixs = keepFlagTroopixs
+
+func (ana *Analysis) IsWin() (isWin bool) {
+	if !ana.IsLost {
+		targetRank := ana.TargetRank
+		if targetRank == 0 {
+			targetRank = 100
+		}
+		if ana.IsTargetMade && ana.TargetRank != 0 {
+			targetRank = targetRank - 1
+		}
+		for _, combiAna := range ana.Analysis {
+			if combiAna.Prop == 1 {
+				if combiAna.Comb.Rank <= targetRank {
+					isWin = true
+				}
+				break
+			}
+			if combiAna.Comb.Rank > targetRank {
+				break
+			}
+		}
+		if !isWin && ana.TargetRank == 0 {
+			if len(ana.SumCards) != 0 {
+				isWin = true //A win is not garantied if more than cards have to be played, but it is ok.
+			}
+		}
+
+	}
+	return isWin
 }
-func HandAnalyze(handTroops []int, deck *botdeck.Deck) (ana map[int][]*combi.Analysis) {
+func HandAnalyze(
+	handTroops []int,
+	deck *botdeck.Deck,
+	isBotFirst bool) (ana map[int][]*combi.Analysis) {
 	ana = make(map[int][]*combi.Analysis)
 	for _, troopix := range handTroops {
 		handCards := slice.Remove(handTroops, troopix)
-		ana[troopix] = rankAnalyze([]int{troopix}, handCards, deck.Troops(), deck.BotDrawNo(), false)
+		ana[troopix] = rankAnalyze([]int{troopix}, handCards, deck.Troops(), deck.BotDrawNo(isBotFirst), false)
 	}
 	return ana
 }
@@ -132,10 +203,12 @@ func lostNewFlag(targetRank, targetSum, botMaxSum int, deck *botdeck.Deck, handT
 	}
 	return isLost
 }
-func isNewFlagRankBeatable(deck *botdeck.Deck,
+func isNewFlagRankBeatable(
+	deck *botdeck.Deck,
 	handTroopixs []int,
 	targetRank int,
 	isMud bool) (beatable bool) {
+
 	if targetRank != 1 {
 		flagCards := make([]int, 1)
 		drawTroopixs := make([]int, 0, len(deck.Troops())+len(handTroopixs))
@@ -199,10 +272,7 @@ func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationS
 
 func calcMaxRank(flagCards []int, handCards []int, drawSet map[int]bool,
 	drawNo int, mud bool) (rank int) {
-	combinations := combi.Combinations3
-	if mud {
-		combinations = combi.Combinations4
-	}
+	combinations := combi.CombinationsMud(mud)
 	for _, comb := range combinations {
 		ana := combi.Ana(comb, flagCards, handCards, drawSet, drawNo, mud)
 		if ana.Prop > 0 {
@@ -252,11 +322,10 @@ func maxSum(flagTroops, handCards, deckValues []int, mud bool) (sum int, updDeck
 func rankAnalyze(flagCards []int, handCards []int, drawSet map[int]bool,
 	drawNo int, mud bool) (ranks []*combi.Analysis) {
 	formationNo := 3
-	combinations := combi.Combinations3
 	if mud {
-		combinations = combi.Combinations4
 		formationNo = 4
 	}
+	combinations := combi.Combinations(formationNo)
 	formationMade := len(flagCards) == formationNo
 	ranks = make([]*combi.Analysis, len(combinations))
 	for i, comb := range combinations {

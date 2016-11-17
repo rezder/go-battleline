@@ -3,7 +3,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/rezder/go-battleline/battserver/html"
 	"github.com/rezder/go-error/cerrors"
 	"log"
@@ -43,7 +42,7 @@ func main() {
 	httpServer.Start()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-	fmt.Println("Server up and running. Close with ctrl+c")
+	log.Println("Server up and running. Close with ctrl+c")
 	<-stop
 	if cerrors.IsVerbose() {
 		log.Println("Server closed with interrupt signal")

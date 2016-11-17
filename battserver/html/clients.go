@@ -233,9 +233,9 @@ func (clients *Clients) logIn(name string, pw string) (sid string, err error) {
 	return sid, err
 }
 
-//disable disable a client.
+//disable disable/enable a client.
 func (clients *Clients) updateDisable(name string, disable bool) {
-	clients.mu.RLock()
+	clients.mu.RLock() //TODO change to wr lock and save file.
 	defer clients.mu.RUnlock()
 	client, found := clients.List[name]
 	if found {
@@ -268,7 +268,7 @@ func (clients *Clients) addNew(name string, pwTxt string) (sid string, err error
 				client = createClient(name, clients.NextID, pwh)
 				clients.NextID = clients.NextID + 1
 				clients.List[client.Name] = client
-				sid = client.sid
+				sid = client.sid //TODO add save file
 			}
 		} else {
 			err = NewErrExist("Name is used.")

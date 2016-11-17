@@ -1,6 +1,7 @@
 package combi
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battleline/cards"
 )
 
@@ -10,6 +11,18 @@ func init() {
 	Combinations3 = createCombi(3)
 	Combinations4 = createCombi(4)
 }
+func Combinations(size int) []*Combination {
+	if size == 4 {
+		return Combinations4
+	}
+	return Combinations3
+}
+func CombinationsMud(isMud bool) []*Combination {
+	if isMud {
+		return Combinations4
+	}
+	return Combinations3
+}
 
 //Combination a battleline formation and strength
 type Combination struct {
@@ -18,6 +31,14 @@ type Combination struct {
 	Strength  int
 	//Troops is all the cards that can be used to create the formation.
 	Troops map[int][]int
+}
+
+func (c *Combination) String() string {
+	if c == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("{Rank:%v Strength:%v Formation:%v Troops:%v",
+		c.Rank, c.Strength, c.Formation, c.Troops)
 }
 
 //createCombi create all the possible combinations for the specified number of

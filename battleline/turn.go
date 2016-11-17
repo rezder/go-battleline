@@ -30,6 +30,8 @@ const (
 	DECKTac = 1
 	//DECKTroop the troop card deck.
 	DECKTroop = 2
+	//REDeployDishix
+	REDeployDishix = -1
 )
 
 // Turn hold the information of a turn, whos turn is it, what kind of turn (State) and
@@ -397,10 +399,10 @@ func getRedeployMoves(flags *[NOFlags]*flag.Flag, playerix int) (moves []Move) {
 				}
 			}
 			for _, troop := range outFlag.Troops(playerix) {
-				moves = append(moves, *NewMoveRedeploy(outFlagix, troop, -1))
+				moves = append(moves, *NewMoveRedeploy(outFlagix, troop, REDeployDishix))
 			}
 			for _, tac := range outFlag.Env(playerix) {
-				moves = append(moves, *NewMoveRedeploy(outFlagix, tac, -1))
+				moves = append(moves, *NewMoveRedeploy(outFlagix, tac, REDeployDishix))
 			}
 		}
 	}

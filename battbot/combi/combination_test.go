@@ -110,15 +110,12 @@ func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies [
 
 	}
 }
-func combiTest(t *testing.T, combiNo int, flagCards, handCards, dummies []int, mud int) float64 {
-	combi := Combinations4
-	if mud == 3 {
-		combi = Combinations3
-	}
+func combiTest(t *testing.T, combiNo int, flagCards, handCards, dummies []int, formationSize int) float64 {
+	combi := Combinations(formationSize)
 	drawSet := createDrawSet()
 	updateDraws(flagCards, handCards, dummies, drawSet)
 	drawNo := (len(drawSet) - 7) / 2
-	ana := Ana(combi[combiNo], flagCards, handCards, drawSet, drawNo, mud == 4)
+	ana := Ana(combi[combiNo], flagCards, handCards, drawSet, drawNo, formationSize == 4)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[combiNo], flagCards, handCards, drawNo, ana)
 	return ana.Prop

@@ -52,19 +52,24 @@ func (deck *Deck) OppHand() []int {
 }
 
 //OppDrawNo calculate the opponent number of unknown cards.
-func (deck *Deck) OppDrawNo() (no int) {
+func (deck *Deck) OppDrawNo(isFirst bool) (no int) {
 	no = len(deck.troops)
 	no = no + len(deck.scoutReturnTroops)
+	if isFirst {
+		no = no + 1
+	}
 	no = no / 2
 	no = no + deck.oppTroops
 	return no
 }
 
 //BotDrawNo calculate the bots number of the unknown cards.
-func (deck *Deck) BotDrawNo() (no int) {
+func (deck *Deck) BotDrawNo(isFirst bool) (no int) {
 	no = len(deck.troops)
 	no = no + len(deck.scoutReturnTroops)
-	no = no + 1
+	if isFirst {
+		no = no + 1
+	}
 	no = no / 2
 	return no
 }

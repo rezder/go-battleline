@@ -30,6 +30,21 @@ func New() (flag *Flag) {
 	return flag
 }
 
+//Copy copy flag
+func (flag *Flag) Copy() (c *Flag) {
+	if flag == nil {
+		c = nil
+	} else {
+		c = New()
+		c.OppEnvs = append(c.OppEnvs, flag.OppEnvs...)
+		c.PlayEnvs = append(c.PlayEnvs, flag.PlayEnvs...)
+		c.OppTroops = append(c.OppTroops, flag.OppTroops...)
+		c.PlayTroops = append(c.PlayTroops, flag.PlayTroops...)
+		c.Claimed = flag.Claimed
+	}
+	return c
+}
+
 //TransferTableFlag transfers a table flag to a flag.
 func TransferTableFlag(tableFlag *tables.Flag) (flag *Flag) {
 

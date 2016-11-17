@@ -2165,7 +2165,7 @@ var batt={};
         svg.cone.pos(2,0);
         svg.cone.pos(1,2);
         svg.cone.pos(3,1);
-        window.setTimeout(game.clear,5000);
+        window.setTimeout(game.clear,2000);
         // delete test end
     }; //onload
 

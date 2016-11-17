@@ -9,7 +9,7 @@ import (
 )
 
 func unmarshalMoveJSON(data []byte) (mv *pub.MoveView, err error) {
-	//TODO Maybe move all tables move to public, and this to public as metode of MoveView
+	//TODO Maybe move all tables' moves to public, and this to public as metode of MoveView
 	mv = new(pub.MoveView)
 	mv.Turn = new(pub.Turn)
 	var raw moveViewRaw

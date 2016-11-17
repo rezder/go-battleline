@@ -64,7 +64,7 @@ func main() {
 	go start(conn, doneCh, finConnCh)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-	fmt.Printf("Bot (%v) up and running. Close with ctrl+c\n", name)
+	log.Printf("Bot (%v) up and running. Close with ctrl+c\n", name)
 Loop:
 	for {
 		select {

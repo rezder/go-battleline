@@ -1,6 +1,7 @@
 package gamepos
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
@@ -12,6 +13,15 @@ import (
 	"strconv"
 )
 
+var tacsPRI []int
+
+func init() {
+	tacsPRI = []int{cards.TCTraitor, cards.TCDeserter,
+		cards.TCAlexander, cards.TCDarius,
+		cards.TCFog, cards.TCMud,
+		cards.TC8, cards.TC123,
+		cards.TCScout, cards.TCRedeploy}
+}
 func makeMoveClaim(moves []bat.Move) (moveix int) {
 	max := -1
 	allix := -1
@@ -24,30 +34,111 @@ func makeMoveClaim(moves []bat.Move) (moveix int) {
 	}
 	return allix
 }
-func makeMoveDeck(pos *Pos) (moveix int) {
+func deckZeroTacMove(
+	playableTacNo int,
+	deck *botdeck.Deck,
+	handTroopixs []int,
+	flags [bat.NOFlags]*flag.Flag) bat.MoveDeck {
+
 	move := *bat.NewMoveDeck(bat.DECKTroop)
-	if len(pos.playHand.Tacs) == 0 {
-		botNo := playableTacNoBot(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
-		if botNo > 0 || pos.deck.OppTacNo() > 0 {
-			flagsAna := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck)
-			handAna := flag.HandAnalyze(pos.playHand.Troops, pos.deck)
-			analyzeFlagsAddKeep(flagsAna, handAna)
-			if len(flagsAna[0].KeepFlagHandTroopixs) > 3 {
-				move = *bat.NewMoveDeck(bat.DECKTac)
-			}
+	if playableTacNo > 0 || deck.OppTacNo() > 0 {
+		isBotFirst := true
+		flagsAna, _ := analyzeFlags(flags, handTroopixs, deck, isBotFirst)
+		keep := newKeep(flagsAna, handTroopixs, deck, isBotFirst)
+		if keep.deckCalcPickTac(deck) {
+			move = *bat.NewMoveDeck(bat.DECKTac)
 		}
-
 	}
-	if move.Deck == bat.DECKTroop && pos.deck.DeckTroopNo() == 0 {
+	return move
+}
+func deckScoutMove(
+	playableTacNo int,
+	deck *botdeck.Deck,
+	hand *bat.Hand,
+	flags [bat.NOFlags]*flag.Flag) bat.MoveDeck {
+
+	move := *bat.NewMoveDeck(bat.DECKTroop)
+	handTacNo := len(hand.Tacs)
+	if handTacNo > 1 && handTacNo < 4 && !slice.Contain(hand.Tacs, cards.TCTraitor) {
 		move = *bat.NewMoveDeck(bat.DECKTac)
+	} else if handTacNo == 1 && hand.Tacs[0] == cards.TCScout && playableTacNo > 0 {
+		isBotFirst := true
+		flagsAna, _ := analyzeFlags(flags, hand.Troops, deck, isBotFirst)
+		keep := newKeep(flagsAna, hand.Troops, deck, isBotFirst)
+		if keep.calcIsHandGood() {
+			move = *bat.NewMoveDeck(bat.DECKTac)
+		}
 	}
-	if move.Deck == bat.DECKTac && pos.deck.DeckTacNo() == 0 {
+	return move
+}
+func makeMoveDeck(pos *Pos) (moveix int) {
+	var move bat.MoveDeck
+	switch {
+	case pos.deck.DeckTacNo() == 0:
 		move = *bat.NewMoveDeck(bat.DECKTroop)
-	}
+	case pos.deck.DeckTroopNo() == 0:
+		move = *bat.NewMoveDeck(bat.DECKTac)
+	default:
+		handTacNo := len(pos.playHand.Tacs)
+		tacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
 
+		if handTacNo == 0 {
+			move = deckZeroTacMove(tacAna.botNo, pos.deck, pos.playHand.Troops, pos.flags)
+
+		} else {
+			move = deckScoutMove(tacAna.botNo, pos.deck, pos.playHand, pos.flags)
+		}
+	}
 	moveix = findMoveIndex(pos.turn.Moves, move)
 
 	return moveix
+}
+
+//tacsPrioritize returns prioritized indices for a list of tactic cards
+//Best first.
+func tacsPrioritize(tacixs []int) (pixs []int) {
+	pixs = make([]int, cards.NOTac)
+	if len(tacixs) != 0 {
+		for i, tactix := range tacixs {
+			for pi, ptacix := range tacsPRI {
+				if tactix == ptacix {
+					pixs[i] = pi
+				}
+			}
+		}
+	}
+	return pixs
+}
+
+//scoutReturnTacs returns maximum of two tactic cards that can be returned without problem.
+//Prioritised that least valued card first.
+func scoutReturnTacs(handTacixs []int, playLeader bool) (tacixs []int) {
+	tacixs = make([]int, 0, 2)
+	if slice.Contain(handTacixs, cards.TCRedeploy) {
+		tacixs = append(tacixs, cards.TCRedeploy)
+	}
+	if !playLeader {
+		if slice.Contain(handTacixs, cards.TCAlexander) {
+			tacixs = append(tacixs, cards.TCAlexander)
+		}
+		if slice.Contain(handTacixs, cards.TCDarius) {
+			tacixs = append(tacixs, cards.TCDarius)
+		}
+	}
+	if slice.Contain(handTacixs, cards.TCAlexander) && slice.Contain(handTacixs, cards.TCDarius) {
+		tacixs = append(tacixs, cards.TCDarius)
+	}
+	if len(tacixs) < 2 {
+		leftTacixs := slice.WithOutNew(handTacixs, tacixs)
+		if len(leftTacixs) > 1 {
+			pixs := tacsPrioritize(leftTacixs)
+			for i := len(pixs) - 1; i > 0; i-- {
+				tacixs = append(tacixs, leftTacixs[pixs[i]])
+			}
+		}
+	}
+
+	return tacixs
 }
 
 //makeMoveScoutReturn make the scout return move.
@@ -55,28 +146,43 @@ func makeMoveDeck(pos *Pos) (moveix int) {
 //return exces tactic cards priority traitor,deserter,leader,fog,mud,8,123
 //return troops minimum not in keep.
 func makeMoveScoutReturn(pos *Pos) (moveix int) {
-	var tacs []int
-	troops := []int{1, 2}
-	move := bat.NewMoveScoutReturn(tacs, troops)
-	//TODO Scout return strategi
+	var tacixs, troopixs []int
+	noReturn := pos.playHand.Size() - bat.NOHandInit
+	isOppFirst := true
+	flagsAna, _ := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isOppFirst)
+	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isOppFirst)
+	playTacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
+	tacixs = scoutReturnTacs(pos.playHand.Tacs, playTacAna.botLeader)
+	if len(tacixs) >= noReturn {
+		tacixs = tacixs[0:noReturn]
+		troopixs = make([]int, 0, 2)
+	} else {
+		noReturnTroops := noReturn - len(tacixs)
+		troopixs = keep.demandScoutReturn(noReturnTroops, flagsAna, pos.deck)
+	}
+
+	move := bat.NewMoveScoutReturn(tacixs, troopixs)
 	pos.playHand.PlayMulti(move.Tac)
 	pos.playHand.PlayMulti(move.Troop)
 	pos.deck.PlayScoutReturn(move.Troop, move.Tac)
 	moveix = findMoveIndex(pos.turn.Moves, move)
-
 	return moveix
 }
+
 func makeMoveHand(pos *Pos) (moveixs [2]int) {
 	if cerrors.LogLevel() == cerrors.LOG_Debug {
 		log.Printf("Hand: %v\n", pos.playHand)
 	}
-	flagsAna := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck)
-	handAna := flag.HandAnalyze(pos.playHand.Troops, pos.deck)
-	analyzeFlagsAddKeep(flagsAna, handAna)
+	isBotFirst := true
+	flagsAna, deckMaxValues := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isBotFirst)
+	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isBotFirst)
+	analyzeFlagsAddLooseGameFlags(flagsAna)
+	analyzeFlagsAddFlagValue(flagsAna)
+	playTacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
 
 	if pos.turn.MovesPass {
-		_, _, botLeader, _ := playableTac(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
-		cardix, move := lostFlagTacticMove(flagsAna, pos.playHand.Tacs, botLeader)
+		cardix, move := lostFlagTacticMove(flagsAna, pos.playHand.Tacs, playTacAna,
+			pos.playHand.Troops, pos.deck, deckMaxValues, pos.turn.MovesHand)
 		if cardix != 0 {
 			moveixs[1] = findMoveHandIndex(pos.turn.MovesHand, cardix, move)
 			moveixs[0] = cardix
@@ -88,15 +194,15 @@ func makeMoveHand(pos *Pos) (moveixs [2]int) {
 	} else {
 		cardix := 0
 		var move bat.Move
-		botTacNo, _, botLeader, _ := playableTac(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
-		if botTacNo > 0 && len(pos.playHand.Tacs) > 0 {
-			cardix, move = lostFlagTacticMove(flagsAna, pos.playHand.Tacs, botLeader)
+		if playTacAna.botNo > 0 && len(pos.playHand.Tacs) > 0 {
+			cardix, move = lostFlagTacticMove(flagsAna, pos.playHand.Tacs, playTacAna,
+				pos.playHand.Troops, pos.deck, deckMaxValues, pos.turn.MovesHand)
 		}
 		if cardix == 0 {
-			cardix, move = lostFlagDumpMove(flagsAna, handAna, pos.playHand.Troops)
+			cardix, move = lostFlagDumpMove(flagsAna, keep)
 		}
 		if cardix == 0 {
-			cardix, move = prioritizedMove(flagsAna, handAna, pos.playHand)
+			cardix, move = prioritizedMove(flagsAna, keep, playTacAna, pos.playHand, pos.deck, deckMaxValues)
 		}
 		moveixs[0] = cardix
 		moveixs[1] = findMoveHandIndex(pos.turn.MovesHand, cardix, move)
@@ -104,96 +210,300 @@ func makeMoveHand(pos *Pos) (moveixs [2]int) {
 	return moveixs
 }
 
-func analyzeFlags(flags [bat.NOFlags]*flag.Flag, botHandTroops []int, deck *botdeck.Deck) (
-	flagsAna map[int]*flag.Analysis) {
+func analyzeFlags(
+	flags [bat.NOFlags]*flag.Flag,
+	botHandTroops []int,
+	deck *botdeck.Deck,
+	isBotFirst bool) (flagsAna map[int]*flag.Analysis, deckMaxValues []int) {
 	flagsAna = make(map[int]*flag.Analysis)
-	deckMaxValues := deck.MaxValues()
+	deckMaxValues = deck.MaxValues()
 	for flagix, iflag := range flags {
-		flagsAna[flagix] = flag.NewAnalysis(iflag, botHandTroops, deckMaxValues, deck, flagix)
+		flagsAna[flagix] = flag.NewAnalysis(iflag, botHandTroops, deckMaxValues, deck, flagix, isBotFirst)
 	}
-	return flagsAna
+	return flagsAna, deckMaxValues
 }
 
-// anaFlagsAddKeep adds keep troops maps to all flags analysis
+//anaFlagsAddLooseGameFlags add if game is lost if flag is lost.
 //#flagsAna
-func analyzeFlagsAddKeep(flagsAna map[int]*flag.Analysis, handAna map[int][]*combi.Analysis) {
-	keepFlag := make(map[int]bool)
-	keepFlagHand := make(map[int]bool)
+func analyzeFlagsAddLooseGameFlags(flagsAna map[int]*flag.Analysis) {
+	lostixs := make([]int, 0, 9)
+	claimedNo := 0
 	for _, flagAna := range flagsAna {
-		if flagAna.Analysis != nil {
-			keepTroops(flagAna.Analysis, keepFlag)
-			keepTroops(flagAna.Analysis, keepFlagHand)
+		if flagAna.IsLost {
+			lostixs = append(lostixs, flagAna.Flagix)
+		} else if flagAna.Flag.Claimed == flag.CLAIMOpp {
+			claimedNo++
 		}
 	}
+	if len(lostixs)+claimedNo > 4 {
+		for i := 0; i < len(lostixs); i++ {
+			flagsAna[lostixs[i]].IsLoosingGame = true
+		}
+	} else {
+		for i := 0; i < len(lostixs); i++ {
+			flagix := lostixs[i]
+			if looseGame3Flag(flagix, flagsAna) {
+				flagsAna[flagix].IsLoosingGame = true
+			}
 
-	for _, combiAna := range handAna {
-		keepTroops(combiAna, keepFlagHand)
+		}
 	}
-	for _, flagAna := range flagsAna {
-		flagAna.AddKeepTroops(keepFlag, keepFlagHand)
+}
+func analyzeFlagsAddFlagValue(flagsAna map[int]*flag.Analysis) {
+	flagValues := make([]int, bat.NOFlags)
+	for _, ana := range flagsAna {
+		if !ana.IsClaimed {
+			flagValues[ana.Flagix] = flagValues[ana.Flagix] + ana.OppTroopsNo
+			if ana.Flagix == 0 || ana.Flagix == 8 {
+				flagValues[ana.Flagix] = flagValues[ana.Flagix] + 10
+			} else if ana.Flagix == 1 || ana.Flagix == 7 {
+				flagValues[ana.Flagix] = flagValues[ana.Flagix] + 20
+			} else {
+				flagValues[ana.Flagix] = flagValues[ana.Flagix] + 30
+			}
+		} else {
+			if ana.Flagix+1 < 9 && !flagsAna[ana.Flagix+1].IsClaimed {
+				flagValues[ana.Flagix+1] = flagValues[ana.Flagix+1] + 40
+			}
+			if ana.Flagix-1 >= 0 && !flagsAna[ana.Flagix-1].IsClaimed {
+				flagValues[ana.Flagix-1] = flagValues[ana.Flagix-1] + 40
+			}
+
+			if ana.Flagix+2 < 9 && !flagsAna[ana.Flagix+2].IsClaimed {
+				flagValues[ana.Flagix+2] = flagValues[ana.Flagix+2] + 30
+			}
+			if ana.Flagix-2 >= 0 && !flagsAna[ana.Flagix-2].IsClaimed {
+				flagValues[ana.Flagix-2] = flagValues[ana.Flagix-2] + 30
+			}
+		}
 	}
+	for i, ana := range flagsAna {
+		ana.FlagValue = flagValues[i]
+	}
+
+}
+func looseGame3Flag(lostFlagix int, flagsAna map[int]*flag.Analysis) (loose bool) {
+	if lostFlagix > 1 &&
+		isFlagLostOrClaimed(flagsAna[lostFlagix-1]) &&
+		isFlagLostOrClaimed(flagsAna[lostFlagix-2]) {
+		loose = true
+	} else if lostFlagix < 7 &&
+		isFlagLostOrClaimed(flagsAna[lostFlagix+1]) &&
+		isFlagLostOrClaimed(flagsAna[lostFlagix+2]) {
+		loose = true
+	} else if lostFlagix < 8 && lostFlagix > 0 &&
+		isFlagLostOrClaimed(flagsAna[lostFlagix+1]) &&
+		isFlagLostOrClaimed(flagsAna[lostFlagix-1]) {
+		loose = true
+	}
+
+	return loose
+}
+func isFlagLostOrClaimed(flagAna *flag.Analysis) bool {
+	return flagAna.IsLost || flagAna.Flag.Claimed == flag.CLAIMOpp
 }
 func prioritizedMove(
 	flagsAna map[int]*flag.Analysis,
-	handAna map[int][]*combi.Analysis,
-	hand *bat.Hand) (cardix int, move bat.Move) {
+	keep *keep,
+	playTacAna *playTacAna,
+	hand *bat.Hand,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (cardix int, move bat.Move) {
 
-	prioritizedFlagixs := prioritizeFlags(flagsAna)
-
-	cardix, move = pri3CardsMove(prioritizedFlagixs, flagsAna)
+	cardix, move = pri3CardsMove(keep.priFlagixs, flagsAna)
 	if cardix != 0 {
 		return cardix, move
 	}
-	cardix, move = pri2CardsMove(prioritizedFlagixs, flagsAna)
+	cardix, move = pri2CardsMove(keep.priFlagixs, flagsAna)
 	if cardix != 0 {
 		return cardix, move
 	}
-	cardix, move = pri1CardMove(prioritizedFlagixs, flagsAna)
+	cardix, move = pri1CardMove(keep.priFlagixs, flagsAna)
 	if cardix != 0 {
 		return cardix, move
 	}
-	cardix, move = priFlagLoop(prioritizedFlagixs, flagsAna, pffFog)
-	if cardix != 0 {
-		return cardix, move
-	}
-	cardix, move = priFlagHandLoop(prioritizedFlagixs, flagsAna, handAna, pfhfNewFlagRanked)
-	if cardix != 0 {
-		return cardix, move
-	}
-	cardix, move = newFlagMove(prioritizedFlagixs, flagsAna, handAna)
-	if cardix != 0 {
-		return cardix, move
-	}
-	cardix, move = priTacticMove(prioritizedFlagixs, flagsAna, hand.Tacs)
+	cardix, move = priFlagKeepLoop(flagsAna, keep, pfkfFog)
 	if cardix != 0 {
 		return cardix, move
 	}
 
-	cardix, move = priFlagNLoop(prioritizedFlagixs, flagsAna, 1, pfnf2Pick1Card)
+	cardix = keep.newFlagTroopix
+	if cardix != 0 {
+		return cardix, keep.newFlagMove
+	}
+	cardix, move = priTacticMove(flagsAna, keep, playTacAna, hand, deck, deckMaxValues)
 	if cardix != 0 {
 		return cardix, move
 	}
-	cardix, move = priFlagLoop(prioritizedFlagixs, flagsAna, pffSum)
+
+	cardix, move = priFlagNLoop(keep.priFlagixs, flagsAna, 1, pfnf2Pick1Card)
+	if cardix != 0 {
+		return cardix, move
+	}
+	cardix, move = priFlagKeepLoop(flagsAna, keep, pfkfSum)
 
 	if cardix != 0 {
 		return cardix, move
 	}
-	cardix, move = priDumpMove(prioritizedFlagixs, flagsAna, hand.Troops)
+	cardix, move = priDumpMove(flagsAna, keep)
 	return cardix, move
 
 }
 
 //lostFlagTacticMove handle the strategi of preventing a lost flag to become lost.
-//Morale strategi same as priTacticMove
+
 //Deserter strategi just remove the best troop if it gives a probability of a win.
-//Traitor strategi test removing each of the troops and add to hand a see if we get win on
-//any flag.
-//Fog and Mud test to if we get a wining probability.
+//Best troop is morale or mid card. for straight and higist for battalion and sum.
 func lostFlagTacticMove(
 	flagsAna map[int]*flag.Analysis,
-	handTacs []int,
-	botLeader bool) (cardix int, move bat.Move) {
-	//TODO Tactic
+	handTacixs []int,
+	playTacAna *playTacAna,
+	handTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int,
+	handMoves map[string][]bat.Move) (cardix int, move bat.Move) {
+
+	if playTacAna.botNo > 0 {
+		for _, handTacix := range handTacixs {
+			switch handTacix {
+			case cards.TCRedeploy:
+				fallthrough
+			case cards.TCTraitor:
+				cardix, move = lostFlagTacticDbFlagMove(flagsAna, handTroopixs, deck, deckMaxValues, handTacix, handMoves)
+			case cards.TCDeserter:
+				cardix, move = lostFlagTacticDeserterMove(flagsAna, handTroopixs, deck, deckMaxValues)
+			case cards.TCScout:
+
+			default:
+				cardix, move = lostFlagTacticSimMove(flagsAna, handTacix, playTacAna, handTroopixs, deck, deckMaxValues)
+			}
+			if cardix != 0 {
+				break
+			}
+		}
+	}
+	return cardix, move
+}
+
+//lostFlagTacticDeserterMove makes a deserter move.
+//Deserter strategi just remove the best troop if it gives a win or prevent losing game.
+//Best troop is morale or mid card. for straight and highest for battalion and sum where morale is morale max value.
+func lostFlagTacticDeserterMove(
+	flagsAna map[int]*flag.Analysis,
+	handTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (cardix int, move bat.Move) {
+
+	for flagix, flagAna := range flagsAna {
+		if flagAna.IsLost {
+			desertIx := deserterKillCard(flagAna.Flag.OppTroops, flagAna.TargetRank, flagAna.FormationSize)
+			simFlag := flagAna.Flag.Copy()
+			simFlag.OppRemoveCardix(desertIx)
+			isWin, isLost := moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
+			if flagAna.IsLoosingGame && !isLost || isWin {
+				move = *bat.NewMoveDeserter(flagix, desertIx)
+				cardix = cards.TCDeserter
+				break
+			}
+		}
+	}
+	return cardix, move
+}
+func deserterKillCard(oppTroopixs []int, targetRank, formationSize int) (desertix int) {
+	tacixs, troopixs := sortFlagCards(oppTroopixs)
+	if targetRank != 0 {
+		combination := combi.Combinations(formationSize)[targetRank]
+		switch combination.Formation.Value {
+		case cards.FWedge.Value:
+			fallthrough
+		case cards.FSkirmish.Value:
+			if len(tacixs) > 0 {
+				desertix = tacixs[0]
+			} else {
+				desertix = troopixs[1]
+			}
+		case cards.FPhalanx.Value:
+			desertix = oppTroopixs[0]
+		case cards.FBattalion.Value:
+			desertix = deserterKillStrenght(tacixs, troopixs)
+		}
+
+	} else {
+		desertix = deserterKillStrenght(tacixs, troopixs)
+	}
+	return desertix
+}
+func deserterKillStrenght(tacixs, troopixs []int) (desertix int) {
+	tacValue := 0
+	troopValue := 0
+	if len(tacixs) > 0 {
+		tacValue = cards.MoraleMaxValue(tacixs[0])
+	}
+	if len(troopixs) > 0 {
+		troop, _ := cards.DrTroop(troopixs[0])
+		troopValue = troop.Value()
+	}
+	if troopValue > tacValue {
+		desertix = troopixs[0]
+	} else {
+		desertix = tacixs[0]
+	}
+	return desertix
+}
+func sortFlagCards(flagTroopixs []int) (tacixs, troopixs []int) {
+	tacixs = make([]int, 0, 4)
+	troopixs = make([]int, 0, 4)
+	for _, flagTroopix := range flagTroopixs {
+		if cards.IsTac(flagTroopix) {
+			tacixs = addSortedCards(tacixs, flagTroopix, cards.MoraleMaxValue)
+		} else {
+			troopixs = addSortedCards(troopixs, flagTroopix, func(troopix int) int {
+				troop, _ := cards.DrTroop(troopix)
+				return troop.Value()
+			})
+		}
+	}
+	return tacixs, troopixs
+}
+func addSortedCards(list []int, cardix int, valuef func(int) int) []int {
+	listSize := len(list)
+	list = append(list, 0)
+
+	for i, v := range list {
+		if i == listSize {
+			list[listSize] = cardix
+		} else {
+			if !(valuef(cardix) < valuef(v)) {
+				copy(list[i+1:], list[i:])
+				list[i] = cardix
+				break
+			}
+		}
+	}
+	return list
+}
+
+func lostFlagTacticSimMove(
+	flagsAna map[int]*flag.Analysis,
+	handTacix int,
+	playTacAna *playTacAna,
+	handTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (cardix int, move bat.Move) {
+	for flagix, flagAna := range flagsAna {
+		if flagAna.IsLost {
+			if flagAna.IsPlayable && cards.IsMorale(handTacix) && !cards.IsLeader(handTacix) && !flagAna.IsNewFlag ||
+				cards.IsEnv(handTacix) ||
+				cards.IsLeader(handTacix) && flagAna.IsPlayable && playTacAna.botLeader && !flagAna.IsNewFlag {
+				isWin, isLost := tacticMoveSim(flagix, flagAna.Flag, handTacix, handTroopixs, deck, deckMaxValues)
+				if flagAna.IsLoosingGame && !isLost || isWin {
+					cardix = handTacix
+					move = *bat.NewMoveCardFlag(flagix)
+					break
+				}
+			}
+		}
+	}
 	return cardix, move
 }
 
@@ -202,8 +512,7 @@ func lostFlagTacticMove(
 //of the best formation being wedge also the phalanx.
 func lostFlagDumpMove(
 	flagsAna map[int]*flag.Analysis,
-	handAna map[int][]*combi.Analysis,
-	handTroops []int) (cardix int, move bat.Move) {
+	keep *keep) (cardix int, move bat.Move) {
 	lostFlagix := -1
 	for _, ana := range flagsAna {
 		if ana.IsPlayable && ana.IsLost {
@@ -212,7 +521,7 @@ func lostFlagDumpMove(
 		}
 	}
 	if lostFlagix != -1 {
-		cardix = keepLowestValue(handTroops, flagsAna[0].KeepFlagHandTroopixs)
+		cardix = keep.requestFlagHandLowestValue(keep.handTroopixs)
 		if cardix != 0 {
 			if cerrors.LogLevel() == cerrors.LOG_Debug {
 				log.Println("Made a Lost Flag Dump move")
@@ -222,88 +531,21 @@ func lostFlagDumpMove(
 	}
 	return cardix, move
 }
-func keepLowestValue(handTroops []int, keepTroops map[int]bool) (troopix int) {
-	value := 0
-	for _, handTroopix := range handTroops {
-		if !keepTroops[handTroopix] {
-			handTroop, _ := cards.DrTroop(handTroopix)
-			if troopix != 0 {
-				if handTroop.Value() < value {
-					troopix = handTroopix
-					value = handTroop.Value()
-				}
-			} else {
-				troopix = handTroopix
-				value = handTroop.Value()
-			}
-		}
-	}
-	return troopix
-}
 
-//keepTroops keeps all cards from the top formation, incase of wedge
-//formation the phalanx formations is also included.
-func keepTroops(combiAnas []*combi.Analysis, keepTroops map[int]bool) {
-	cutOffFormationValue := 0
-	for _, combiAna := range combiAnas {
-		if combiAna != nil {
-			if cutOffFormationValue == 0 {
-				if combiAna.Prop > 0 {
-					cutOffFormationValue = combiAna.Comb.Formation.Value
-					if cards.FWedge.Value == cutOffFormationValue {
-						cutOffFormationValue = cards.FPhalanx.Value
-					}
-				}
-			}
-			if combiAna.Comb.Formation.Value < cutOffFormationValue {
-				break
-			} else {
-				for _, troopix := range combiAna.HandCardixs {
-					keepTroops[troopix] = true
-				}
-			}
-		} else {
-			break
-		}
-
-	}
-}
-func prioritizeFlags(flagsAna map[int]*flag.Analysis) (flagixs []int) {
+func prioritizePlayableFlags(flagsAna map[int]*flag.Analysis) (flagixs []int) {
 	flagValues := make([]int, bat.NOFlags)
-	for _, ana := range flagsAna {
-		if ana.IsPlayable {
-			flagValues[ana.Flagix] = flagValues[ana.Flagix] + ana.OppTroopsNo
-			if ana.Flagix == 0 || ana.Flagix == 8 {
-				flagValues[ana.Flagix] = flagValues[ana.Flagix] + 10
-			} else if ana.Flagix == 1 || ana.Flagix == 7 {
-				flagValues[ana.Flagix] = flagValues[ana.Flagix] + 20
-			} else {
-				flagValues[ana.Flagix] = flagValues[ana.Flagix] + 30
-			}
-			if ana.IsClaimed {
-				if ana.Flagix+1 < 9 {
-					flagValues[ana.Flagix+1] = flagValues[ana.Flagix+1] + 40
-				}
-				if ana.Flagix-1 >= 0 {
-					flagValues[ana.Flagix+1] = flagValues[ana.Flagix+1] + 40
-				}
-				if ana.Flagix+2 < 9 {
-					flagValues[ana.Flagix+1] = flagValues[ana.Flagix+1] + 30
-				}
-				if ana.Flagix-2 >= 0 {
-					flagValues[ana.Flagix+1] = flagValues[ana.Flagix+1] + 30
-				}
-			}
+	for i, ana := range flagsAna {
+		flagValues[i] = ana.FlagValue
+	}
+	sortixs := slice.SortWithIx(flagValues)
+	flagixs = make([]int, 0, len(sortixs))
+	for i := len(sortixs) - 1; i >= 0; i-- {
+		if flagsAna[sortixs[i]].IsPlayable {
+			flagixs = append(flagixs, sortixs[i])
 		}
 	}
-	ixs := slice.SortWithIx(flagValues)
-	flagixs = make([]int, 0, len(ixs))
-	for i := len(ixs) - 1; i >= 0; i-- {
-		if flagValues[i] > 0 {
-			flagixs = append(flagixs, ixs[i])
-		} else {
-			break
-		}
+	if cerrors.LogLevel() == cerrors.LOG_Debug {
+		log.Printf("Prioritized flags: %v\n", flagixs)
 	}
 	return flagixs
 }
@@ -397,6 +639,23 @@ func maxMinTroop(troopixs []int) (maxTroopix, minTroopix int) {
 	}
 	return maxTroopix, minTroopix
 }
+func min2Troop(troopixs []int) (minTroopixs []int) {
+	minTroopixs = make([]int, 2)
+	minValue1 := 0
+	minValue2 := 0
+	for _, troopix := range troopixs {
+		troop, _ := cards.DrTroop(troopix)
+		if troop.Value() < minValue1 {
+			minValue1 = troop.Value()
+			minTroopixs[1] = minTroopixs[0]
+			minTroopixs[0] = troopix
+		} else if troop.Value() < minValue2 {
+			minValue2 = troop.Value()
+			minTroopixs[1] = troopix
+		}
+	}
+	return minTroopixs
+}
 func pfnfButtomWedge(flagAna *flag.Analysis) (troopix int, logTxt string) {
 	logTxt = "Made a n flag cards move: Buttom wedge card"
 	if !flagAna.IsTargetMade && !flagAna.IsFog {
@@ -479,53 +738,69 @@ func pfnfMadePhalanx(flagAna *flag.Analysis) (troopix int, logTxt string) {
 	}
 	return troopix, logTxt
 }
-func pffFog(flagAna *flag.Analysis) (troopix int, logTxt string) {
+func pfkfFog(flagAna *flag.Analysis, keep *keep) (troopix int, logTxt string) {
 	logTxt = "Made a fog move"
-	if flagAna.IsFog && len(flagAna.SumCards) > 0 {
-		troopix = minTroop(flagAna.SumCards)
+	if flagAna.IsFog || (flagAna.IsTargetRanked && flagAna.TargetRank == 0) {
+		if len(flagAna.SumCards) > 0 {
+			troopix = keep.requestFirst(flagAna.SumCards)
+		}
 	}
 	return troopix, logTxt
 }
 
-func pfhfNewFlagRanked(flagAna *flag.Analysis, handAna map[int][]*combi.Analysis) (troopix int, logTxt string) {
-	logTxt = "Made a new flag rank move"
-	if flagAna.IsNewFlag && flagAna.IsTargetRanked {
-		targetRank := flagAna.TargetRank
-		if flagAna.IsTargetMade {
-			targetRank = targetRank - 1
-		}
-		troopix = newFlagTargetMove(handAna, targetRank)
-	}
-	return troopix, logTxt
-}
-func newFlagMove(flagixs []int,
+func priNewFlagMove(flagixs []int,
 	flagsAna map[int]*flag.Analysis,
-	handAna map[int][]*combi.Analysis) (troopix int, move bat.Move) {
+	handAna map[int][]*combi.Analysis,
+	handTroopixs []int,
+	keepFlag map[int]bool) (troopix int, move bat.Move) {
 
-	nfTroopix, logTxt := newFlagMadeCombiMove(handAna)
-	if nfTroopix == 0 {
-		nfTroopix, logTxt = newFlagPhalanxMove(handAna)
-	}
-	if nfTroopix == 0 {
-		nfTroopix, logTxt = newFlagHigestRankMove(handAna, flagsAna[0].KeepFlagTroopixs)
-	}
-
-	if nfTroopix != 0 {
-		flagix := newFlagSelectFlag(nfTroopix, flagixs, flagsAna)
-		if flagix != -1 {
-			troopix = nfTroopix
-			if cerrors.LogLevel() == cerrors.LOG_Debug {
-				log.Println(logTxt)
-				log.Printf("Cardix: %v", troopix)
-				log.Printf("Prioritised flags: %v\n", flagixs)
+	var logTxt string
+	logTxt = "New flag is rank move"
+	moveFlagix := -1
+	for _, flagix := range flagixs {
+		flagAna := flagsAna[flagix]
+		if flagAna.IsNewFlag && flagAna.IsTargetRanked {
+			targetRank := flagAna.TargetRank
+			if flagAna.IsTargetMade {
+				targetRank = targetRank - 1
 			}
-			move = *bat.NewMoveCardFlag(flagix)
+			troopix = newFlagTargetMove(handAna, targetRank)
 		}
+		if troopix != 0 {
+			moveFlagix = flagix
+			break
+		}
+	}
+	if troopix == 0 {
+		nfTroopix := 0
+		nfTroopix, logTxt = newFlagMadeCombiMove(handAna)
+		if nfTroopix == 0 {
+			nfTroopix, logTxt = newFlagPhalanxMove(handAna)
+		}
+		if nfTroopix == 0 {
+			nfTroopix, logTxt = newFlagHigestRankMove(handAna, keepFlag)
+		}
+
+		if nfTroopix != 0 {
+			flagix := newFlagSelectFlag(nfTroopix, flagixs, flagsAna)
+			if flagix != -1 {
+				troopix = nfTroopix
+				moveFlagix = flagix
+			}
+
+		}
+	}
+	if troopix != 0 {
+		if cerrors.LogLevel() == cerrors.LOG_Debug {
+			log.Printf("%v Cardix: %v", logTxt, troopix)
+		}
+		move = *bat.NewMoveCardFlag(moveFlagix)
 	}
 
 	return troopix, move
 
 }
+
 func newFlagSelectFlag(troopix int, flagixs []int, flagsAna map[int]*flag.Analysis) (flagix int) {
 	flagix = -1
 	newFlagixs := make([]int, 0, len(flagixs))
@@ -555,8 +830,8 @@ func newFlagSelectFlag(troopix int, flagixs []int, flagsAna map[int]*flag.Analys
 }
 func newFlagPhalanxMove(handAna map[int][]*combi.Analysis) (troopix int, logTxt string) {
 
-	logTxt = "Made a new flag best phalanx or higher move"
-	targetRank := combi.LastFormationRank(cards.FBattalion, 3)
+	logTxt = "New flag is best phalanx or higher move"
+	targetRank := combi.LastFormationRank(cards.FPhalanx, 3)
 	troopix = newFlagTargetMove(handAna, targetRank)
 	return troopix, logTxt
 }
@@ -576,7 +851,7 @@ func newFlagTargetMove(handAna map[int][]*combi.Analysis, targetRank int) (troop
 
 func newFlagMadeCombiMove(handAna map[int][]*combi.Analysis) (troopix int, logTxt string) {
 
-	logTxt = "Made a new flag made combi move"
+	logTxt = "New flag is a combi move"
 	targetRank := combi.LastFormationRank(cards.FPhalanx, 3)
 HandLoop:
 	for handTroopix, combiAnas := range handAna {
@@ -592,7 +867,7 @@ HandLoop:
 }
 
 func newFlagHigestRankMove(handAna map[int][]*combi.Analysis, keepFlagTroopixs map[int]bool) (troopix int, logTxt string) {
-	logTxt = "Made a new flag highest rank move"
+	logTxt = "New flag is highest rank move"
 	topRank := 10000
 	for handTroopix, combiAnas := range handAna {
 		if !keepFlagTroopixs[handTroopix] {
@@ -612,17 +887,83 @@ func newFlagHigestRankMove(handAna map[int][]*combi.Analysis, keepFlagTroopixs m
 }
 
 //priTacticMove makes a tactic card move because no good troop move exist.
-//Only morale cards, scout and redeploy should be considered.
-//Fog,Mud,deserter,traitor is for defence.
+//Only morale cards, scout
+//Fog,Mud,deserter,traitor,redeploy is for defence.
 //Morale strategi: cards out if morale cards leads to a win play it.
 //Scout strategi: have many in keep try to get traitor. Got traitor or 3 tactics + scout play it.
 //Just play it if not playing try to get traitor(scout + 1 or more tactics)
-//Redeploy startegi is to complicated just keep it.
-func priTacticMove(flagixs []int, flagsAna map[int]*flag.Analysis, handTacs []int) (cardix int, move bat.Move) {
-	//TODO Tactic
-	//Scout strategi have many in keep try to get traitor. Got traitor or 3 tactics + scout play it.
-	//Just play it if not playing try to get traitor(scout + 1 or more tactics)
-	return cardix, move
+func priTacticMove(
+	flagsAna map[int]*flag.Analysis,
+	keep *keep,
+	playTacAna *playTacAna,
+	hand *bat.Hand,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (tacix int, move bat.Move) {
+
+	noHandTacs := len(hand.Tacs)
+	if playTacAna.botNo > 0 && noHandTacs > 0 {
+		if noHandTacs > 1 && deck.DeckTroopNo() > 1 && slice.Contain(hand.Tacs, cards.TCScout) {
+			if slice.Contain(hand.Tacs, cards.TCTraitor) || noHandTacs == 4 {
+				tacix = cards.TCScout
+			}
+		} else if hand.Tacs[0] == cards.TCScout && noHandTacs == 1 && deck.DeckTroopNo() > 1 {
+			if keep.calcIsHandGood() {
+				tacix = cards.TCScout
+			}
+		} else {
+		Loop:
+			for _, tac := range hand.Tacs {
+				if cards.IsMorale(tac) {
+					isLeader := cards.IsLeader(tac)
+					if (isLeader && playTacAna.botLeader) || !isLeader {
+						for i := 0; i < len(keep.priFlagixs); i++ {
+							if !flagsAna[i].IsNewFlag && flagsAna[i].IsPlayable {
+								isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, hand.Tacs[0], hand.Troops, deck, deckMaxValues)
+								if isWin {
+									tacix = tac
+									break Loop
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+	}
+	return tacix, move
+}
+func moveFlagHandSim(
+	simFlag *flag.Flag,
+	simFlagix int,
+	simHandTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (isWin bool, isLost bool) {
+
+	fa := flag.NewAnalysis(simFlag, simHandTroopixs, deckMaxValues, deck, simFlagix, true)
+	isLost = fa.IsLost
+	isWin = fa.IsWin()
+	if cerrors.LogLevel() == cerrors.LOG_Debug {
+		log.Printf("Simulated flag: %v, win,loss: %v,%v\n Analysis: %+v\n", simFlagix, isWin, isLost, fa)
+	}
+	return isWin, isLost
+}
+func tacticMoveSim(flagix int, flag *flag.Flag,
+	tacix int,
+	handTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (isWin bool, isLost bool) {
+
+	simFlag := flag.Copy()
+	simFlag.PlayAddCardix(tacix)
+
+	if cerrors.LogLevel() == cerrors.LOG_Debug {
+		tac, _ := cards.DrTactic(tacix)
+		log.Printf("Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac.Name(), simFlag, flag)
+	}
+	isWin, isLost = moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
+
+	return isWin, isLost
 }
 
 func pfnf2Pick1Card(flagAna *flag.Analysis) (troopix int, logTxt string) {
@@ -636,65 +977,31 @@ func pfnf2Pick1Card(flagAna *flag.Analysis) (troopix int, logTxt string) {
 	return troopix, logTxt
 }
 
-//ssfSum if we can only make a sum or the opponent can only make a sum we may be
-//able to play a sum card.
-func pffSum(flagAna *flag.Analysis) (troopix int, logTxt string) {
+//ssfSum if we can only make a sum we may be able to play a sum card.
+func pfkfSum(flagAna *flag.Analysis, keep *keep) (troopix int, logTxt string) {
 	logTxt = "Sum move"
-
-	if flagAna.IsTargetRanked && flagAna.TargetRank == 0 {
-		troopix = keepFirstCard(flagAna.KeepFlagHandTroopixs, flagAna.SumCards)
-	} else {
-		if flagAna.BotTroopNo > 1 {
-			botRank := 0
-			for _, combiAna := range flagAna.Analysis {
-				if combiAna.Prop > 0 {
-					botRank = combiAna.Comb.Rank
-					break
-				}
+	if flagAna.BotTroopNo > 1 {
+		botRank := 0
+		for _, combiAna := range flagAna.Analysis {
+			if combiAna.Prop > 0 {
+				botRank = combiAna.Comb.Rank
+				break
 			}
-			if botRank == 0 {
-				troopix = keepFirstCard(flagAna.KeepFlagTroopixs, flagAna.SumCards)
-			}
+		}
+		if botRank == 0 {
+			fmt.Printf("Bot sum rank. Flag Analysis: %+v+\n", flagAna)
+			troopix = keep.requestFirstHand(flagAna.SumCards)
 		}
 	}
 	return troopix, logTxt
 }
 
-func keepFirstCard(keepTroops map[int]bool, troopixs []int) (firstTroopix int) {
-	for _, troopix := range troopixs {
-		if !keepTroops[troopix] {
-			firstTroopix = troopix
-			break
-		}
-	}
-	return firstTroopix
-}
-func priDumpMove(flagixs []int, flagsAna map[int]*flag.Analysis, handTroopixs []int) (troopix int, move bat.Move) {
-	logTxt := ""
-	flagix := flagixs[len(flagixs)-1]
+func priDumpMove(
+	flagsAna map[int]*flag.Analysis,
+	keep *keep) (troopix int, move bat.Move) {
+	flagix := keep.priFlagixs[len(keep.priFlagixs)-1]
 	flagAna := flagsAna[flagix]
-	keepTroops := flagsAna[0].KeepFlagTroopixs
-	if len(keepTroops) < len(handTroopixs) {
-		for _, combiFlag := range flagAna.Analysis {
-			if len(combiFlag.HandCardixs) > 0 {
-				troopix = keepFirstCard(keepTroops, combiFlag.HandCardixs)
-				logTxt = "A combination card"
-				break
-			}
-		}
-		if troopix == 0 {
-			troopix = keepFirstCard(keepTroops, handTroopixs)
-			logTxt = "First card not in keep"
-		}
-	} else {
-		troopix = minTroop(handTroopixs)
-		logTxt = "Min troop"
-	}
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Dump move card,flag: %v,%v\n", troopix, flagix)
-		log.Println(logTxt)
-		log.Printf("Keeps: %v", keepTroops)
-	}
+	troopix = keep.demandDump(flagAna)
 	move = *bat.NewMoveCardFlag(flagix)
 	return troopix, move
 }
@@ -732,14 +1039,13 @@ func priFlagNLoop(
 	})
 	return troopix, move
 }
-func priFlagHandLoop(
-	flagixs []int,
+func priFlagKeepLoop(
 	flagsAna map[int]*flag.Analysis,
-	handAna map[int][]*combi.Analysis,
-	pfhf func(flagAna *flag.Analysis, handAna map[int][]*combi.Analysis) (fTroopix int, logTxt string)) (troopix int, move bat.Move) {
+	keep *keep,
+	pfkf func(flagAna *flag.Analysis, keep *keep) (fTroopix int, logTxt string)) (troopix int, move bat.Move) {
 
-	troopix, move = priFlagLoop(flagixs, flagsAna, func(flagAna *flag.Analysis) (fTroopix int, logTxt string) {
-		fTroopix, logTxt = pfhf(flagAna, handAna)
+	troopix, move = priFlagLoop(keep.priFlagixs, flagsAna, func(flagAna *flag.Analysis) (fTroopix int, logTxt string) {
+		fTroopix, logTxt = pfkf(flagAna, keep)
 		return fTroopix, logTxt
 	})
 	return troopix, move
@@ -768,10 +1074,12 @@ func findMoveIndex(moves []bat.Move, move bat.Move) (moveix int) {
 
 //PlayableTac returns the numbers of playable tactic cards 0,1 or 2
 //and if a leader is playable.
-func playableTac(
+func newPlayableTacAna(
 	flags [bat.NOFlags]*flag.Flag,
 	botDishTac []int,
-	oppDishTac []int) (botNo, oppNo int, botLeader, oppLeader bool) {
+	oppDishTac []int) (ana *playTacAna) {
+
+	ana = new(playTacAna)
 	botTacs := make([]int, 0, 5)
 	oppTacs := make([]int, 0, 5)
 	for _, flag := range flags {
@@ -779,20 +1087,21 @@ func playableTac(
 		botTacs = playedTacFlag(botTacs, flag.PlayEnvs, flag.PlayTroops)
 	}
 	botTacs = append(botTacs, botDishTac...)
-	botTacs = append(oppTacs, oppDishTac...)
+	oppTacs = append(oppTacs, oppDishTac...)
 
-	botNo = len(oppTacs) - len(botTacs) + 1
-	oppNo = len(botTacs) - len(oppTacs) + 1
-	botLeader = !leaderSearch(botTacs)
-	oppLeader = !leaderSearch(oppTacs)
-	return botNo, oppNo, botLeader, oppLeader
+	ana.botNo = len(oppTacs) - len(botTacs) + 1
+	ana.oppNo = len(botTacs) - len(oppTacs) + 1
+
+	ana.botLeader = !leaderSearch(botTacs)
+	ana.oppLeader = !leaderSearch(oppTacs)
+	return ana
 }
-func playableTacNoBot(
-	flags [bat.NOFlags]*flag.Flag,
-	botDishTac []int,
-	oppDishTac []int) (botTacNo int) {
-	botTacNo, _, _, _ = playableTac(flags, botDishTac, oppDishTac)
-	return botTacNo
+
+type playTacAna struct {
+	botNo     int
+	oppNo     int
+	botLeader bool
+	oppLeader bool
 }
 
 func leaderSearch(tacs []int) (found bool) {
