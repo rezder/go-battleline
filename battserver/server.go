@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"syscall"
 )
 
 // Start the battleline server.
@@ -41,7 +42,7 @@ func main() {
 	go errServer(errCh, finErrCh)
 	httpServer.Start()
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Println("Server up and running. Close with ctrl+c")
 	<-stop
 	if cerrors.IsVerbose() {

@@ -1671,10 +1671,38 @@ var batt={};
         let infoTextArea = document.getElementById("info-text");
         let messageSelect=document.getElementById("message-select");
 
+        function playerIsInSelect(value){
+            let options=messageSelect.options;
+            let exist=false;
+            for(let i=1;i<options.length;i++){
+                if (value===options[i].value){
+                    exist=true;
+                    break;
+                }
+            }
+            return exist;
+        }
+
+        function addPlayer(value,name){
+            let options=messageSelect.options;
+            let opt=document.createElement("OPTION");
+            opt.value=value;
+            opt.text= name;
+            if (!playerIsInSelect(value)){
+                messageSelect.add(opt);
+                messageSelect.selectedIndex=messageSelect.length-1;
+            }
+        }
+        exp.addPlayer=addPlayer;
+
         function recieved(m){
             let txt;
             if (m.Name){
-                 txt=m.Name+" -> "+m.Message+"\n";
+                txt=m.Name+" -> "+m.Message+"\n";
+                if ((m.Sender) && m.Sender!==-1) {//-1 is System
+                    console.log(m);
+                    addPlayer(m.Sender.toString(),m.Name);
+                }
             }else{
                 txt="Info: "+m.Message+"\n";
             }
@@ -1698,14 +1726,8 @@ var batt={};
             }
         }
         exp.playerUpdate=playerUpdate;
-        function addPlayer(value,name){
-            let opt=document.createElement("OPTION");
-            opt.value=value;
-            opt.text= name;
-            messageSelect.add(opt);
-            messageSelect.selectedIndex=messageSelect.length-1;
-        }
-        exp.addPlayer=addPlayer;
+
+
         function send(){
             if (messageSelect.value!=="0"){
                 let message=msgTextArea.value;
@@ -1774,6 +1796,7 @@ var batt={};
                 }
             }else{
                 invites.replace(invite.InvitorID,invite.InvitorName,false);
+                msg.addPlayer(invite.InvitorID.toString(),invite.InvitorName);
             }
         };
         exp.invites.recieved=invites.recieved;
@@ -1905,10 +1928,15 @@ var batt={};
         document.getElementById("update-button").onclick=function(){
             ws.actionBuilder(ws.ACT_LIST).send();
         };
+        players.clear=function(){
+            pMap=new Map([]);
+            players.update(pMap);
+        };
+        exp.players.clear=players.clear;
         players.update=function(pMap){
             msg.playerUpdate(pMap);
             if(iTable.rows.length>1){
-                let idix=table.getFieldIx("ith-id",iTableHeaders,true);
+                let idix=getFieldIx("ith-id",iTableHeaders,true);
                 for (let i=iTable.rows.length-1;i>0;i--){
                     let idNo=iTable.rows[i].cells[idix].textContent;
                     if(!pMap[idNo]){
@@ -1948,6 +1976,7 @@ var batt={};
                                         if (invites.contain(idNo,send)===0){//0 is header so we do
                                             invites.add(idNo,name,send);    //not use -1
                                             ws.actionBuilder(ws.ACT_INVITE).id(idNo).send();
+                                            msg.addPlayer(idNo.toString,name);
                                         }
                                     }else{
                                         ws.actionBuilder(ws.ACT_LIST).send();
@@ -2051,8 +2080,11 @@ var batt={};
                 console.log(event.wasClean);
                 if(!event.wasClean){
                     console.log("Unclean close of connection.");
+                    let txt="No connection to server. you must login again.\n";
+                    msg.recieved({Message:txt});
                 }
                 game.clear();
+                table.players.clear();
                 exp.unconnected=true;
             };
             conn.onerror=function(event){
@@ -2060,8 +2092,9 @@ var batt={};
                 console.log(event.reason);
                 console.log(event.wasClean);
                 game.clear();
+                table.players.clear();
                 exp.unconnected=true;
-                let txt="No connection to server. you must login again.\n";
+                let txt="Connection err. You must login again.\n";
                 msg.recieved({Message:txt});
             };
             conn.onmessage=function(event){
@@ -2090,8 +2123,10 @@ var batt={};
                     break;
                 case JT_CloseCon:
                     msg.recieved({Message:json.Data.Reason});
-                    conn.close();
+                    conn.close();//TODO we need a visual way dissable every thing when connection is lost
+                    //Not only clear game also disable list and message function. All places where connection is lost
                     game.clear();
+                    table.players.clear();
                     exp.unconnected=true;
                     break;
                 case JT_ClearInvites:

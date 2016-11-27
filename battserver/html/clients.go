@@ -217,7 +217,7 @@ func (clients *Clients) logIn(name string, pw string) (sid string, err error) {
 						err = errors.New("Name password combination do not exist")
 					}
 				} else {
-					err = errors.New("Allready loged in.")
+					err = errors.New("Allready loged in.") //TODO if logged-in but no ws check time since login and then login if some time have passed.
 				}
 			} else {
 				err = errors.New("Account disabled.")
