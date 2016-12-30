@@ -17,7 +17,7 @@ const (
 	SAVEGamesFile = "data/savegames.gob"
 )
 
-//Server the battleline tables sever
+//Server the battleline tables server
 //Keeps track of games being played. Who is playing, who is watching
 //and saved unfinished games. It here you ask to start a game.
 type Server struct {

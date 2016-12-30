@@ -37,7 +37,7 @@ func lostFlagTacticDbFlagMove(
 					}
 					if dbFlagAnas[dbFlagAnas.Len()-1].isWinWin() || flagAna.IsLoosingGame {
 						move = dbFlagAnas[dbFlagAnas.Len()-1].move
-						cardix = cards.TCTraitor
+						cardix = tacix
 					}
 				}
 

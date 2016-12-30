@@ -29,10 +29,10 @@ func main() {
 	var addrPort string
 	flag.StringVar(&scheme, "scheme", "http", "Scheme http or https")
 	flag.StringVar(&addr, "addr", "game.rezder.com", "The server address with out port")
-	flag.StringVar(&port, port, "8181", "The port")
+	flag.StringVar(&port, "port", "8181", "The port")
 	flag.StringVar(&name, "name", "Rene", "User name")
 	flag.StringVar(&pw, "pw", "12345678", "User password")
-	flag.IntVar(&logLevel, "loglevel", 2, "Log level 0 default lowest, 2 highest") //TODO change to 0
+	flag.IntVar(&logLevel, "loglevel", 2, "Log level 0 default lowest, 2 highest") //TODO CLEAN change to 0
 	flag.Parse()
 	if len(port) != 0 {
 		addrPort = addr + ":" + port
@@ -83,7 +83,7 @@ Loop:
 //login logs in to the game server.
 func login(scheme string, addrPort string, addr string, name string,
 	pw string) (cookies []*http.Cookie, err error) {
-	client := new(http.Client)
+	client := new(http.Client) //TODO can handle https maybe because of a nginx bug solved in 1.11 current docker version is 1.10
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		panic("Jar error")

@@ -63,6 +63,22 @@ func TestAnaSkirmish123(t *testing.T) {
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
 	//	t.Error("Forced error")
 }
+func TestAnaSkirmish123GoodOdds(t *testing.T) {
+	//combinations := []int{1, 32, 43}
+	combi := Combinations(3)
+	drawSet := make(map[int]bool)
+	goodCards := []int{2, 3, 12, 13, 22, 23, 32, 33, 42, 43, 52, 53, 27}
+	for _, troop := range goodCards {
+		drawSet[troop] = true
+	}
+	drawNo := (len(drawSet) - 7) / 2
+	flagCards := []int{1}
+	handCards := []int{5, 6, 7, 18, 25, 37, 58}
+	ana := Ana(combi[46], flagCards, handCards, drawSet, drawNo, false)
+	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
+		*combi[46], flagCards, handCards, drawNo, ana)
+	t.Error("Forced error")
+}
 func TestAnaBad(t *testing.T) {
 	flagCards := []int{1, 67}
 	handCards := []int{5, 6, 7, 18, 25, 37, 58}
@@ -72,6 +88,7 @@ func TestAnaBad(t *testing.T) {
 	combiTest(t, 48, flagCards, handCards, dummies, 4)
 	//t.Error("Forced error")
 }
+
 func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies []int) {
 	flagCards := combination[:1]
 	handCards := make([]int, 7)

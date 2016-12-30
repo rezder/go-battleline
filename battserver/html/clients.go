@@ -202,34 +202,44 @@ func (clients *Clients) verifySid(name, sid string) (ok, down bool) {
 //logIn log-in a client.
 func (clients *Clients) logIn(name string, pw string) (sid string, err error) {
 	clients.mu.RLock()
-	if clients.gameServer != nil {
-		client, found := clients.List[name]
-		if found {
-			client.mu.Lock()
-			if !client.Disable {
-				if client.sid == "" {
-					err = bcrypt.CompareHashAndPassword(client.Pw, []byte(pw))
-					if err == nil {
-						client.sid = sessionID()
-						client.sidTime = time.Now()
-						sid = client.sid
-					} else {
-						err = errors.New("Name password combination do not exist")
-					}
-				} else {
-					err = errors.New("Allready loged in.") //TODO if logged-in but no ws check time since login and then login if some time have passed.
-				}
-			} else {
-				err = errors.New("Account disabled.")
-			}
-			client.mu.Unlock()
-		} else {
-			err = errors.New("Name password combination do not exist")
-		}
-	} else {
+	defer clients.mu.RUnlock()
+	if clients.gameServer == nil {
 		err = NewErrDown("Game server down")
+		return sid, err
 	}
-	clients.mu.RUnlock()
+	client, found := clients.List[name]
+	if !found {
+		err = errors.New("Name password combination do not exist")
+		return sid, err
+	}
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	if client.Disable {
+		err = errors.New("Account disabled.")
+		return sid, err
+	}
+	if client.sid != "" {
+		if client.ws != nil {
+			err = errors.New("Allready loged in.")
+			return sid, err
+		} else {
+			if time.Now().Sub(client.sidTime) > time.Minute*3 {
+				clearLogIn(client)
+			} else {
+				err = errors.New("Allready Loging in.")
+				return sid, err
+			}
+		}
+	}
+	err = bcrypt.CompareHashAndPassword(client.Pw, []byte(pw))
+	if err != nil {
+		err = errors.New("Name password combination do not exist")
+		return sid, err
+	}
+	client.sid = sessionID()
+	client.sidTime = time.Now()
+	sid = client.sid
+
 	return sid, err
 }
 

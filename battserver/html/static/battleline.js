@@ -938,12 +938,17 @@ var batt={};
         };
         function itemClicked(elems,centerClick){
         };
+        let clickFailAudio=document.getElementById("fail-click-audio");
         exp.itemClicked=itemClicked;
         battlelineSvg.onclick=function (event){
             let elms=click.hitElems(event);
             let centerClick=event.which===2;//right click is context menu
+            let used=false;
             if (elms.length>0){
-                exp.itemClicked(elms,centerClick);
+                used=exp.itemClicked(elms,centerClick);
+            }
+            if (!used){
+                clickFailAudio.play();
             }
         };
         return exp;
@@ -1228,9 +1233,11 @@ var batt={};
             scoutReturnTacixs=[];
         };
         exp.clear=clear;
-        
+
         function onClickedCard(clickedFlagElm,clickedCardElm,clickedDishElm){
+            let used=false;
             function moveToFlag(cardix,flagElm){
+                let used=false;
                 let flagIdObj=svg.id.fromName(flagElm.id);
                 let flagNo=flagIdObj.no;
                 if (flagIdObj.player){
@@ -1241,11 +1248,13 @@ var batt={};
                                 svg.hand.moveToFlagPlayer(flagElm);
                                 turn.isMyTurn=false;
                                 ws.actionBuilder(ws.ACT_MOVE).move(cardix,i).send();
+                                used=true;
                                 break;
                             }
                         }
                     }
                 }
+                return used;
             }
             if(turn.isMyTurn&&svg.hand.selected()!==null&&turn.getState()===TURN_HAND){
                 let player;
@@ -1267,7 +1276,7 @@ var batt={};
                     case svg.card.TC_Mud:
                     case svg.card.TC_Alexander:
                     case svg.card.TC_Darius:
-                        moveToFlag(selectedHandCardix,clickedFlagElm);
+                       used= moveToFlag(selectedHandCardix,clickedFlagElm);
                         break;
                     case svg.card.TC_Deserter:
                         if (clickedCardElm&&!player){
@@ -1279,6 +1288,7 @@ var batt={};
                                     svg.flag.cardToDish(clickedCardix);
                                     turn.isMyTurn=false;
                                     ws.actionBuilder(ws.ACT_MOVE).move(selectedHandCardix,i).send();
+                                    used=true;
                                     break;
                                 }
                             }
@@ -1289,10 +1299,12 @@ var batt={};
                             if (!svg.flag.cardSelected()){
                                 if (clickedCardElm){
                                     svg.flag.cardSelect(clickedCardElm);
+                                    used=true;
                                 }
                             }else{
                                 if (clickedCardElm &&svg.flag.cardSelected().id===clickedCardElm.id){
                                     svg.flag.cardUnSelect();
+                                    used=true;
                                 }else{
                                     let selectedFlagCardix=svg.id.fromName(svg.flag.cardSelected().id).no;
                                     let rmoves=turn.getHandMove(selectedHandCardix);
@@ -1307,6 +1319,7 @@ var batt={};
                                                 svg.flag.cardUnSelect();
                                                 svg.flag.cardToDish(selectedFlagCardix);
                                             }
+                                            used=true;
                                             break;
                                         }
                                     }
@@ -1325,6 +1338,7 @@ var batt={};
                                         turn.isMyTurn=false;
                                         ws.actionBuilder(ws.ACT_MOVE).move(selectedHandCardix,i).send();
                                         svg.flag.cardToFlagPlayer(clickedFlagElm);
+                                        used=true;
                                         break;
                                     }
                                 }
@@ -1333,21 +1347,25 @@ var batt={};
                             if (!svg.flag.cardSelected()){
                                 if (clickedCardElm && !svg.card.isTac(svg.id.fromName(clickedCardElm.id).no)){
                                     svg.flag.cardSelect(clickedCardElm);
+                                    used=true;
                                 }
                             }else{
                                 if (clickedCardElm &&svg.flag.cardSelected().id===clickedCardElm.id){
                                     svg.flag.cardUnSelect();
+                                    used=true;
                                 }
                             }
                         }
                         break;
                     }
                 }else{//TROOP
-                    moveToFlag(selectedHandCardix,clickedFlagElm);
+                    used=moveToFlag(selectedHandCardix,clickedFlagElm);
                 }
             }
+            return used;
         };
         function onClickedDeck(deckElm,idType){
+            let used=false;
             if(turn.isMyTurn){
                 let deck;
                 if (idType===svg.id.ID_DeckTac){
@@ -1363,6 +1381,7 @@ var batt={};
                         if (moves[i].Deck===deck){
                             turn.isMyTurn=false;
                             ws.actionBuilder(ws.ACT_MOVE).move(0,i).send();
+                            used=true;
                             break;
                         }
                     }
@@ -1374,6 +1393,7 @@ var batt={};
                             svg.hand.moveToDishPlayer();
                             turn.isMyTurn=false;
                             ws.actionBuilder(ws.ACT_MOVE).move(svg.card.TC_Scout,i).send();
+                            used=true;
                             break;
                         }
                     }
@@ -1384,11 +1404,13 @@ var batt={};
                         if(deck===DECK_TAC){
                             scoutReturnTacixs.push(selectedHandCardix) ;
                             svg.hand.moveToDeckPlayer();
+                            used=true;
                         }
                     }else{
                         if(deck===DECK_TROOP){
                             scoutReturnTroopixs.push(selectedHandCardix) ;
                             svg.hand.moveToDeckPlayer();
+                            used=true;
                         }
                     }
                     let moves=turn.getMoves();
@@ -1438,9 +1460,11 @@ var batt={};
 
                 }
             }
+            return used;
         };
         function onClickedCone(coneElm,idObj){
             //TODO MAYBE add unSelect move to cone
+            let used=false;
             if (turn.isMyTurn&&turn.getState()===TURN_FLAG){
                 if (cone.validixs.size===0){
                     let moves=turn.getMoves();
@@ -1458,8 +1482,10 @@ var batt={};
                 if (cone.validixs.has(ix)){
                     cone.clickedixs.add(ix);
                     svg.cone.pos(coneElm,2);
+                    used=true;
                 }
             }
+            return used;
         };
         let turnTextArea=document.getElementById("turn-text");
         function move(moveView){
@@ -1623,12 +1649,14 @@ var batt={};
         };
         svg.itemClicked=function(elems,centerClick){
             let idObj=svg.id.fromName(elems[0].id);
+            let used=false;
             switch (idObj.type){
             case svg.id.ID_Card:
                 let clickedCardElm=elems[0];
                 let parentIdObj=svg.id.fromName(clickedCardElm.parentNode.id);
                 if(parentIdObj.type===svg.id.ID_Hand&&parentIdObj.player){
                     if(svg.hand.selected()){
+                        used=true;
                         if(svg.hand.selected().id===clickedCardElm.id){
                             svg.hand.unSelect();
                             if (svg.flag.cardSelected()){
@@ -1639,37 +1667,64 @@ var batt={};
                         }
                     }else{
                         svg.hand.select(clickedCardElm);
+                        used=true;
                     }
                 }else{//Flag
-                    onClickedCard(elems[1],clickedCardElm,null);
+                    used=onClickedCard(elems[1],clickedCardElm,null);
                 }
                 break;
             case svg.id.ID_DeckTroop:
             case svg.id.ID_DeckTac:
-                onClickedDeck(elems[0],idObj.type);
+                used=onClickedDeck(elems[0],idObj.type);
                 break;
             case svg.id.ID_FlagTroop:
             case svg.id.ID_FlagTac:
-                onClickedCard(elems[0],null,null);
+                used=onClickedCard(elems[0],null,null);
                 break;
             case svg.id.ID_Cone:
-                onClickedCone(elems[0],idObj);
+                used=onClickedCone(elems[0],idObj);
                 break;
             case svg.id.ID_DishTroop:
             case svg.id.ID_DishTac:
-                onClickedCard(null,null,elems[0]);
+                used=onClickedCard(null,null,elems[0]);
                 break;
             }
-
+            return used;
         };
         return exp;
     }
     function createMsg(document,ws){
         let exp={};
 
-        let msgTextArea = document.getElementById("message-text");
+        let msgTextInArea = document.getElementById("message-in-text");
+        let msgTextOutArea = document.getElementById("message-out-text");
         let infoTextArea = document.getElementById("info-text");
         let messageSelect=document.getElementById("message-select");
+        let msgAudio=document.getElementById("msg-audio");
+        let flash={};
+        flash.counter=0;
+        flash.noFlash=3;
+        flash.ivId=0;
+        flash.flashColor=document.defaultView.getComputedStyle(msgTextInArea,null).backgroundColor;
+
+        function flashStart(){
+            if (flash.counter===0){
+                flash.ivId=setInterval(flashAnima,100);
+            }
+        }
+        function flashAnima(){
+            flash.counter=flash.counter+1;
+            if (flash.counter%2!==0){
+                msgTextOutArea.style.backgroundColor=flash.flashColor;
+            }else{
+                msgTextOutArea.style.backgroundColor="";
+            }
+            if (flash.noFlash*2===flash.counter){
+                clearInterval(flash.ivId);
+                flash.ivId=0;
+                flash.counter=0;
+            }
+        }
 
         function playerIsInSelect(value){
             let options=messageSelect.options;
@@ -1697,16 +1752,25 @@ var batt={};
 
         function recieved(m){
             let txt;
+            let txtArea=infoTextArea;
             if (m.Name){
                 txt=m.Name+" -> "+m.Message+"\n";
                 if ((m.Sender) && m.Sender!==-1) {//-1 is System
                     console.log(m);
                     addPlayer(m.Sender.toString(),m.Name);
+                        txtArea=msgTextOutArea;
+                        txt=m.Name+" -> "+m.Message+"\n";
+                }else{
+                    txt=m.Message+"\n\n";
                 }
             }else{
-                txt="Info: "+m.Message+"\n";
+                txt=m.Message+"\n\n";
             }
-            infoTextArea.value=txt+infoTextArea.value;
+            txtArea.value=txt+txtArea.value;
+            if (txtArea===msgTextOutArea){
+                flashStart();
+                msgAudio.play();
+            }
         }
         exp.recieved=recieved;
         function playerUpdate(pMap){
@@ -1730,13 +1794,13 @@ var batt={};
 
         function send(){
             if (messageSelect.value!=="0"){
-                let message=msgTextArea.value;
+                let message=msgTextInArea.value;
                 let idNo= parseInt(messageSelect.value);
                 ws.actionBuilder(ws.ACT_MESS).id(idNo).mess(message).send();
-                msgTextArea.value="";
+                msgTextInArea.value="";
                 let name =messageSelect.options[messageSelect.selectedIndex].text;
                 let txt=name+" <- "+message+"\n";
-                infoTextArea.value=txt+infoTextArea.value;
+                msgTextOutArea.value=txt+msgTextOutArea.value;
             }
         }
         document.getElementById("send-button").onclick=send;
@@ -1924,7 +1988,7 @@ var batt={};
 
         let pTable=document.getElementById("players-table");
         let pTbodyEmpty=pTable.getElementsByTagName("tbody")[0].cloneNode(true);
-        let pTableHeaders=pTbodyEmpty.getElementsByTagName("th");
+        let pTableHeaders=pTable.getElementsByTagName("thead")[0].getElementsByTagName("th");
         document.getElementById("update-button").onclick=function(){
             ws.actionBuilder(ws.ACT_LIST).send();
         };
@@ -1945,7 +2009,8 @@ var batt={};
                 }
             }
             pTable.removeChild(pTable.getElementsByTagName("tbody")[0]);
-            pTable.appendChild(pTbodyEmpty.cloneNode(true));
+            let newBody=pTbodyEmpty.cloneNode(true);
+            pTable.appendChild(newBody);
             let players=[];
             for(let k of Object.keys(pMap)){
                 players.push(pMap[k]);
@@ -1954,7 +2019,7 @@ var batt={};
                 return a.Name.localeCompare(b.Name);
             });
             for(let p of players){
-                let newRow=pTable.insertRow(-1);// -1 is add
+                let newRow=newBody.insertRow(-1);// -1 is add
                 for (let i=0;i<pTableHeaders.length; i++){
                     let field=pTableHeaders[i].getAttribute("tc-link");
                     if (field){
@@ -1976,7 +2041,7 @@ var batt={};
                                         if (invites.contain(idNo,send)===0){//0 is header so we do
                                             invites.add(idNo,name,send);    //not use -1
                                             ws.actionBuilder(ws.ACT_INVITE).id(idNo).send();
-                                            msg.addPlayer(idNo.toString,name);
+                                            msg.addPlayer(idNo.toString(),name);
                                         }
                                     }else{
                                         ws.actionBuilder(ws.ACT_LIST).send();
@@ -2017,7 +2082,11 @@ var batt={};
     }
     function createWs(){
         let exp={};
-        let path="ws://"+location.host+"/in/gamews";
+        let protocol="ws";
+        if (location.protocol==="https:"){
+            protocol="wss";
+        }
+        let path=protocol+"://"+location.host+"/in/gamews";
         let conn=new WebSocket(path);
 
         exp.ACT_MESS       = 1;
@@ -2123,8 +2192,7 @@ var batt={};
                     break;
                 case JT_CloseCon:
                     msg.recieved({Message:json.Data.Reason});
-                    conn.close();//TODO we need a visual way dissable every thing when connection is lost
-                    //Not only clear game also disable list and message function. All places where connection is lost
+                    conn.close();
                     game.clear();
                     table.players.clear();
                     exp.unconnected=true;

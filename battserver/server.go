@@ -58,7 +58,7 @@ func main() {
 //all errors should be send where the power to close down exist.
 //Currently it does nothing but log the errors.
 func errServer(errChan chan error, finCh chan struct{}) {
-	//TODO maybe move the error server to html
+	//TODO MAYBE move the error server to html
 	// Add error count on player id and auto disable player with to many errors.
 	// disable must not be possible during save and error log should be active to the
 	// end. This leaves two possiblities tell error server to stop disable players during close

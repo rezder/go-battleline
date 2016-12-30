@@ -97,13 +97,17 @@ func makeMoveDeck(pos *Pos) (moveix int) {
 //tacsPrioritize returns prioritized indices for a list of tactic cards
 //Best first.
 func tacsPrioritize(tacixs []int) (pixs []int) {
-	pixs = make([]int, cards.NOTac)
+	pixs = make([]int, 0, len(tacixs))
 	if len(tacixs) != 0 {
-		for i, tactix := range tacixs {
-			for pi, ptacix := range tacsPRI {
+		for _, ptacix := range tacsPRI {
+			for i, tactix := range tacixs {
 				if tactix == ptacix {
-					pixs[i] = pi
+					pixs = append(pixs, i)
+					break
 				}
+			}
+			if len(pixs) == len(tacixs) {
+				break
 			}
 		}
 	}
@@ -161,7 +165,7 @@ func makeMoveScoutReturn(pos *Pos) (moveix int) {
 		troopixs = keep.demandScoutReturn(noReturnTroops, flagsAna, pos.deck)
 	}
 
-	move := bat.NewMoveScoutReturn(tacixs, troopixs)
+	move := *bat.NewMoveScoutReturn(tacixs, troopixs)
 	pos.playHand.PlayMulti(move.Tac)
 	pos.playHand.PlayMulti(move.Troop)
 	pos.deck.PlayScoutReturn(move.Troop, move.Tac)
@@ -364,21 +368,28 @@ func lostFlagTacticMove(
 	handMoves map[string][]bat.Move) (cardix int, move bat.Move) {
 
 	if playTacAna.botNo > 0 {
-		for _, handTacix := range handTacixs {
-			switch handTacix {
-			case cards.TCRedeploy:
-				fallthrough
-			case cards.TCTraitor:
-				cardix, move = lostFlagTacticDbFlagMove(flagsAna, handTroopixs, deck, deckMaxValues, handTacix, handMoves)
-			case cards.TCDeserter:
-				cardix, move = lostFlagTacticDeserterMove(flagsAna, handTroopixs, deck, deckMaxValues)
-			case cards.TCScout:
-
-			default:
-				cardix, move = lostFlagTacticSimMove(flagsAna, handTacix, playTacAna, handTroopixs, deck, deckMaxValues)
+		if len(handTacixs) > 2 && deck.DeckTroopNo() > 1 && slice.Contain(handTacixs, cards.TCScout) {
+			if slice.Contain(handTacixs, cards.TCTraitor) || len(handTacixs) == 4 {
+				cardix = cards.TCScout
+				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
-			if cardix != 0 {
-				break
+		} else {
+			for _, handTacix := range handTacixs {
+				switch handTacix {
+				case cards.TCRedeploy:
+					fallthrough
+				case cards.TCTraitor:
+					cardix, move = lostFlagTacticDbFlagMove(flagsAna, handTroopixs, deck, deckMaxValues, handTacix, handMoves)
+				case cards.TCDeserter:
+					cardix, move = lostFlagTacticDeserterMove(flagsAna, handTroopixs, deck, deckMaxValues)
+				case cards.TCScout:
+
+				default:
+					cardix, move = lostFlagTacticSimMove(flagsAna, handTacix, playTacAna, handTroopixs, deck, deckMaxValues)
+				}
+				if cardix != 0 {
+					break
+				}
 			}
 		}
 	}
@@ -905,10 +916,12 @@ func priTacticMove(
 		if noHandTacs > 1 && deck.DeckTroopNo() > 1 && slice.Contain(hand.Tacs, cards.TCScout) {
 			if slice.Contain(hand.Tacs, cards.TCTraitor) || noHandTacs == 4 {
 				tacix = cards.TCScout
+				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
 		} else if hand.Tacs[0] == cards.TCScout && noHandTacs == 1 && deck.DeckTroopNo() > 1 {
-			if keep.calcIsHandGood() {
+			if !keep.calcIsHandGood() {
 				tacix = cards.TCScout
+				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
 		} else {
 		Loop:
@@ -921,6 +934,7 @@ func priTacticMove(
 								isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, hand.Tacs[0], hand.Troops, deck, deckMaxValues)
 								if isWin {
 									tacix = tac
+									move = *bat.NewMoveCardFlag(flagsAna[i].Flagix)
 									break Loop
 								}
 							}

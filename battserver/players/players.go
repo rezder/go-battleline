@@ -210,7 +210,7 @@ func (player *Player) Start() {
 	watchGameCh := make(chan *startWatchGameData)
 	var watchGames map[int]*pub.WatchChCl
 	sendCh <- readList
-	sendSysMess(sendCh, "Welcome to Battleline!\n Will you play a game?")
+	sendSysMess(sendCh, "Welcome to Battleline!\nWill you play a game?")
 Loop:
 	for {
 		select {

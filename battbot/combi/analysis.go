@@ -148,7 +148,8 @@ func anaSkirmish(ana *Analysis, nAll, dAll uint64, formationNo int,
 								}
 							}
 						}
-						for d := nValid; d >= dValid; d-- {
+						drawMaxValid := min(dAll, nValid)
+						for d := drawMaxValid; d >= dValid; d-- {
 							ana.Valid = ana.Valid + (anaSkirmishCombi(values, missingNo, int(d), moralValues) *
 								math.Comb(nAll-nValid, dAll-d))
 						}
@@ -160,6 +161,12 @@ func anaSkirmish(ana *Analysis, nAll, dAll uint64, formationNo int,
 			}
 		}
 	}
+}
+func min(x, y uint64) uint64 {
+	if x < y {
+		return x
+	}
+	return y
 }
 
 //anaSkirmishCombi calculate the valid n over d combinations of valid skirmish cards buy looking at the distinct
@@ -486,7 +493,8 @@ func anaBattalionPerm(handTroops, drawTroops []int,
 		dValid = uint64(1)
 	}
 	if nValid >= dValid {
-		for d := nValid; d >= dValid; d-- {
+		drawMaxValid := min(dAll, nValid)
+		for d := drawMaxValid; d >= dValid; d-- {
 			valid = valid + (anaBattalionPermCombi(drawTroops, handTroops, sum, elementNo, int(d)) *
 				math.Comb(nAll-nValid, dAll-d))
 		}
@@ -532,7 +540,8 @@ func anaWedgePhalanx(ana *Analysis, nAll uint64, dAll uint64, formationNo int, f
 		nValid := uint64(len(drawTroops))
 		dValid := uint64(missingNo)
 		if nValid >= dValid {
-			for d := nValid; d >= dValid; d-- {
+			drawMaxValid := min(dAll, nValid)
+			for d := drawMaxValid; d >= dValid; d-- {
 				ana.Valid = ana.Valid + (math.Comb(nValid, d) * math.Comb(nAll-nValid, dAll-d))
 			}
 			ana.Prop = float64(ana.Valid) / float64(ana.All)

@@ -135,7 +135,7 @@ func init() {
 	}
 	Cards[TCScout] = Tactic{
 		name:    "Scout",
-		describ: "Draw 3 cards any decks and return 3 cards any decks player control the order",
+		describ: "Draw 3 cards any decks and return 2 cards any decks player control the order",
 		ttype:   CTGuile,
 	}
 	Cards[TCRedeploy] = Tactic{

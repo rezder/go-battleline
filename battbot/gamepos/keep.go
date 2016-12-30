@@ -34,7 +34,7 @@ func newKeep(
 	k.priFlagixs = prioritizePlayableFlags(flagsAna)
 
 	for _, flagAna := range flagsAna {
-		if flagAna.IsNewFlag {
+		if flagAna.IsNewFlag && !isNewFlag {
 			isNewFlag = true
 		}
 		if keepMapFlagAnaKeepTroops(flagAna) {
@@ -62,11 +62,11 @@ func (k *keep) flagSize() int {
 	return len(k.flag)
 }
 func (k *keep) calcIsHandGood() bool {
-	//TODO len(k.flagHand)+higher than 7 and suited connecters and phalanx > 3
+	//TODO len(k.flagHand)+higher than 7 + suited connecters + phalanx > 3
 	return len(k.flagHand) > 2
 }
 
-//calcPickTac evaluate if it is a good idea to pick as tactic card.
+//calcPickTac evaluate if it is a good idea to pick tactic card.
 //Tactic cards can be used planed offensive, opportunistic offensively
 //and opportunistic defensively. Currently only scout is used planed.
 //-
@@ -88,7 +88,7 @@ func (k *keep) calcIsHandGood() bool {
 //the opponent have a made formation or losing game flag exist.
 //Check the sum on fog to evaluate it the rest is alwas good.
 //The morale cards must be simulated for a win when one card is
-//missing redeploy could be included her but i do not think it
+//missing, redeploy could be included her but I do not think it
 //is wort it.
 func (k *keep) deckCalcPickTac(deck *botdeck.Deck) bool {
 	//TODO calc pick tac deck
