@@ -229,7 +229,7 @@ func MaxValuesUpd(troopix int, values []int) (updValues []int, max bool) {
 	upd := false
 	for ix, value := range updValues {
 		if troopValue > value {
-			if len(values) < cardNo {
+			if len(updValues) < cardNo {
 				copy(updValues[ix+1:], updValues[ix:])
 			} else {
 				copy(updValues[ix+1:], updValues[ix:4])

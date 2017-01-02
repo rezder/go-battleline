@@ -316,9 +316,19 @@ func (km *keepMap) insert(combiAnas []*combi.Analysis, missingNo int) {
 
 	}
 }
+func copyMap(m map[int]int) (cp map[int]int) {
+	if m != nil {
+		cp = make(map[int]int)
+		for key, value := range m {
+			cp[key] = value
+		}
+	}
+	return cp
+}
 func (km *keepMap) calcHand(handTroopixs []int) (handKeep map[int]bool) {
-
 	handKeep = make(map[int]bool)
+	colorMap := copyMap(km.colorMap)
+	valueMap := copyMap(km.valueMap)
 	sortedHandTroopixs := make([]int, 0, 7)
 	for _, handTroopix := range handTroopixs {
 		sortedHandTroopixs = addSortedCards(sortedHandTroopixs, handTroopix, func(troopix int) int {
@@ -332,11 +342,11 @@ func (km *keepMap) calcHand(handTroopixs []int) (handKeep map[int]bool) {
 			handKeep[troopix] = true
 		} else {
 			troop, _ := cards.DrTroop(troopix)
-			if km.colorMap[troop.Color()] != 0 {
-				km.colorMap[troop.Color()] = km.colorMap[troop.Color()] - 1
+			if colorMap[troop.Color()] != 0 {
+				colorMap[troop.Color()] = colorMap[troop.Color()] - 1
 				handKeep[troopix] = true
-			} else if km.valueMap[troop.Value()] != 0 {
-				km.valueMap[troop.Value()] = km.valueMap[troop.Value()] - 1
+			} else if valueMap[troop.Value()] != 0 {
+				valueMap[troop.Value()] = valueMap[troop.Value()] - 1
 				handKeep[troopix] = true
 			}
 		}

@@ -312,6 +312,9 @@ func maxSum(flagTroops, handCards, deckValues []int, mud bool) (sum int, updDeck
 				}
 			}
 		}
+		if cardsNo-len(flagTroops) > len(deckValues) {
+			fmt.Printf("Error too fee cards %v\n", deckValues)
+		}
 		for i := 0; i < cardsNo-len(flagTroops); i++ {
 			sum = sum + deckValues[i]
 		}

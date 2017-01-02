@@ -1151,6 +1151,9 @@ var batt={};
                     break;
                 case "MoveDeck":
                     svg.hand.drawOpp(move.Deck===DECK_TROOP);
+                    if (moveView.MoveCardix===svg.card.TC_Scout){
+                        svg.hand.moveToDishOpp(svg.card.TC_Scout);
+                    }
                     break;
                 case "MoveClaimView":
                     if (move.Claimed.length>0){
@@ -1172,7 +1175,6 @@ var batt={};
                     }
                     break;
                 case "MoveScoutReturnView":
-                    svg.hand.moveToDishOpp(svg.card.TC_Scout);
                     if (move.Tac>0){
                         for (let i=0;i<move.Tac;i++){
                             svg.hand.moveToDeckOpp(true);

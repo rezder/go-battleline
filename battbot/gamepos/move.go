@@ -1,7 +1,6 @@
 package gamepos
 
 import (
-	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
@@ -44,6 +43,7 @@ func deckZeroTacMove(
 	if playableTacNo > 0 || deck.OppTacNo() > 0 {
 		isBotFirst := true
 		flagsAna, _ := analyzeFlags(flags, handTroopixs, deck, isBotFirst)
+		analyzeFlagsAddFlagValue(flagsAna)
 		keep := newKeep(flagsAna, handTroopixs, deck, isBotFirst)
 		if keep.deckCalcPickTac(deck) {
 			move = *bat.NewMoveDeck(bat.DECKTac)
@@ -64,6 +64,7 @@ func deckScoutMove(
 	} else if handTacNo == 1 && hand.Tacs[0] == cards.TCScout && playableTacNo > 0 {
 		isBotFirst := true
 		flagsAna, _ := analyzeFlags(flags, hand.Troops, deck, isBotFirst)
+		analyzeFlagsAddFlagValue(flagsAna)
 		keep := newKeep(flagsAna, hand.Troops, deck, isBotFirst)
 		if keep.calcIsHandGood() {
 			move = *bat.NewMoveDeck(bat.DECKTac)
@@ -154,6 +155,7 @@ func makeMoveScoutReturn(pos *Pos) (moveix int) {
 	noReturn := pos.playHand.Size() - bat.NOHandInit
 	isOppFirst := true
 	flagsAna, _ := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isOppFirst)
+	analyzeFlagsAddFlagValue(flagsAna)
 	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isOppFirst)
 	playTacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
 	tacixs = scoutReturnTacs(pos.playHand.Tacs, playTacAna.botLeader)
@@ -179,9 +181,9 @@ func makeMoveHand(pos *Pos) (moveixs [2]int) {
 	}
 	isBotFirst := true
 	flagsAna, deckMaxValues := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isBotFirst)
-	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isBotFirst)
-	analyzeFlagsAddLooseGameFlags(flagsAna)
 	analyzeFlagsAddFlagValue(flagsAna)
+	analyzeFlagsAddLooseGameFlags(flagsAna)
+	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isBotFirst)
 	playTacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
 
 	if pos.turn.MovesPass {
@@ -284,7 +286,6 @@ func analyzeFlagsAddFlagValue(flagsAna map[int]*flag.Analysis) {
 	for i, ana := range flagsAna {
 		ana.FlagValue = flagValues[i]
 	}
-
 }
 func looseGame3Flag(lostFlagix int, flagsAna map[int]*flag.Analysis) (loose bool) {
 	if lostFlagix > 1 &&
@@ -390,6 +391,12 @@ func lostFlagTacticMove(
 				if cardix != 0 {
 					break
 				}
+			}
+			if cardix != 0 && len(handTacixs) == 2 && deck.DeckTroopNo() > 1 &&
+				slice.Contain(handTacixs, cards.TCScout) &&
+				slice.Contain(handTacixs, cards.TCTraitor) {
+				cardix = cards.TCScout
+				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
 		}
 	}
@@ -1003,7 +1010,6 @@ func pfkfSum(flagAna *flag.Analysis, keep *keep) (troopix int, logTxt string) {
 			}
 		}
 		if botRank == 0 {
-			fmt.Printf("Bot sum rank. Flag Analysis: %+v+\n", flagAna)
 			troopix = keep.requestFirstHand(flagAna.SumCards)
 		}
 	}
