@@ -52,13 +52,13 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 					reduceCalc := false
 					invalidOnly := false
 					if len(flagMorales) != 0 {
-						flagValues := troopsToValuexTroopixs(flagTroops)
-						handValues := troopsToValuexTroopixs(handTroops)
-						drawValues := troopsToValuexTroopixs(drawTroops)
+						flagValues := TroopsToValuexTroopixs(flagTroops)
+						handValues := TroopsToValuexTroopixs(handTroops)
+						drawValues := TroopsToValuexTroopixs(drawTroops)
 						reduceCalc, invalidOnly = anaStraightMorales(flagMorales,
 							handValues, drawValues, flagValues, formationNo)
-						handTroops = valuexTroopixsToValues(handValues)
-						drawTroops = valuexTroopixsToValues(drawValues)
+						handTroops = valuexTroopixsToTroops(handValues)
+						drawTroops = valuexTroopixsToTroops(drawValues)
 					}
 					if !invalidOnly {
 						anaWedgePhalanx(ana, nAll, dAll, formationNo, flagTroops, flagMorales, handTroops, drawTroops)
@@ -103,12 +103,12 @@ func anaSkirmish(ana *Analysis, nAll, dAll uint64, formationNo int,
 	if !validMorale {
 		ana.Prop = 0
 	} else {
-		flagValues := troopsToValuexTroopixs(flagTroops)
+		flagValues := TroopsToValuexTroopixs(flagTroops)
 		if len(flagValues) != len(flagTroops) {
 			ana.Prop = 0
 		} else {
-			handValues := troopsToValuexTroopixs(handTroops)
-			drawValues := troopsToValuexTroopixs(drawTroops)
+			handValues := TroopsToValuexTroopixs(handTroops)
+			drawValues := TroopsToValuexTroopixs(drawTroops)
 			for v := range flagValues {
 				delete(handValues, v)
 				delete(drawValues, v)
@@ -132,7 +132,7 @@ func anaSkirmish(ana *Analysis, nAll, dAll uint64, formationNo int,
 					ana.Prop = 1
 				} else {
 					if len(drawValues) >= missingNo {
-						drawTroops = valuexTroopixsToValues(drawValues)
+						drawTroops = valuexTroopixsToTroops(drawValues)
 						nValid := uint64(len(drawTroops))
 						dValid := uint64(missingNo)
 						values := troopsToValues([][]int{drawTroops})
@@ -441,8 +441,8 @@ func anaStraightMorales(flagMorales map[int]map[int]bool, handValues map[int][]i
 	return reduceCalc, invalidOnly
 }
 
-//valuexTroopixsToValues converts back to troopixs.
-func valuexTroopixsToValues(valuexTroopixs map[int][]int) (allTroopixs []int) {
+//valuexTroopixsToTroops converts back to troopixs.
+func valuexTroopixsToTroops(valuexTroopixs map[int][]int) (allTroopixs []int) {
 	allTroopixs = make([]int, 0, len(valuexTroopixs))
 	for _, troopixs := range valuexTroopixs {
 		allTroopixs = append(allTroopixs, troopixs...)
@@ -451,7 +451,7 @@ func valuexTroopixsToValues(valuexTroopixs map[int][]int) (allTroopixs []int) {
 }
 
 //troopsToValues colapses troopixs on values.
-func troopsToValuexTroopixs(troopixs []int) (valuexTroopixs map[int][]int) {
+func TroopsToValuexTroopixs(troopixs []int) (valuexTroopixs map[int][]int) {
 	valuexTroopixs = make(map[int][]int)
 	for _, troopix := range troopixs {
 		troop, _ := cards.DrTroop(troopix)

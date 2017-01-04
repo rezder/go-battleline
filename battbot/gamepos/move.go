@@ -44,8 +44,9 @@ func deckZeroTacMove(
 		isBotFirst := true
 		flagsAna, _ := analyzeFlags(flags, handTroopixs, deck, isBotFirst)
 		analyzeFlagsAddFlagValue(flagsAna)
+		analyzeFlagsAddLooseGameFlags(flagsAna)
 		keep := newKeep(flagsAna, handTroopixs, deck, isBotFirst)
-		if keep.deckCalcPickTac(deck) {
+		if keep.deckCalcPickTac(flagsAna, deck) {
 			move = *bat.NewMoveDeck(bat.DECKTac)
 		}
 	}
@@ -59,14 +60,17 @@ func deckScoutMove(
 
 	move := *bat.NewMoveDeck(bat.DECKTroop)
 	handTacNo := len(hand.Tacs)
-	if handTacNo > 1 && handTacNo < 4 && !slice.Contain(hand.Tacs, cards.TCTraitor) {
+	if handTacNo > 1 && handTacNo < 4 &&
+		!slice.Contain(hand.Tacs, cards.TCTraitor) &&
+		slice.Contain(hand.Tacs, cards.TCScout) {
 		move = *bat.NewMoveDeck(bat.DECKTac)
 	} else if handTacNo == 1 && hand.Tacs[0] == cards.TCScout && playableTacNo > 0 {
 		isBotFirst := true
 		flagsAna, _ := analyzeFlags(flags, hand.Troops, deck, isBotFirst)
 		analyzeFlagsAddFlagValue(flagsAna)
+		analyzeFlagsAddLooseGameFlags(flagsAna)
 		keep := newKeep(flagsAna, hand.Troops, deck, isBotFirst)
-		if keep.calcIsHandGood() {
+		if keep.calcIsHandGood(flagsAna, 2) {
 			move = *bat.NewMoveDeck(bat.DECKTac)
 		}
 	}
@@ -85,7 +89,6 @@ func makeMoveDeck(pos *Pos) (moveix int) {
 
 		if handTacNo == 0 {
 			move = deckZeroTacMove(tacAna.botNo, pos.deck, pos.playHand.Troops, pos.flags)
-
 		} else {
 			move = deckScoutMove(tacAna.botNo, pos.deck, pos.playHand, pos.flags)
 		}
@@ -926,31 +929,43 @@ func priTacticMove(
 				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
 		} else if hand.Tacs[0] == cards.TCScout && noHandTacs == 1 && deck.DeckTroopNo() > 1 {
-			if !keep.calcIsHandGood() {
+			if !keep.calcIsHandGood(flagsAna, 2) {
 				tacix = cards.TCScout
 				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
 		} else {
-		Loop:
-			for _, tac := range hand.Tacs {
-				if cards.IsMorale(tac) {
-					isLeader := cards.IsLeader(tac)
-					if (isLeader && playTacAna.botLeader) || !isLeader {
-						for i := 0; i < len(keep.priFlagixs); i++ {
-							if !flagsAna[i].IsNewFlag && flagsAna[i].IsPlayable {
-								isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, hand.Tacs[0], hand.Troops, deck, deckMaxValues)
-								if isWin {
-									tacix = tac
-									move = *bat.NewMoveCardFlag(flagsAna[i].Flagix)
-									break Loop
-								}
-							}
+			tacix, move = priTacticMoveSim(flagsAna, keep.priFlagixs, playTacAna, hand, deck, deckMaxValues)
+		}
+	}
+	return tacix, move
+}
+
+//priTacticMoveSim simulate morale tactic cards and create move
+//if win exist.
+func priTacticMoveSim(
+	flagsAna map[int]*flag.Analysis,
+	priFlagixs []int,
+	playTacAna *playTacAna,
+	hand *bat.Hand,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (tacix int, move bat.Move) {
+Loop:
+	for _, tac := range hand.Tacs {
+		if cards.IsMorale(tac) {
+			isLeader := cards.IsLeader(tac)
+			if (isLeader && playTacAna.botLeader) || !isLeader {
+				for i := 0; i < len(priFlagixs); i++ {
+					if !flagsAna[i].IsNewFlag && flagsAna[i].IsPlayable {
+						isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, hand.Tacs[0], hand.Troops, deck, deckMaxValues)
+						if isWin {
+							tacix = tac
+							move = *bat.NewMoveCardFlag(flagsAna[i].Flagix)
+							break Loop
 						}
 					}
 				}
 			}
 		}
-
 	}
 	return tacix, move
 }

@@ -163,8 +163,8 @@ func (dba *dbFlagAnaSim) String() string {
 	if dba == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("{Win:%v LoseGame:%v WinProb:%v PhalanxWin:%v Ana: %v FlagValue:%v}",
-		dba.isWin, dba.isLosingGame, dba.winProb, dba.ana, dba.oldAna, dba.flagValue)
+	return fmt.Sprintf("{Win:%v LoseGame:%v WinProb:%v PhalanxWin: %v Ana: %v OldAna: %v FlagValue:%v}",
+		dba.isWin, dba.isLosingGame, dba.winProb, dba.phalanxProb, dba.ana, dba.oldAna, dba.flagValue)
 }
 func newDbFlagAnaSim(oldAna, ana *flag.Analysis) (dba *dbFlagAnaSim) {
 	dba = new(dbFlagAnaSim)

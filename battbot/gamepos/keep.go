@@ -61,9 +61,81 @@ func newKeep(
 func (k *keep) flagSize() int {
 	return len(k.flag)
 }
-func (k *keep) calcIsHandGood() bool {
-	//TODO len(k.flagHand)+higher than 7 + suited connecters + phalanx > 3
-	return len(k.flagHand) > 2
+
+//calcIsHandGood calculate if the hand is good.
+//Calculate the number of good cards on the hand.
+//Numbers of keep(flagHand) + good cards for new flags.
+//More than two new flags must exist.
+//Calculate suited connectors.
+//Remove keep cards and loop over remaining n-2 and compare with
+//cards to the right if connected add card to good set.
+//Phalanx use troopsToValuexTroopixs
+//Big bigger than 8.
+func (k *keep) calcIsHandGood(flagsAna map[int]*flag.Analysis, capNo int) bool {
+	noGood := len(k.flagHand)
+	if !(noGood > capNo) {
+		noNewFlags := 0
+		for _, flagAna := range flagsAna {
+			if flagAna.IsNewFlag {
+				noNewFlags = noNewFlags + 1
+			}
+		}
+		if noNewFlags > 1 {
+			troopixs := make([]int, 0, 7)
+			for _, ix := range k.handTroopixs {
+				if !k.flagHand[ix] {
+					troopixs = append(troopixs, ix)
+				}
+			}
+			if len(troopixs) > 1 {
+				goodSet := suitedConnecters(troopixs)
+				if !(noGood+len!slice.Contain(hand.Tacs, cards.TCTraitor)&(goodSet) > capNo) {
+					goodSet = phalanxTroops(troopixs, goodSet)
+					if !(noGood+len(goodSet) > capNo) {
+						for _, troopix := range troopixs {
+							troop, _ := cards.DrTroop(troopix)
+							if troop.Value() > 7 {
+								goodSet[troopix] = true
+							}
+						}
+					}
+				}
+				noGood = noGood + len(goodSet)
+			}
+		}
+	}
+	return noGood > capNo
+}
+
+//phalanxTroops update map with troops with same value.
+func phalanxTroops(troopixs []int, goodSet map[int]bool) map[int]bool {
+	valueMap := combi.TroopsToValuexTroopixs(troopixs)
+	for _, troops := range valueMap {
+		if len(troops) > 1 {
+			for _, troopix := range troops {
+				goodSet[troopix] = true
+			}
+		}
+	}
+	return goodSet
+}
+
+//suitedConnecters find suited connecters.
+func suitedConnecters(troopixs []int) (goodSet map[int]bool) {
+	goodSet = make(map[int]bool)
+	for i := 0; i < len(troopixs)-2; i++ {
+		for j := i + 1; j < len(troopixs)-1; j++ {
+			iTroop, _ := cards.DrTroop(troopixs[i])
+			jTroop, _ := cards.DrTroop(troopixs[j])
+			if iTroop.Color() == jTroop.Color() {
+				if iTroop.Value() == jTroop.Value()+1 || iTroop.Value() == jTroop.Value()-1 {
+					goodSet[troopixs[i]] = true
+					goodSet[troopixs[j]] = true
+				}
+			}
+		}
+	}
+	return goodSet
 }
 
 //calcPickTac evaluate if it is a good idea to pick tactic card.
@@ -90,9 +162,20 @@ func (k *keep) calcIsHandGood() bool {
 //The morale cards must be simulated for a win when one card is
 //missing, redeploy could be included her but I do not think it
 //is wort it.
-func (k *keep) deckCalcPickTac(deck *botdeck.Deck) bool {
+
+//When opponent have formation or n-1 and higher rank mud,traitor and
+//deserter is good if max sum higher fog is good.
+//When n-1 and not win already simulate morale cards if win then cards is good.
+//When next tactic card is known check it agains good tactic and choose.
+//When good fraction bigger than zero pick tactic unless less than n(10)
+//troop is in deck and next troop is unknown, then simulate troop cards
+//and compare good fractions and pick accordingly.
+//when loose flag exist pick for destroy cards.
+func (k *keep) deckCalcPickTac(
+	flagsAna map[int]*flag.Analysis,
+	deck *botdeck.Deck) bool {
 	//TODO calc pick tac deck
-	return k.calcIsHandGood()
+	return k.calcIsHandGood(flagsAna, 2)
 }
 func keep2LowestValue(handTroopixs []int, keepTroopixs map[int]bool) (troopixs []int) {
 	troopixs = make([]int, 2)

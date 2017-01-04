@@ -37,8 +37,10 @@ func (ana *Analysis) String() string {
 	if ana.Analysis != nil {
 		positive := make([]*combi.Analysis, 0, 0)
 		for _, c := range ana.Analysis {
-			if c.Prop > 0 {
-				positive = append(positive, c)
+			if c != nil {
+				if c.Prop > 0 {
+					positive = append(positive, c)
+				}
 			}
 		}
 		if len(positive) == 0 {
