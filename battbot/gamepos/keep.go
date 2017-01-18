@@ -1,6 +1,7 @@
 package gamepos
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
@@ -21,6 +22,11 @@ type keep struct {
 	handTroopixs   []int
 }
 
+func (k *keep) String() string {
+	txt := fmt.Sprintf("{Flag:%v FlagHand:%v NewFlagTroop:%v NewFlagMove:%v PriFlag:%v}",
+		k.flag, k.flagHand, k.newFlagTroopix, k.newFlagMove, k.priFlagixs)
+	return txt
+}
 func newKeep(
 	flagsAna map[int]*flag.Analysis,
 	handTroopixs []int,
@@ -89,7 +95,7 @@ func (k *keep) calcIsHandGood(flagsAna map[int]*flag.Analysis, capNo int) bool {
 			}
 			if len(troopixs) > 1 {
 				goodSet := suitedConnecters(troopixs)
-				if !(noGood+len!slice.Contain(hand.Tacs, cards.TCTraitor)&(goodSet) > capNo) {
+				if !(noGood+len(goodSet) > capNo) {
 					goodSet = phalanxTroops(troopixs, goodSet)
 					if !(noGood+len(goodSet) > capNo) {
 						for _, troopix := range troopixs {
@@ -162,20 +168,164 @@ func suitedConnecters(troopixs []int) (goodSet map[int]bool) {
 //The morale cards must be simulated for a win when one card is
 //missing, redeploy could be included her but I do not think it
 //is wort it.
-
 //When opponent have formation or n-1 and higher rank mud,traitor and
 //deserter is good if max sum higher fog is good.
 //When n-1 and not win already simulate morale cards if win then cards is good.
-//When next tactic card is known check it agains good tactic and choose.
-//When good fraction bigger than zero pick tactic unless less than n(10)
-//troop is in deck and next troop is unknown, then simulate troop cards
-//and compare good fractions and pick accordingly.
-//when loose flag exist pick for destroy cards.
 func (k *keep) deckCalcPickTac(
 	flagsAna map[int]*flag.Analysis,
-	deck *botdeck.Deck) bool {
-	//TODO calc pick tac deck
-	return k.calcIsHandGood(flagsAna, 2)
+	deck *botdeck.Deck,
+	playableTacNo int,
+	playableLeader bool,
+	handTroopixs []int,
+	deckMaxValues []int) bool {
+
+	pickTac := false
+	if deck.DeckTroopNo() == 0 {
+		pickTac = true
+	} else {
+		offenceTacs, defenceTacs := offDefTacs(deck, playableLeader)
+		offFlagSet, offenceTacSet := findOffenceFlags(offenceTacs, flagsAna, handTroopixs, deck, deckMaxValues)
+		defFlagSet, defenceTacSet := findDefenceFlags(defenceTacs, flagsAna)
+		if len(offenceTacSet) > 0 || len(defenceTacSet) > 0 {
+			logTxt := ""
+			if looseWinFlagExist(flagsAna) {
+				logTxt = "Loose or win flag exist"
+				pickTac = true
+			} else if len(offFlagSet)+len(defFlagSet) > 4 && playableTacNo != 0 {
+				logTxt = "Many flag need tactic cards"
+				pickTac = true
+			}
+			if len(logTxt) != 0 && cerrors.LogLevel() == cerrors.LOG_Debug {
+				log.Println(logTxt)
+				log.Printf("Offence Flags: %v Offence Tactics: %v\n", offFlagSet, offenceTacSet)
+				log.Printf("Defence Flags: %v Defence Tactics: %v\n", defFlagSet, defenceTacSet)
+			}
+		}
+	}
+	return pickTac
+}
+
+//offDeffTacs find the relevante offencive and defencive tatic cards remaining in the deck.
+//When we know the next tactic card only that card is used.
+//if leader is not playable leader cards is removed.
+func offDefTacs(deck *botdeck.Deck, playableLeader bool) (offenceTacs, defenceTacs []int) {
+	defenceTacs = make([]int, 0, 4)
+	offenceTacs = make([]int, 0, 4)
+	scoutPeek := deck.ScoutReturnTacPeek()
+	if scoutPeek != 0 {
+		if isOffenceTac(scoutPeek) {
+			offenceTacs = append(offenceTacs, scoutPeek)
+		} else if isDefenceTac(scoutPeek) {
+			defenceTacs = append(defenceTacs, scoutPeek)
+		}
+	} else {
+		for tac := range deck.Tacs() {
+			if isOffenceTac(tac) {
+				offenceTacs = append(offenceTacs, tac)
+			} else if isDefenceTac(tac) {
+				defenceTacs = append(defenceTacs, tac)
+			}
+		}
+	}
+	if !playableLeader && len(offenceTacs) > 0 {
+		copytac := make([]int, 0, 2)
+		for _, tac := range offenceTacs {
+			if !cards.IsLeader(tac) {
+				copytac = append(copytac, tac)
+			}
+		}
+		offenceTacs = copytac
+	}
+	return offenceTacs, defenceTacs
+}
+func looseWinFlagExist(flagsAna map[int]*flag.Analysis) (exist bool) {
+	lostNo := countFlags(flagsAna, isFlagLostOrClaimed)
+	if lostNo > 3 {
+		exist = true
+	} else {
+		wonNo := countFlags(flagsAna, isFlagWonOrClaimed)
+		if wonNo > 3 {
+			exist = true
+		} else {
+			for _, flagAna := range flagsAna {
+				if threeFlagsInRow(flagAna.Flagix, flagsAna, isFlagLostOrClaimed) ||
+					threeFlagsInRow(flagAna.Flagix, flagsAna, isFlagWonOrClaimed) {
+					exist = true
+					break
+				}
+			}
+		}
+	}
+	return exist
+}
+func countFlags(
+	flagsAna map[int]*flag.Analysis,
+	cond func(*flag.Analysis) bool) (no int) {
+	for _, flagAna := range flagsAna {
+		if cond(flagAna) {
+			no = no + 1
+		}
+	}
+	return no
+}
+func isFlagWonOrClaimed(flagAna *flag.Analysis) bool {
+	return flagAna.IsWin() || flagAna.Flag.Claimed == flag.CLAIMPlay
+}
+func isOffenceTac(tac int) bool {
+	return tac == cards.TC123 || tac == cards.TCDarius || tac == cards.TCAlexander || tac == cards.TC8
+}
+func isDefenceTac(tac int) bool {
+	return tac == cards.TCMud || tac == cards.TCTraitor || tac == cards.TCDeserter || tac == cards.TCFog
+}
+func findDefenceFlags(
+	defenceTacs []int,
+	flagsAna map[int]*flag.Analysis) (flagixSet, tacixSet map[int]bool) {
+
+	flagixSet = make(map[int]bool)
+
+	tacixSet = make(map[int]bool)
+	if len(defenceTacs) > 0 {
+		for _, flagAna := range flagsAna {
+			if len(flagAna.Flag.OppTroops) >= flagAna.FormationSize-1 &&
+				!flagAna.IsClaimed && !flagAna.IsLost {
+				for _, tacix := range defenceTacs {
+					if tacix == cards.TCFog {
+						if flagAna.TargetSum <= flagAna.BotMaxSum {
+							tacixSet[tacix] = true
+							flagixSet[flagAna.Flagix] = true
+						}
+					} else {
+						tacixSet[tacix] = true
+						flagixSet[flagAna.Flagix] = true
+					}
+				}
+			}
+		}
+	}
+	return flagixSet, tacixSet
+}
+func findOffenceFlags(
+	offenceTacs []int,
+	flagsAna map[int]*flag.Analysis,
+	handTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (flagixSet, tacixSet map[int]bool) {
+	flagixSet = make(map[int]bool)
+	tacixSet = make(map[int]bool)
+	if len(offenceTacs) > 0 {
+		for _, flagAna := range flagsAna {
+			if len(flagAna.Flag.PlayTroops)+1 == flagAna.FormationSize && !flagAna.IsWin() {
+				for _, tacix := range offenceTacs {
+					isWin, _ := tacticMoveSim(flagAna.Flagix, flagAna.Flag, tacix, handTroopixs, deck, deckMaxValues)
+					if isWin {
+						flagixSet[flagAna.Flagix] = true
+						tacixSet[tacix] = true
+					}
+				}
+			}
+		}
+	}
+	return flagixSet, tacixSet
 }
 func keep2LowestValue(handTroopixs []int, keepTroopixs map[int]bool) (troopixs []int) {
 	troopixs = make([]int, 2)

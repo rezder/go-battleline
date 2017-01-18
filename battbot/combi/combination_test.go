@@ -14,19 +14,19 @@ func TestCombi3(t *testing.T) {
 	n := len(combis)
 
 	if n != 47 {
-		t.Errorf("Expected 46 got: %v", n)
+		t.Errorf("Expected 47 got: %v", n)
 	}
 
 }
 func TestCombi4(t *testing.T) {
-	//for i, c := range CreateCombi(4) {
-	//fmt.Printf("rank: %v,combi: %v\n", i, *c)
+	//for i, c := range createCombi(4) {
+	//	fmt.Printf("rank: %v,combi: %v\n", i, *c)
 	//}
 	combis := createCombi(4)
 	n := len(combis)
 	t.Log(combis)
-	if n != 49 {
-		t.Errorf("Expected 47 got: %v", n)
+	if n != 50 {
+		t.Errorf("Expected 50 got: %v", n)
 	}
 }
 func TestAnaWedge(t *testing.T) {
@@ -45,12 +45,27 @@ func TestAnaPhalanx(t *testing.T) {
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
 	//t.Error("Forced error")
 }
+func TestAnaPhalanxShortStack(t *testing.T) {
+	combi := Combinations(3)
+	drawSet := make(map[int]bool)
+	goodCards := []int{9, 1, 14, 37, 49, 38, 11}
+	for _, troop := range goodCards {
+		drawSet[troop] = true
+	}
+	drawNo := 7 + ((len(drawSet) - 7) / 2)
+	flagCards := []int{34, 4}
+	handCards := []int{}
+	ana := Ana(combi[14], flagCards, handCards, drawSet, drawNo, false)
+	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
+		*combi[14], flagCards, handCards, drawNo, ana)
+	t.Error("Forced error")
+}
 
 func TestAnaBattalion(t *testing.T) {
 	combinations := []int{46, 45, 48, 43}
 	dummies := []int{5, 6, 7, 18, 22, 33, 52, 21, 33}
 	combiNo3 := 26
-	combiNo4 := 30
+	combiNo4 := 31
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
 	//t.Error("Forced error")
 }
@@ -59,7 +74,7 @@ func TestAnaSkirmish123(t *testing.T) {
 	combinations := []int{1, 32, 43, 44}
 	dummies := []int{5, 6, 7, 18, 25, 37, 58, 29, 36}
 	combiNo3 := 46
-	combiNo4 := 48
+	combiNo4 := 49
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
 	//	t.Error("Forced error")
 }
@@ -77,7 +92,7 @@ func TestAnaSkirmish123GoodOdds(t *testing.T) {
 	ana := Ana(combi[46], flagCards, handCards, drawSet, drawNo, false)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[46], flagCards, handCards, drawNo, ana)
-	t.Error("Forced error")
+	//t.Error("Forced error")
 }
 func TestAnaBad(t *testing.T) {
 	flagCards := []int{1, 67}

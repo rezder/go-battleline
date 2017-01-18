@@ -31,12 +31,13 @@ func lostFlagTacticDbFlagMove(
 				dbFlagAnas := dbFlagSimulateMoves(dbMoves, tacix, flagix, flagsAna, handTroopixs, deck, deckMaxValues)
 				if dbFlagAnas.Len() > 0 {
 					sort.Sort(dbFlagAnas)
+					bestFlagAna := dbFlagAnas[dbFlagAnas.Len()-1]
 					if cerrors.LogLevel() == cerrors.LOG_Debug {
 						tac, _ := cards.DrTactic(tacix)
-						log.Printf("Double flag. Lost flag: %v, Tactic: %v, Analysis simulated Moves: %+v\n", flagix, tac.Name(), dbFlagAnas)
+						log.Printf("Double flag. Lost flag: %v, Tactic: %v, Analysis simulated Moves: %+v\n", flagix, tac.Name(), bestFlagAna)
 					}
-					if dbFlagAnas[dbFlagAnas.Len()-1].isWinWin() || flagAna.IsLoosingGame {
-						move = dbFlagAnas[dbFlagAnas.Len()-1].move
+					if bestFlagAna.isWinWin() || flagAna.IsLoosingGame {
+						move = bestFlagAna.move
 						cardix = tacix
 					}
 				}
@@ -163,8 +164,8 @@ func (dba *dbFlagAnaSim) String() string {
 	if dba == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("{Win:%v LoseGame:%v WinProb:%v PhalanxWin: %v Ana: %v OldAna: %v FlagValue:%v}",
-		dba.isWin, dba.isLosingGame, dba.winProb, dba.phalanxProb, dba.ana, dba.oldAna, dba.flagValue)
+	return fmt.Sprintf("{Flag:%v Win:%v LoseGame:%v WinProb:%v PhalanxWin: %v FlagValue:%v}",
+		dba.oldAna.Flagix, dba.isWin, dba.isLosingGame, dba.winProb, dba.phalanxProb, dba.flagValue)
 }
 func newDbFlagAnaSim(oldAna, ana *flag.Analysis) (dba *dbFlagAnaSim) {
 	dba = new(dbFlagAnaSim)
@@ -294,23 +295,19 @@ func dbFlagCalcImprovProb(oldAna, ana *flag.Analysis) (diffWinProb, diffPhalanxP
 	return diffWinProb, diffPhalanxProb
 }
 func flagAnaProb(flagAna *flag.Analysis) (win, phalanx float64) {
-	//fmt.Printf("Db flagAna %+v", flagAna)
 	if flagAna.Analysis != nil && !flagAna.IsFog && !flagAna.IsNewFlag {
-		if flagAna.IsTargetRanked {
-			targetRank := flagAna.TargetRank
-			if flagAna.IsTargetMade {
-				targetRank = targetRank - 1
+		targetRank := flagAna.TargetRank
+		if flagAna.IsTargetMade {
+			targetRank = targetRank - 1
+		}
+		for _, combiAna := range flagAna.Analysis {
+			if combiAna == nil {
+				break
 			}
-			for _, combiAna := range flagAna.Analysis {
-				if combiAna == nil {
-					break
-				}
-				if combiAna.Comb.Rank <= targetRank && combiAna.Prop > 0 {
-					win = win + combiAna.Prop
-				}
+			if combiAna.Comb.Rank <= targetRank && combiAna.Prop > 0 {
+				win = win + combiAna.Prop
 			}
 		}
-
 		for _, combiAna := range flagAna.Analysis {
 			if combiAna == nil {
 				break

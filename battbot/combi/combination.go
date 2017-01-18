@@ -103,7 +103,7 @@ func createCombiBattalion(cardsNo int) (combis []*Combination) {
 	if cardsNo == 3 {
 		maxsum = 27 //J10+10+7 higest no straight flush
 	} else {
-		maxsum = 35 //J10+10+9+6
+		maxsum = 36 //J10+10+9+6 J10,10,j8,8
 	}
 	minsum := 0
 	for i := 1; i < cardsNo+1; i++ {

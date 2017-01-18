@@ -35,6 +35,7 @@ func makeMoveClaim(moves []bat.Move) (moveix int) {
 }
 func deckZeroTacMove(
 	playableTacNo int,
+	playableLeader bool,
 	deck *botdeck.Deck,
 	handTroopixs []int,
 	flags [bat.NOFlags]*flag.Flag) bat.MoveDeck {
@@ -42,11 +43,11 @@ func deckZeroTacMove(
 	move := *bat.NewMoveDeck(bat.DECKTroop)
 	if playableTacNo > 0 || deck.OppTacNo() > 0 {
 		isBotFirst := true
-		flagsAna, _ := analyzeFlags(flags, handTroopixs, deck, isBotFirst)
+		flagsAna, deckMaxValues := analyzeFlags(flags, handTroopixs, deck, isBotFirst)
 		analyzeFlagsAddFlagValue(flagsAna)
 		analyzeFlagsAddLooseGameFlags(flagsAna)
 		keep := newKeep(flagsAna, handTroopixs, deck, isBotFirst)
-		if keep.deckCalcPickTac(flagsAna, deck) {
+		if keep.deckCalcPickTac(flagsAna, deck, playableTacNo, playableLeader, handTroopixs, deckMaxValues) {
 			move = *bat.NewMoveDeck(bat.DECKTac)
 		}
 	}
@@ -88,7 +89,7 @@ func makeMoveDeck(pos *Pos) (moveix int) {
 		tacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
 
 		if handTacNo == 0 {
-			move = deckZeroTacMove(tacAna.botNo, pos.deck, pos.playHand.Troops, pos.flags)
+			move = deckZeroTacMove(tacAna.botNo, tacAna.botLeader, pos.deck, pos.playHand.Troops, pos.flags)
 		} else {
 			move = deckScoutMove(tacAna.botNo, pos.deck, pos.playHand, pos.flags)
 		}
@@ -231,33 +232,6 @@ func analyzeFlags(
 	}
 	return flagsAna, deckMaxValues
 }
-
-//anaFlagsAddLooseGameFlags add if game is lost if flag is lost.
-//#flagsAna
-func analyzeFlagsAddLooseGameFlags(flagsAna map[int]*flag.Analysis) {
-	lostixs := make([]int, 0, 9)
-	claimedNo := 0
-	for _, flagAna := range flagsAna {
-		if flagAna.IsLost {
-			lostixs = append(lostixs, flagAna.Flagix)
-		} else if flagAna.Flag.Claimed == flag.CLAIMOpp {
-			claimedNo++
-		}
-	}
-	if len(lostixs)+claimedNo > 4 {
-		for i := 0; i < len(lostixs); i++ {
-			flagsAna[lostixs[i]].IsLoosingGame = true
-		}
-	} else {
-		for i := 0; i < len(lostixs); i++ {
-			flagix := lostixs[i]
-			if looseGame3Flag(flagix, flagsAna) {
-				flagsAna[flagix].IsLoosingGame = true
-			}
-
-		}
-	}
-}
 func analyzeFlagsAddFlagValue(flagsAna map[int]*flag.Analysis) {
 	flagValues := make([]int, bat.NOFlags)
 	for _, ana := range flagsAna {
@@ -290,26 +264,56 @@ func analyzeFlagsAddFlagValue(flagsAna map[int]*flag.Analysis) {
 		ana.FlagValue = flagValues[i]
 	}
 }
-func looseGame3Flag(lostFlagix int, flagsAna map[int]*flag.Analysis) (loose bool) {
+
+//anaFlagsAddLooseGameFlags add if game is lost if lost flag is lost.
+//#flagsAna
+func analyzeFlagsAddLooseGameFlags(flagsAna map[int]*flag.Analysis) {
+	lostixs := make([]int, 0, 9)
+	claimedNo := 0
+	for _, flagAna := range flagsAna {
+		if flagAna.IsLost {
+			lostixs = append(lostixs, flagAna.Flagix)
+		} else if flagAna.Flag.Claimed == flag.CLAIMOpp {
+			claimedNo++
+		}
+	}
+	if len(lostixs)+claimedNo > 4 {
+		for i := 0; i < len(lostixs); i++ {
+			flagsAna[lostixs[i]].IsLoosingGame = true
+		}
+	} else {
+		for i := 0; i < len(lostixs); i++ {
+			flagix := lostixs[i]
+			if threeFlagsInRow(flagix, flagsAna, isFlagLostOrClaimed) {
+				flagsAna[flagix].IsLoosingGame = true
+			}
+
+		}
+	}
+}
+
+func threeFlagsInRow(lostFlagix int, flagsAna map[int]*flag.Analysis, cond func(*flag.Analysis) bool) (loose bool) {
 	if lostFlagix > 1 &&
-		isFlagLostOrClaimed(flagsAna[lostFlagix-1]) &&
-		isFlagLostOrClaimed(flagsAna[lostFlagix-2]) {
+		cond(flagsAna[lostFlagix-1]) &&
+		cond(flagsAna[lostFlagix-2]) {
 		loose = true
 	} else if lostFlagix < 7 &&
-		isFlagLostOrClaimed(flagsAna[lostFlagix+1]) &&
-		isFlagLostOrClaimed(flagsAna[lostFlagix+2]) {
+		cond(flagsAna[lostFlagix+1]) &&
+		cond(flagsAna[lostFlagix+2]) {
 		loose = true
 	} else if lostFlagix < 8 && lostFlagix > 0 &&
-		isFlagLostOrClaimed(flagsAna[lostFlagix+1]) &&
-		isFlagLostOrClaimed(flagsAna[lostFlagix-1]) {
+		cond(flagsAna[lostFlagix+1]) &&
+		cond(flagsAna[lostFlagix-1]) {
 		loose = true
 	}
 
 	return loose
 }
+
 func isFlagLostOrClaimed(flagAna *flag.Analysis) bool {
 	return flagAna.IsLost || flagAna.Flag.Claimed == flag.CLAIMOpp
 }
+
 func prioritizedMove(
 	flagsAna map[int]*flag.Analysis,
 	keep *keep,
@@ -378,7 +382,9 @@ func lostFlagTacticMove(
 				move = *bat.NewMoveDeck(bat.DECKTroop)
 			}
 		} else {
-			for _, handTacix := range handTacixs {
+			priHandTacixs := tacsPrioritize(handTacixs)
+			for _, pix := range priHandTacixs {
+				handTacix := handTacixs[pix]
 				switch handTacix {
 				case cards.TCRedeploy:
 					fallthrough
@@ -583,7 +589,7 @@ func priNCardsMove(n int, flagixs []int, flagsAna map[int]*flag.Analysis) (troop
 
 func pfnfBestWinCard(flagAna *flag.Analysis) (troopix int, logTxt string) {
 	logTxt = "Made a n flag cards move: Best wining card."
-	if !flagAna.IsFog && flagAna.IsTargetRanked {
+	if !flagAna.IsFog && flagAna.OppTroopsNo > 0 {
 		targetRank := flagAna.TargetRank
 		if flagAna.IsTargetMade {
 			targetRank = targetRank - 1
@@ -761,8 +767,12 @@ func pfnfMadePhalanx(flagAna *flag.Analysis) (troopix int, logTxt string) {
 }
 func pfkfFog(flagAna *flag.Analysis, keep *keep) (troopix int, logTxt string) {
 	logTxt = "Made a fog move"
-	if flagAna.IsFog || (flagAna.IsTargetRanked && flagAna.TargetRank == 0) {
+	if flagAna.IsFog {
 		if len(flagAna.SumCards) > 0 {
+			troopix = keep.requestFirst(flagAna.SumCards)
+		}
+	} else if flagAna.TargetRank == 0 {
+		if len(flagAna.SumCards) > 0 && flagAna.BotMaxSum >= flagAna.TargetSum {
 			troopix = keep.requestFirst(flagAna.SumCards)
 		}
 	}
@@ -780,7 +790,7 @@ func priNewFlagMove(flagixs []int,
 	moveFlagix := -1
 	for _, flagix := range flagixs {
 		flagAna := flagsAna[flagix]
-		if flagAna.IsNewFlag && flagAna.IsTargetRanked {
+		if flagAna.IsNewFlag && flagAna.OppTroopsNo > 0 {
 			targetRank := flagAna.TargetRank
 			if flagAna.IsTargetMade {
 				targetRank = targetRank - 1
@@ -827,7 +837,7 @@ func newFlagSelectFlag(troopix int, flagixs []int, flagsAna map[int]*flag.Analys
 	newFlagixs := make([]int, 0, len(flagixs))
 	for _, flagix := range flagixs {
 		flagAna := flagsAna[flagix]
-		if flagAna.IsNewFlag && !flagAna.IsTargetRanked {
+		if flagAna.IsNewFlag && flagAna.OppTroopsNo == 0 {
 			newFlagixs = append(newFlagixs, flagix)
 		}
 	}

@@ -44,6 +44,18 @@ func (deck *Deck) Troops() map[int]bool {
 	return troops
 }
 
+//Tacs returns a all tactic cards in the deck.
+func (deck *Deck) Tacs() map[int]bool {
+	tacs := make(map[int]bool)
+	for tactic := range deck.tacs {
+		tacs[tactic] = true
+	}
+	for _, tactic := range deck.scoutReturnTacs {
+		tacs[tactic] = true
+	}
+	return tacs
+}
+
 //OppHand returns the opponent hand it is copy.
 func (deck *Deck) OppHand() []int {
 	hand := make([]int, len(deck.oppHand))
@@ -53,20 +65,17 @@ func (deck *Deck) OppHand() []int {
 
 //OppDrawNo calculate the opponent number of unknown cards.
 func (deck *Deck) OppDrawNo(isFirst bool) (no int) {
-	no = len(deck.troops)
-	no = no + len(deck.scoutReturnTroops)
+	no = deck.DeckTroopNo()
 	if isFirst {
 		no = no + 1
 	}
-	no = no / 2
-	no = no + deck.oppTroops
+	no = (no / 2) + deck.oppTroops
 	return no
 }
 
 //BotDrawNo calculate the bots number of the unknown cards.
 func (deck *Deck) BotDrawNo(isFirst bool) (no int) {
-	no = len(deck.troops)
-	no = no + len(deck.scoutReturnTroops)
+	no = deck.DeckTroopNo()
 	if isFirst {
 		no = no + 1
 	}
@@ -173,7 +182,7 @@ func (d *Deck) OppSetInitHand(troops int, tacs int) {
 	d.oppTroops = troops
 }
 
-//OppScoutReturn update the deck with the opponent scout return information.
+//OppScoutReturn update the deck with the opponent scout return move.
 func (d *Deck) OppScoutReturn(troops int, tacs int) {
 	d.oppTroops = d.oppTroops - troops
 	d.oppTacs = d.oppTacs - tacs
@@ -250,4 +259,16 @@ func MaxValuesUpd(troopix int, values []int) (updValues []int, max bool) {
 }
 func (deck *Deck) OppTacNo() int {
 	return deck.oppTacs
+}
+func (deck *Deck) ScoutReturnTacPeek() int {
+	if len(deck.scoutReturnTacs) > 0 {
+		return deck.scoutReturnTacs[len(deck.scoutReturnTacs)-1]
+	}
+	return 0
+}
+func (deck *Deck) ScoutReturnTroopPeek() int {
+	if len(deck.scoutReturnTroops) > 0 {
+		return deck.scoutReturnTroops[len(deck.scoutReturnTroops)-1]
+	}
+	return 0
 }

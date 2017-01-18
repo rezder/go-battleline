@@ -1596,7 +1596,7 @@ var batt={};
             case TURN_QUIT:
             case TURN_FINISH:
                 myturn=false;
-                turnText="Game is Over";
+                turnText="Game over";
                 ends();
                 break;
             case TURN_DECK:

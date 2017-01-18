@@ -7,8 +7,10 @@ import (
 )
 
 const (
+	//CLAIMPlay claimed by bot
 	CLAIMPlay = 1
-	CLAIMOpp  = -1
+	//CLAIMOpp claimed by the opponent
+	CLAIMOpp = -1
 )
 
 //Flag a battleline flag.
@@ -154,6 +156,8 @@ func (flag *Flag) isEnv(env int) bool {
 func (flag *Flag) IsMud() bool {
 	return flag.isEnv(cards.TCMud)
 }
+
+// FormationSize the size of formation 3 or 4.
 func (flag *Flag) FormationSize() (size int) {
 	size = 3
 	if flag.IsMud() {
@@ -161,6 +165,8 @@ func (flag *Flag) FormationSize() (size int) {
 	}
 	return size
 }
+
+//IsClaimed if flag have been claimed.
 func (flag *Flag) IsClaimed() bool {
 	return flag.Claimed != 0
 }
