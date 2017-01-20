@@ -39,7 +39,7 @@ func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *S
 	s.saveDir = saveDir
 	s.StartGameChCl = pub.NewStartGameChCl()
 	s.doneCh = make(chan struct{})
-	bat.GobRegistor()
+	//bat.GobRegistor()
 	s.saveGames, err = loadSaveGames()
 	return s, err
 }

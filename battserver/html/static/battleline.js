@@ -6,6 +6,7 @@ var batt={};
         const COLORS_Names=["Green","Red","Purpel","Yellow","Blue","Orange"];
         const COLOR_CardFrame="#ffffff";
         const COLOR_CardFrameSpecial="#000000";
+        const COLOR_CardFrameLastMove="#0000cc";
 
         const ID_Cone=1;
         const ID_FlagTroop=2;
@@ -308,6 +309,25 @@ var batt={};
         };
         exp.hand.unSelect=hand.unSelect;
 
+        flag.cardLastMoveMark=function(cardix){
+            let cardGroup=document.getElementById(id.typeToName(ID_Card,cardix));
+            cardGroup.getElementsByTagName("rect")[0].style.stroke=COLOR_CardFrameLastMove;
+            if (flag.cardLastMoveSelected){
+                flag.cardLastMoveSelected.push(cardGroup);
+            }else{
+                flag.cardLastMoveSelected=[cardGroup];
+            }
+        };
+        exp.flag.cardLastMoveMark=flag.cardLastMoveMark;
+        flag.cardLastMoveUnMark=function(){
+            if (flag.cardLastMoveSelected){
+                for(let i=0;i<flag.cardLastMoveSelected.length;i++){
+                    flag.cardLastMoveSelected[i].getElementsByTagName("rect")[0].style.stroke=COLOR_CardFrame;
+                }
+                flag.cardLastMoveSelected=null;
+            }
+        };
+        exp.flag.cardLastMoveUnMark=flag.cardLastMoveUnMark;
         flag.cardSelect=function(cardGroup){
             cardGroup.getElementsByTagName("rect")[0].style.stroke=COLOR_CardFrameSpecial;
             flag.cardSelected=cardGroup;
@@ -1076,7 +1096,7 @@ var batt={};
                         }
                     }
                 }
-            }else{
+            }else{//Opponent move
                 //Move bat.Move and Card int
                 switch (move.JsonType){
                 case "MoveInit":
@@ -1148,6 +1168,8 @@ var batt={};
                     break;
                 case "MoveCardFlag":
                     svg.hand.moveToFlagOpp(moveView.MoveCardix,move.Flagix+1);
+                    svg.flag.cardLastMoveUnMark();
+                    svg.flag.cardLastMoveMark(moveView.MoveCardix);
                     break;
                 case "MoveDeck":
                     svg.hand.drawOpp(move.Deck===DECK_TROOP);
@@ -1168,9 +1190,13 @@ var batt={};
                 case "MoveDeserterView":
                     svg.hand.moveToDishOpp(moveView.MoveCardix);
                     svg.flag.cardToDish(move.Move.Card);
+                    svg.flag.cardLastMoveUnMark();
+                    svg.flag.cardLastMoveMark(moveView.MoveCardix);
+                    svg.flag.cardLastMoveMark(move.Move.Card);
                     if (move.Dishixs){
                         for(let i=0;i<move.Dishixs.length;i++){
                             svg.flag.cardToDish(move.Dishixs[i]);
+                            svg.flag.cardLastMoveMark(move.Dishixs[i]);
                         }
                     }
                     break;
@@ -1185,18 +1211,24 @@ var batt={};
                             svg.hand.moveToDeckOpp(false);
                         }
                     }
+                    svg.flag.cardLastMoveUnMark();
+                    svg.flag.cardLastMoveMark(moveView.MoveCardix);
+
                     msg.recieved({Message:"Opponent return "+move.Tac+" tactic cards and "+move.Troop+" troop cards."});
                     break;
                 case "MoveTraitor":
                     svg.hand.moveToDishOpp(moveView.MoveCardix);
-                    if (move.InFlag>=0){
-                        svg.flag.cardToFlag(move.OutCard,move.InFlag+1,false);
-                    }else{
-                        svg.flag.cardToDish(move.OutCard);
-                    }
+                    svg.flag.cardToFlag(move.OutCard,move.InFlag+1,false);
+
+                    svg.flag.cardLastMoveUnMark();
+                    svg.flag.cardLastMoveMark(moveView.MoveCardix);
+                    svg.flag.cardLastMoveMark(move.OutCard);
                     break;
                 case "MoveRedeployView":
                     svg.hand.moveToDishOpp(moveView.MoveCardix);
+                    svg.flag.cardLastMoveUnMark();
+                    svg.flag.cardLastMoveMark(moveView.MoveCardix);
+                    svg.flag.cardLastMoveMark(move.OutCard);
                     if (move.Move.InFlag>=0){
                         svg.flag.cardToFlag(move.Move.OutCard,move.Move.InFlag+1,false);
                     }else{
@@ -1205,8 +1237,10 @@ var batt={};
                     if(move.RedeployDishixs){
                         for(let i=0;i<move.RedeployDishixs.length;i++){
                             svg.flag.cardToDish(move.RedeployDishixs[i]);
+                            svg.flag.cardLastMoveMark(move.RedeployDishixs[i]);
                         }
                     }
+
                     break;
                 case "MovePass":
                     msg.recieved({Message:"Your opponent chose not to play a card."});

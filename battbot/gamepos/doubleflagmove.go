@@ -178,6 +178,24 @@ func newDbFlagAnaSim(oldAna, ana *flag.Analysis) (dba *dbFlagAnaSim) {
 	dba.isLosingGame = oldAna.IsLoosingGame
 	return dba
 }
+func (dbas *dbFlagAnaSim) equal(other *dbFlagAnaSim) (equal bool) {
+	if other == nil && dbas == nil {
+		equal = true
+	} else if other != nil && dbas != nil {
+		if other == dbas {
+			equal = true
+		} else if other.isLosingGame == dbas.isLosingGame &&
+			other.isWin == dbas.isWin &&
+			other.winProb == dbas.winProb &&
+			other.phalanxProb == dbas.phalanxProb &&
+			other.flagValue == dbas.flagValue &&
+			other.botTroopNo == dbas.botTroopNo {
+			equal = true
+
+		}
+	}
+	return equal
+}
 
 func newDbFlagAna(move bat.Move, lost, oldLost, collateral, oldCollateral *flag.Analysis) (ta *dbFlagAna) {
 	ta = new(dbFlagAna)
@@ -199,7 +217,8 @@ func newDbFlagAna(move bat.Move, lost, oldLost, collateral, oldCollateral *flag.
 //5 Best lost.
 //WARNING all flags may be new flag.
 //Bets equal to most improved wining probability as we are simulating
-//and impossible move.
+//and impossible move. if best equal then compare coll.
+//LIMIT Probabilities is only use full when not dealing with sum.
 func (dba *dbFlagAna) compare(other *dbFlagAna) (comp int) {
 	comp = dbFlagLessCompare(dba.isWinWin(), other.isWinWin(), func() bool {
 		return dba.coll.ana.FlagValue < other.coll.ana.FlagValue
@@ -237,16 +256,46 @@ func (dba *dbFlagAna) compare(other *dbFlagAna) (comp int) {
 		return comp
 
 	}
-
-	taIsNotLost := !dba.lost.ana.IsLost && !dba.isCollLoseGame()
-	otIsNotLost := !other.lost.ana.IsLost && !other.isCollLoseGame()
-	comp = dbFlagLessCompare(!taIsNotLost, otIsNotLost, func() bool {
-		return dbFlagLessCompareProb(dba.lost, other.lost)
-	})
-
+	if !dba.lost.equal(other.lost) {
+		taIsNotLost := !dba.lost.ana.IsLost && !dba.isCollLoseGame()
+		otIsNotLost := !other.lost.ana.IsLost && !other.isCollLoseGame()
+		comp = dbFlagLessCompare(!taIsNotLost, otIsNotLost, func() bool {
+			return dbFlagLessCompareProb(dba.lost, other.lost)
+		})
+	} else {
+		taCollWin := dba.is2Flag() && dba.coll.isWin
+		otCollWin := other.is2Flag() && other.coll.isWin
+		comp = dbFlagLessCompare(taCollWin, otCollWin, func() bool {
+			return dba.coll.ana.FlagValue < other.coll.ana.FlagValue
+		})
+		if comp != 0 {
+			return comp
+		}
+		taCollImprove := other.is2Flag() &&
+			(dba.coll.winProb > 0 || dba.coll.phalanxProb > 0 && dba.coll.winProb >= 0)
+		otCollImprove := other.is2Flag() &&
+			(other.coll.winProb > 0 || other.coll.phalanxProb > 0 && other.coll.winProb >= 0)
+		comp = dbFlagLessCompare(taCollImprove, otCollImprove, func() bool {
+			return dbFlagLessCompareProb(dba.coll, other.coll)
+		})
+		if comp != 0 {
+			return comp
+		}
+		comp = dbFlagLessCompare(!dba.is2Flag(), !other.is2Flag(), func() bool {
+			return true
+		})
+		if comp != 0 {
+			return comp
+		}
+		comp = dbFlagLessCompare(dba.is2Flag(), other.is2Flag(), func() bool {
+			return dbFlagLessCompareProb(dba.coll, other.coll)
+		})
+	}
 	return comp
 }
 
+// dbFlagLessCompareProb compare first using probabilities then troop numbers
+// and then flag values. WARNING if all equal less is false.
 func dbFlagLessCompareProb(dba, other *dbFlagAnaSim) bool {
 	if dba.winProb < other.winProb {
 		return true
