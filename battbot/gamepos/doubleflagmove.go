@@ -271,7 +271,7 @@ func (dba *dbFlagAna) compare(other *dbFlagAna) (comp int) {
 		if comp != 0 {
 			return comp
 		}
-		taCollImprove := other.is2Flag() &&
+		taCollImprove := dba.is2Flag() &&
 			(dba.coll.winProb > 0 || dba.coll.phalanxProb > 0 && dba.coll.winProb >= 0)
 		otCollImprove := other.is2Flag() &&
 			(other.coll.winProb > 0 || other.coll.phalanxProb > 0 && other.coll.winProb >= 0)
