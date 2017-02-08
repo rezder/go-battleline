@@ -4,6 +4,7 @@ package tables
 
 import (
 	"encoding/gob"
+	arch "github.com/rezder/go-battleline/battarchiver/client"
 	bat "github.com/rezder/go-battleline/battleline"
 	pub "github.com/rezder/go-battleline/battserver/publist"
 	"github.com/rezder/go-error/cerrors"
@@ -28,10 +29,17 @@ type Server struct {
 	doneCh        chan struct{}
 	errCh         chan<- error
 	saveGames     *SaveGames
+	archiver      *arch.Client
 }
 
 //New creates a battleline tables server.
-func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *Server, err error) {
+func New(
+	pubList *pub.List,
+	errCh chan<- error,
+	save bool,
+	saveDir string,
+	archiverPort int) (s *Server, err error) {
+
 	s = new(Server)
 	s.pubList = pubList
 	s.errCh = errCh
@@ -41,12 +49,16 @@ func New(pubList *pub.List, errCh chan<- error, save bool, saveDir string) (s *S
 	s.doneCh = make(chan struct{})
 	//bat.GobRegistor()
 	s.saveGames, err = loadSaveGames()
+	if err != nil {
+		return s, err
+	}
+	s.archiver, err = arch.New(archiverPort, "")
 	return s, err
 }
 
 //Start starts the tables server.
 func (s *Server) Start() {
-	go start(s.StartGameChCl, s.pubList, s.doneCh, s.save, s.saveDir, s.errCh, s.saveGames)
+	go start(s.StartGameChCl, s.pubList, s.doneCh, s.save, s.saveDir, s.errCh, s.saveGames, s.archiver)
 }
 
 //Stop stops the tables server.
@@ -63,13 +75,21 @@ func (s *Server) Stop() {
 
 //Start tables server.
 //doneCh closing this channel will close down the tables server.
-func start(startGameChCl *pub.StartGameChCl, pubList *pub.List, doneCh chan struct{},
-	save bool, saveDir string, errCh chan<- error, saveGames *SaveGames) {
+func start(
+	startGameChCl *pub.StartGameChCl,
+	pubList *pub.List,
+	doneCh chan struct{},
+	save bool,
+	saveDir string,
+	errCh chan<- error,
+	saveGames *SaveGames,
+	archiver *arch.Client) {
+
 	finishTableCh := make(chan *FinishTableData)
 	startCh := startGameChCl.Channel
 	var done bool
 	games := make(map[int]*pub.GameData)
-
+	archiver.Start()
 Loop:
 	for {
 		select {
@@ -77,7 +97,11 @@ Loop:
 			delete(games, fin.ids[0])
 			delete(games, fin.ids[1])
 			if fin.game != nil {
-				saveGames.Games[gameID(fin.ids)] = fin.game
+				if fin.game.Pos.Turn.State == bat.TURNQuit || fin.game.Pos.Turn.State == bat.TURNFinish {
+					archiver.Archive(fin.game)
+				} else {
+					saveGames.Games[gameID(fin.ids)] = fin.game
+				}
 			}
 			if done && len(games) == 0 {
 				break Loop
@@ -123,6 +147,8 @@ Loop:
 	if err != nil {
 		errCh <- err
 	}
+	archiver.Stop()
+	archiver.WaitToFinish()
 	close(doneCh)
 }
 func IsPlaying(ids [2]int, games map[int]*pub.GameData) bool {

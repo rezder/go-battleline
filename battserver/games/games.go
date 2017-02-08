@@ -15,10 +15,10 @@ type Server struct {
 }
 
 //New Create a game server.
-func New(errCh chan<- error, save bool, saveDir string) (g *Server, err error) {
+func New(errCh chan<- error, save bool, saveDir string, archiverPort int) (g *Server, err error) {
 	g = new(Server)
 	list := pub.New()
-	tables, err := tables.New(list, errCh, save, saveDir)
+	tables, err := tables.New(list, errCh, save, saveDir, archiverPort)
 	if err != nil {
 		return g, err
 	}

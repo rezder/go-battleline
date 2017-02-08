@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 	flag.StringVar(&port, "port", "8181", "The port")
 	flag.StringVar(&name, "name", "Rene", "User name")
 	flag.StringVar(&pw, "pw", "12345678", "User password")
-	flag.IntVar(&logLevel, "loglevel", 2, "Log level 0 default lowest, 2 highest") //TODO CLEAN change to 0
+	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 2 highest") //TODO CLEAN change to 0
 	flag.Parse()
 	if len(port) != 0 {
 		addrPort = addr + ":" + port
@@ -63,7 +64,7 @@ func main() {
 	finConnCh := make(chan struct{})
 	go start(conn, doneCh, finConnCh)
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Printf("Bot (%v) up and running. Close with ctrl+c\n", name)
 Loop:
 	for {
@@ -169,6 +170,9 @@ Loop:
 			if open {
 				switch jsonDataTemp.JsonType {
 				case players.JTList:
+					//Just do as below need name to avoid invite self
+					// timer to wait if no one to invite
+					// and a setting to controll if inviter reciever
 				case players.JTInvite:
 					if gamePos == nil {
 						var invite pub.Invite

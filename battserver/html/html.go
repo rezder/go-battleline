@@ -34,7 +34,7 @@ type Server struct {
 }
 
 //New creates a new Server.
-func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server, err error) {
+func New(errCh chan<- error, port string, save bool, saveDir string, archiverPort int) (s *Server, err error) {
 	s = new(Server)
 	pages := NewPages()
 	pages.addFile(fileLogIn)
@@ -61,7 +61,7 @@ func New(errCh chan<- error, port string, save bool, saveDir string) (s *Server,
 	if err == nil {
 		s.netListener = netListener
 		var gameServer *games.Server
-		gameServer, err = games.New(errCh, save, saveDir)
+		gameServer, err = games.New(errCh, save, saveDir, archiverPort)
 		if err == nil {
 			var clients *Clients
 			clients, err = loadClients(gameServer)

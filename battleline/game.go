@@ -34,7 +34,7 @@ type Game struct {
 func New(playerIds [2]int) (game *Game) {
 	game = new(Game)
 	game.PlayerIds = playerIds
-	game.Pos = NewGamePos()
+	//game.Pos = NewGamePos()
 	return game
 }
 func (game *Game) Equal(other *Game) (equal bool) {
@@ -60,42 +60,58 @@ func (game *Game) Equal(other *Game) (equal bool) {
 	return equal
 }
 
+// ResetGame reset the game to the first position and returns
+// and clear the moves.
+func (game *Game) ResetGame() (moves [][2]int) {
+	pos := NewGamePos()
+	pos.DeckTroop = *game.InitDeckTroop.Copy()
+	pos.DeckTac = *game.InitDeckTac.Copy()
+	deal(&pos.Hands, &pos.DeckTroop)
+	pos.Turn.start(game.Starter, pos.Hands[game.Starter], &pos.Flags,
+		&pos.DeckTac, &pos.DeckTroop, &pos.Dishs)
+	game.Pos = pos
+
+	moves = make([][2]int, len(game.Moves))
+	copy(moves, game.Moves)
+	game.Moves = make([][2]int, 0, len(moves))
+	return moves
+}
+
+//histMove update game with stored move.
+//#game
+func histMove(move [2]int, game *Game) {
+	switch {
+	case move[1] == SMGiveUp:
+		game.Quit(game.Pos.Player)
+	case move[1] == SMPass:
+		game.Pass()
+	case move[1] >= 0:
+		if move[0] > 0 {
+			game.MoveHand(move[0], move[1])
+		} else {
+			game.Move(move[1])
+		}
+	default:
+		panic("This should not happen. Move data is corrupt")
+	}
+}
+
 //CalcPos calculate the current posistion from the initial position and
 //the moves. The new position replace the old position.
 func (game *Game) CalcPos() {
-	game.Pos = NewGamePos()
-	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
-	game.Pos.DeckTac = *game.InitDeckTac.Copy()
-	deal(&game.Pos.Hands, &game.Pos.DeckTroop)
-	game.Pos.Turn.start(game.Starter, game.Pos.Hands[game.Starter], &game.Pos.Flags,
-		&game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
-	moves := make([][2]int, len(game.Moves))
-	copy(moves, game.Moves)
-	game.Moves = make([][2]int, 0, len(moves))
+	moves := game.ResetGame()
 	for _, move := range moves {
-		switch {
-		case move[1] == SMGiveUp:
-			game.Quit(game.Pos.Player)
-		case move[1] == SMPass:
-			game.Pass()
-		case move[1] >= 0:
-			if move[0] > 0 {
-				game.MoveHand(move[0], move[1])
-			} else {
-				game.Move(move[1])
-			}
-		default:
-			panic("This should not happen. Move data is corrupt")
-		}
+		histMove(move, game)
 	}
 }
 func (game *Game) Start(starter int) {
-	pos := game.Pos
+	pos := NewGamePos()
 	game.Starter = starter
 	game.InitDeckTroop = *pos.DeckTroop.Copy()
 	game.InitDeckTac = *pos.DeckTac.Copy()
 	deal(&pos.Hands, &pos.DeckTroop)
 	pos.Turn.start(starter, pos.Hands[starter], &pos.Flags, &pos.DeckTac, &pos.DeckTroop, &pos.Dishs)
+	game.Pos = pos
 	game.Moves = make([][2]int, 0)
 }
 

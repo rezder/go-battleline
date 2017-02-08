@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>machine.html</title>
+
+</head>
+
+<body>
+
+<h1 id="machine-learning-bot">Machine learning bot</h1>
+<p>The plan is to see the game as independed move based on position, I think that is ok because the order of move realy does not matter. So for machine learning to work the game position must formulated to fit machine learning. I feel a little stupid realising that the game position can be viewed as 70 cards and their position and 9 flags and their position and any move is just a change of postions. The game position as view from the bot also need the numbers of tactic and troop cards of the opponent to have a complete picture.</p>
+<h2 id="game-postion">Game postion</h2>
+<h3 id="variables-cards">Variables cards</h3>
+<p>card1-card70 containing a position.</p>
+<p>Card Position:</p>
+<ul>
+<li><strong>Flag</strong> opponent/bot denoted FLAGxO,FLAGxB x is a number from 1-9.</li>
+<li><strong>Dish</strong> DISHOpp or DISHBot</li>
+<li><strong>Hand</strong> HANDOpp or HANDBot Opponent can only have two cards the scout returned cards.</li>
+<li><strong>Deck</strong> DECK,DECKScout1,DECKScout2 where 1 and 2 refer to the cards that have been returned in a scout retun move. 2 is top card in the deck if there is two cards.</li>
+</ul>
+<p>This gives 28+2+2+3=25 positions.</p>
+<h3 id="variables-flags">Variables flags</h3>
+<p>flag1-flag9 containing a position.</p>
+<p>Flags position:</p>
+<ul>
+<li><strong>Unclaimed</strong> CLAIMNon</li>
+<li><strong>Claimed</strong> CLAIMBot,CLAIMOpp</li>
+</ul>
+<p>To match the old code CLAIMNon=0,CLAIMBot=1,CLAIMOpp=-1</p>
+<h3 id="variables-opponent-hand.">Variables opponent hand.</h3>
+<p>troopNo,tacNo containing a number between 0-7. The opponent can only have maximum 7 cards when it is the bot turn. So both numbers is between 0-7.</p>
+<ul>
+<li><strong>Troop cards</strong> TROOPNo the number of troops including any known from scout returned.</li>
+<li><strong>Tactic cards</strong> TACNo the number of troops including any known from scout returned.</li>
+</ul>
+<h2 id="move">Move</h2>
+<h3 id="hand-card-move">Hand card move</h3>
+<p>The hand move be genralized to two cards and a flag/dish. The first card is the guile card if any the second is morale, enviroment or troop if any. Examples:</p>
+<ul>
+<li><p><strong>Redeploy</strong> first card is redeploy second card is the card that is moved and the flag/dish is the new position of the second card.</p></li>
+<li><p><strong>Scout</strong> first and second card is none and position is dish. The dish is only for consistency it is not used and i expected it to be zero.</p></li>
+</ul>
+<p>Legal moves could be calculated for every first card.</p>
+<ul>
+<li><strong>Scout</strong> that is easy as the deck selct is not handle here. Move 1.</li>
+<li><strong>Redeploy</strong> Second card can be all troops, enviroment and morale card 66 and all flags and dish. Moves 660.</li>
+<li><strong>Deserter</strong> can kill the same 66 cards as redeploy can move. Move 66.</li>
+<li><strong>Traitor</strong> can only move troops 60 to a flag. Moves 540.</li>
+<li><strong>None</strong> The 66 cards can be move to any 9 flag 594 and the pass move could be all none and dish. Moves 595.</li>
+</ul>
+<p>This give 1+660+66+540+595=1862 moves.</p>
+<h3 id="deck-move">Deck move</h3>
+<p>This is simple just troop or tactic.</p>
+<h3 id="claim-move">Claim move</h3>
+<p>This not so easy as it is any combinations of flags. It could be 9 bit lable or may I learn something else. 2^9=512</p>
+
+</body>
+</html>

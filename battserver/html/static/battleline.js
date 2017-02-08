@@ -1212,7 +1212,6 @@ var batt={};
                         }
                     }
                     svg.flag.cardLastMoveUnMark();
-                    svg.flag.cardLastMoveMark(moveView.MoveCardix);
 
                     msg.recieved({Message:"Opponent return "+move.Tac+" tactic cards and "+move.Troop+" troop cards."});
                     break;
@@ -2210,7 +2209,6 @@ var batt={};
 	              const JT_List   = 5;
                 const JT_CloseCon=6;
                 const JT_ClearInvites=7;
-                //TODO CLEAN up consolelog
                 let json=JSON.parse(event.data);
                 console.log(json);
                 switch (json.JsonType){

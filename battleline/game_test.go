@@ -219,30 +219,9 @@ func loadGamePositions(t *testing.T, name string) (pos *TestPos, err error) {
 }
 
 func gameMoveLoop(game *Game, posFunc func(*GamePos, int)) {
-	game.Pos = NewGamePos()
-	game.Pos.DeckTroop = *game.InitDeckTroop.Copy()
-	game.Pos.DeckTac = *game.InitDeckTac.Copy()
-	deal(&game.Pos.Hands, &game.Pos.DeckTroop)
-	game.Pos.Turn.start(game.Starter, game.Pos.Hands[game.Starter], &game.Pos.Flags,
-		&game.Pos.DeckTac, &game.Pos.DeckTroop, &game.Pos.Dishs)
-	moves := make([][2]int, len(game.Moves))
-	copy(moves, game.Moves)
-	game.Moves = make([][2]int, 0, len(moves))
+	moves := game.ResetGame()
 	for i, move := range moves {
-		switch {
-		case move[1] == SMGiveUp:
-			game.Quit(game.Pos.Player)
-		case move[1] == SMPass:
-			game.Pass()
-		case move[1] >= 0:
-			if move[0] > 0 {
-				game.MoveHand(move[0], move[1])
-			} else {
-				game.Move(move[1])
-			}
-		default:
-			panic("This should not happen. Move data is corrupt")
-		}
+		histMove(move, game)
 		posFunc(game.Pos, i)
 	}
 }

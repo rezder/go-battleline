@@ -17,6 +17,7 @@ import (
 // and will create a directory data with two gob files.
 func main() {
 	portFlag := flag.Int("port", 8181, "tcp port")
+	archiverPortFlag := flag.Int("archport", 7171, "Arciver tcp port")
 	saveFlag := flag.Bool("save", false, "Save games.")
 	saveDirFlag := flag.String("savedir", "temp", "Save game directory")
 	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 2 highest")
@@ -29,7 +30,7 @@ func main() {
 		port = ":" + strconv.Itoa(*portFlag)
 	}
 	errCh := make(chan error, 10)
-	httpServer, err := html.New(errCh, port, *saveFlag, *saveDirFlag)
+	httpServer, err := html.New(errCh, port, *saveFlag, *saveDirFlag, *archiverPortFlag)
 	if err != nil {
 		if cerrors.LogLevel() != cerrors.LOG_Debug {
 			log.Printf("Create server fail. Error: %v\n", err)

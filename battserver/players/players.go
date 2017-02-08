@@ -891,8 +891,13 @@ type ClearInvites string
 
 // netWrite keep reading until overflow/broken line or done message is send.
 // overflow/broken line disable the write to net but keeps draining the pipe.
-func netWrite(ws *websocket.Conn, dataCh <-chan interface{}, errCh chan<- error,
-	brokenConn chan struct{}, doneCh chan struct{}) {
+func netWrite(
+	ws *websocket.Conn,
+	dataCh <-chan interface{},
+	errCh chan<- error,
+	brokenConn chan struct{},
+	doneCh chan struct{}) {
+
 	broke := false
 	serverStop := false
 	playerStop := false

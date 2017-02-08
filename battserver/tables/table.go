@@ -112,9 +112,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	close(benchCh)
 	finData := new(FinishTableData)
 	finData.ids = ids
-	if isSaveMove {
-		finData.game = game
-	}
+	finData.game = game
 	finishCh <- finData // may be buffered tables will close bench before closing tables
 }
 func saveGame(ids [2]int, game *bat.Game, errCh chan<- error, saveDir string) {
