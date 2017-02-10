@@ -274,7 +274,7 @@ type Data struct {
 	Invite  chan<- *Invite  `json:"-"`
 	DoneCom chan struct{}   `json:"-"` //Used by the player
 	Message chan<- *MesData `json:"-"`
-	Opp     int             // maybe this is not need
+	Opp     int
 	OppName string
 	Watch   *WatchChCl `json:"-"`
 }

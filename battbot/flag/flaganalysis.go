@@ -90,7 +90,7 @@ func NewAnalysis(
 		}
 		if !flag.IsFog() {
 			if fa.OppTroopsNo != oppMoraleNo {
-				fa.TargetRank = calcMaxRank(flag.OppTroops, deck.OppHand(),
+				fa.TargetRank = CalcMaxRank(flag.OppTroops, deck.OppHand(),
 					deck.Troops(), deck.OppDrawNo(!isBotFirst), flag.IsMud())
 			} else {
 				fa.TargetRank = calcMaxRankNewFlag(flag.OppTroops, deck.OppHand(),
@@ -187,7 +187,7 @@ func (ana *Analysis) IsWin() (isWin bool) {
 		}
 		if !isWin {
 			if targetRank == 100 || targetRank == 0 {
-				curSum := moralesTroopsSum(ana.Flag.PlayTroops)
+				curSum := MoraleTroopsSum(ana.Flag.PlayTroops)
 				if ana.BotTroopNo < ana.FormationSize {
 					curSum = curSum + ana.FormationSize - ana.BotTroopNo
 				}
@@ -239,7 +239,7 @@ func lost(targetRank, targetSum, botMaxSum, botRank int) bool {
 //#deckValues
 func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationSize int) (playableCards []int, botMaxSum int) {
 	if len(flagTroops) == formationSize {
-		botMaxSum = moralesTroopsSum(flagTroops)
+		botMaxSum = MoraleTroopsSum(flagTroops)
 	} else {
 		botMaxSum, deckValues = maxSum(flagTroops, botHandTroops, deckValues, formationSize == 4)
 		if targetSum >= botMaxSum {
@@ -253,7 +253,7 @@ func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationS
 				}
 			}
 		} else {
-			flagSum := moralesTroopsSum(flagTroops)
+			flagSum := MoraleTroopsSum(flagTroops)
 			playableCards = make([]int, 0, len(botHandTroops))
 			needValue := targetSum - flagSum
 			avgNeedValue := float32(needValue) / float32(formationSize-len(flagTroops))
@@ -274,7 +274,7 @@ func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationS
 	return playableCards, botMaxSum
 }
 
-func calcMaxRank(flagCards []int, handCards []int, drawSet map[int]bool,
+func CalcMaxRank(flagCards []int, handCards []int, drawSet map[int]bool,
 	drawNo int, mud bool) (rank int) {
 	combinations := combi.CombinationsMud(mud)
 	for _, comb := range combinations {
@@ -587,7 +587,7 @@ func maxTroopValue(troops map[int]bool) int {
 	}
 	return maxValue
 }
-func moralesTroopsSum(flagTroops []int) (sum int) {
+func MoraleTroopsSum(flagTroops []int) (sum int) {
 	for _, cardix := range flagTroops {
 		troop, err := cards.DrTroop(cardix)
 		if err == nil {
@@ -607,7 +607,7 @@ func maxSum(flagTroops, handCards, deckValues []int, mud bool) (sum int, updDeck
 	if mud {
 		formationSize = 4
 	}
-	sum = moralesTroopsSum(flagTroops)
+	sum = MoraleTroopsSum(flagTroops)
 	if len(flagTroops) < formationSize {
 		max := false
 		for _, cardix := range handCards {
@@ -618,9 +618,7 @@ func maxSum(flagTroops, handCards, deckValues []int, mud bool) (sum int, updDeck
 				}
 			}
 		}
-		if formationSize-len(flagTroops) > len(deckValues) {
-			fmt.Printf("Error too few cards how can that happen deckValues:%v\n", deckValues)
-		}
+
 		for i := 0; i < formationSize-len(flagTroops); i++ {
 			sum = sum + deckValues[i]
 		}

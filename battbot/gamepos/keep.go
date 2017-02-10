@@ -390,7 +390,7 @@ func (k *keep) demandScoutReturn(
 	troopixs = make([]int, 0, 2)
 	troopixs = keepScoutReturnRequest(k.handTroopixs, k.flag, k.flagHand)
 	if len(troopixs) >= no {
-		troopixs = troopixs[0:]
+		troopixs = troopixs[0:no]
 	} else {
 		missTroopsNo := no - len(troopixs)
 		leftTroopixs := slice.WithOutNew(k.handTroopixs, troopixs)

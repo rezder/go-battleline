@@ -415,6 +415,7 @@ func lostFlagTacticMove(
 //lostFlagTacticDeserterMove makes a deserter move.
 //Deserter strategi just remove the best troop if it gives a win or prevent losing game.
 //Best troop is morale or mid card. for straight and highest for battalion and sum where morale is morale max value.
+//For mud or fog we simulate.
 func lostFlagTacticDeserterMove(
 	flagsAna map[int]*flag.Analysis,
 	handTroopixs []int,
@@ -423,12 +424,27 @@ func lostFlagTacticDeserterMove(
 
 	for flagix, flagAna := range flagsAna {
 		if flagAna.IsLost {
-			desertIx := deserterKillCard(flagAna.Flag.OppTroops, flagAna.TargetRank, flagAna.FormationSize)
-			simFlag := flagAna.Flag.Copy()
-			simFlag.OppRemoveCardix(desertIx)
-			isWin, isLost := moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
+			isLost := true
+			isWin := false
+			desertix := 0
+			envIsWin, envIsLost, envix := deserterKillEnvSim(flagAna.Flag, flagix, handTroopixs, deck, deckMaxValues)
+			if envIsWin {
+				isLost = envIsLost
+				isWin = envIsWin
+				desertix = envix
+			} else {
+				troopMoralIx := deserterKillTroopMoral(flagAna.Flag.OppTroops, flagAna.TargetRank, flagAna.FormationSize)
+				simFlag := flagAna.Flag.Copy()
+				simFlag.OppRemoveCardix(troopMoralIx)
+				troopMoralIsWin, troopMoralIsLost := moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
+				if troopMoralIsWin || !troopMoralIsLost {
+					isWin = troopMoralIsWin
+					isLost = troopMoralIsLost
+					desertix = troopMoralIx
+				}
+			}
 			if flagAna.IsLoosingGame && !isLost || isWin {
-				move = *bat.NewMoveDeserter(flagix, desertIx)
+				move = *bat.NewMoveDeserter(flagix, desertix)
 				cardix = cards.TCDeserter
 				break
 			}
@@ -436,7 +452,83 @@ func lostFlagTacticDeserterMove(
 	}
 	return cardix, move
 }
-func deserterKillCard(oppTroopixs []int, targetRank, formationSize int) (desertix int) {
+func simMudTrimFlag(simFlag *flag.Flag, cardix int) *flag.Flag {
+	if cards.TCMud == cardix {
+		if len(simFlag.OppTroops) > 3 {
+			simFlag.OppRemoveCardix(mudAutoDish(simFlag.OppTroops))
+		}
+		if len(simFlag.PlayTroops) > 3 {
+			simFlag.PlayRemoveCardix(mudAutoDish(simFlag.PlayTroops))
+		}
+	}
+	return simFlag
+}
+func mudAutoDish(cardixs []int) (ix int) {
+	lowestRank := 1
+	lowestSum := 0
+	handCards := make([]int, 0, 0)
+	drawSet := make(map[int]bool)
+	drawNo := 0
+	mud := false
+	sumRank := 200
+	for _, outix := range cardixs {
+		simCardixs := slice.WithOutNew(cardixs, []int{outix})
+		rank := flag.CalcMaxRank(simCardixs, handCards, drawSet, drawNo, mud)
+		sum := 0
+		if rank == 0 {
+			rank = sumRank
+			sum = flag.MoraleTroopsSum(simCardixs)
+		}
+		if rank > lowestRank {
+			lowestRank = rank
+			ix = outix
+			lowestSum = sum
+		} else if rank == sumRank && lowestRank == sumRank {
+			if sum < lowestSum {
+				ix = outix
+				lowestSum = sum
+			}
+		}
+
+	}
+	return ix
+}
+func deserterKillEnvSim(
+	flag *flag.Flag,
+	flagix int,
+	handTroopixs []int,
+	deck *botdeck.Deck,
+	deckMaxValues []int) (isWin, isLost bool, desertEnvix int) {
+	isLost = true
+	if len(flag.OppEnvs) != 0 {
+		for _, envix := range flag.OppEnvs {
+			simFlag := flag.Copy()
+			simFlag.OppRemoveCardix(envix)
+			simFlag = simMudTrimFlag(simFlag, envix)
+			if cerrors.LogLevel() == cerrors.LOG_Debug {
+				log.Printf("Deserter kill enviroment move\nSim Flag %+v\nOld Flag %+v", simFlag, flag)
+			}
+			simIsWin, simIsLost := moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
+			if desertEnvix == 0 {
+				isWin = simIsWin
+				isLost = simIsLost
+				desertEnvix = envix
+				if isWin {
+					break
+				}
+			} else {
+				if simIsWin || !simIsLost {
+					isWin = simIsWin
+					isLost = simIsLost
+					desertEnvix = envix
+				}
+			}
+		}
+	}
+	return isWin, isLost, desertEnvix
+}
+
+func deserterKillTroopMoral(oppTroopixs []int, targetRank, formationSize int) (desertix int) {
 	tacixs, troopixs := sortFlagCards(oppTroopixs)
 	if targetRank != 0 {
 		combination := combi.Combinations(formationSize)[targetRank]
@@ -458,6 +550,7 @@ func deserterKillCard(oppTroopixs []int, targetRank, formationSize int) (deserti
 	} else {
 		desertix = deserterKillStrenght(tacixs, troopixs)
 	}
+
 	return desertix
 }
 func deserterKillStrenght(tacixs, troopixs []int) (desertix int) {
@@ -966,7 +1059,7 @@ Loop:
 			if (isLeader && playTacAna.botLeader) || !isLeader {
 				for i := 0; i < len(priFlagixs); i++ {
 					if !flagsAna[i].IsNewFlag && flagsAna[i].IsPlayable {
-						isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, hand.Tacs[0], hand.Troops, deck, deckMaxValues)
+						isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, tac, hand.Troops, deck, deckMaxValues)
 						if isWin {
 							tacix = tac
 							move = *bat.NewMoveCardFlag(flagsAna[i].Flagix)
@@ -1097,7 +1190,9 @@ func priFlagKeepLoop(
 }
 
 func findMoveHandIndex(movesHand map[string][]bat.Move, cardix int, move bat.Move) (moveix int) {
-	log.Printf("Hand move: %v,%v\n\n", cardix, move)
+	if cerrors.LogLevel() == cerrors.LOG_Debug {
+		log.Printf("Hand move: %v,%v\n\n", cardix, move)
+	}
 	moveix = findMoveIndex(movesHand[strconv.Itoa(cardix)], move)
 	return moveix
 }

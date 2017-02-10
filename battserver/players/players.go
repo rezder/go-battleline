@@ -1002,8 +1002,9 @@ type Action struct {
 	Mess    string
 }
 
-func NewAction() (a *Action) {
+func NewAction(actType int) (a *Action) {
 	a = new(Action)
+	a.ActType = actType
 	a.Move = [2]int{0, pub.SMNone}
 	return a
 }

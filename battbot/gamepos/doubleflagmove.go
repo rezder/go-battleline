@@ -92,6 +92,10 @@ func dbFlagSimMove(
 
 	lostFlagSim := flagsAna[lostFlagix].Flag.Copy()
 	dbFlagSimFlagUpd(outFlagix == lostFlagix, cardix, tacix, lostFlagSim)
+	if cerrors.LogLevel() == cerrors.LOG_Debug {
+		tac, _ := cards.DrTactic(tacix)
+		log.Printf("Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, lostFlagSim, flagsAna[lostFlagix].Flag)
+	}
 	lostFlagSimAna = flag.NewAnalysis(lostFlagSim, handTroopixs, deckMaxValues, deck, lostFlagix, true)
 
 	if inFlagix != bat.REDeployDishix {
@@ -101,6 +105,10 @@ func dbFlagSimMove(
 		}
 		collFlagSim := flagsAna[collix].Flag.Copy()
 		dbFlagSimFlagUpd(outFlagix != lostFlagix, cardix, tacix, collFlagSim)
+		if cerrors.LogLevel() == cerrors.LOG_Debug {
+			tac, _ := cards.DrTactic(tacix)
+			log.Printf("Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, collFlagSim, flagsAna[collix].Flag)
+		}
 		collFlagSimAna = flag.NewAnalysis(collFlagSim, handTroopixs, deckMaxValues, deck, collix, true)
 	}
 	return lostFlagSimAna, collFlagSimAna
@@ -108,6 +116,9 @@ func dbFlagSimMove(
 func dbFlagSimFlagUpd(isOutFlag bool, cardix, tacix int, simFlag *flag.Flag) {
 	if isOutFlag {
 		if tacix == cards.TCRedeploy {
+			if cardix == cards.TCMud {
+				simFlag = simMudTrimFlag(simFlag, cardix)
+			}
 			simFlag.PlayRemoveCardix(cardix)
 		} else {
 			simFlag.OppRemoveCardix(cardix)

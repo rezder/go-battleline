@@ -28,12 +28,14 @@ func main() {
 	var pw string
 	var logLevel int
 	var addrPort string
+	var sendInvite bool
 	flag.StringVar(&scheme, "scheme", "http", "Scheme http or https")
 	flag.StringVar(&addr, "addr", "game.rezder.com", "The server address with out port")
 	flag.StringVar(&port, "port", "8181", "The port")
 	flag.StringVar(&name, "name", "Rene", "User name")
 	flag.StringVar(&pw, "pw", "12345678", "User password")
-	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 2 highest") //TODO CLEAN change to 0
+	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 2 highest")
+	flag.BoolVar(&sendInvite, "send", false, "If true send invites else accept invite")
 	flag.Parse()
 	if len(port) != 0 {
 		addrPort = addr + ":" + port
@@ -59,10 +61,10 @@ func main() {
 		}
 		return
 	}
-	//defer conn.Close()
+	defer conn.Close()
 	doneCh := make(chan struct{})
 	finConnCh := make(chan struct{})
-	go start(conn, doneCh, finConnCh)
+	go start(conn, doneCh, finConnCh, sendInvite, name)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Printf("Bot (%v) up and running. Close with ctrl+c\n", name)
@@ -154,7 +156,13 @@ func addCookies(config *websocket.Config, cookies []*http.Cookie) {
 }
 
 //start starts the bot.
-func start(conn *websocket.Conn, doneCh <-chan struct{}, finConnCh chan<- struct{}) {
+func start(
+	conn *websocket.Conn,
+	doneCh <-chan struct{},
+	finConnCh chan<- struct{},
+	sendIvites bool,
+	name string) {
+	noGame := 0
 	defer close(finConnCh)
 	messCh := make(chan *JsonDataTemp)
 	messDoneCh := make(chan struct{})
@@ -170,26 +178,71 @@ Loop:
 			if open {
 				switch jsonDataTemp.JsonType {
 				case players.JTList:
-					//Just do as below need name to avoid invite self
-					// timer to wait if no one to invite
-					// and a setting to controll if inviter reciever
-				case players.JTInvite:
-					if gamePos == nil {
-						var invite pub.Invite
-						err := json.Unmarshal(jsonDataTemp.Data, &invite)
-						if err != nil {
-							if cerrors.LogLevel() != cerrors.LOG_Debug {
-								log.Printf("Invite unmarshal error: %v", err)
-							} else {
-								log.Printf("Invite unmarshal error: %+v", err)
+					if sendIvites {
+						if gamePos == nil {
+							var list map[string]*pub.Data
+							err := json.Unmarshal(jsonDataTemp.Data, &list)
+							if err != nil {
+								if cerrors.LogLevel() != cerrors.LOG_Debug {
+									log.Printf("List unmarshal error: %v", err)
+								} else {
+									log.Printf("List unmarshal error: %+v", err)
+								}
+								close(messDoneCh)
+								break Loop
 							}
-							close(messDoneCh)
-							break Loop
+							invite := 0
+							for _, listData := range list {
+								if name != listData.Name && listData.Opp == 0 {
+									invite = listData.ID
+									break
+								}
+							}
+							if invite != 0 {
+								act := players.NewAction(players.ACTInvite)
+								act.ID = invite
+								if cerrors.LogLevel() == cerrors.LOG_Debug {
+									log.Printf("Sending invite to %v", invite)
+								}
+								ok := netWrite(conn, act)
+								if !ok {
+									close(messDoneCh)
+									break Loop
+								}
+							}
 						}
-						act := players.NewAction()
-						act.ActType = players.ACTInvAccept
+					}
+				case players.JTInvite:
+					var invite pub.Invite
+					err := json.Unmarshal(jsonDataTemp.Data, &invite)
+					if err != nil {
+						if cerrors.LogLevel() != cerrors.LOG_Debug {
+							log.Printf("Invite unmarshal error: %v", err)
+						} else {
+							log.Printf("Invite unmarshal error: %+v", err)
+						}
+						close(messDoneCh)
+						break Loop
+					}
+					if !sendIvites {
+						if gamePos == nil {
+							act := players.NewAction(players.ACTInvAccept)
+							act.ID = invite.InvitorID
+							if cerrors.LogLevel() == cerrors.LOG_Debug {
+								log.Printf("Accepting invite from %v", invite.InvitorID)
+							}
+							ok := netWrite(conn, act)
+							if !ok {
+								close(messDoneCh)
+								break Loop
+							}
+						}
+					} else {
+						act := players.NewAction(players.ACTInvDecline)
 						act.ID = invite.InvitorID
-
+						if cerrors.LogLevel() == cerrors.LOG_Debug {
+							log.Printf("Declining invite from %v", invite.InvitorID)
+						}
 						ok := netWrite(conn, act)
 						if !ok {
 							close(messDoneCh)
@@ -200,6 +253,7 @@ Loop:
 				case players.JTMove:
 					if gamePos == nil {
 						gamePos = gamepos.New()
+						noGame = noGame + 1
 					}
 					mv, err := unmarshalMoveJSON(jsonDataTemp.Data)
 
@@ -215,11 +269,21 @@ Loop:
 
 					if gamePos.UpdMove(mv) {
 						gamePos = nil
+						if sendIvites {
+							act := players.NewAction(players.ACTList)
+							if cerrors.LogLevel() == cerrors.LOG_Debug {
+								log.Println("Request list")
+							}
+							ok := netWrite(conn, act)
+							if !ok {
+								close(messDoneCh)
+								break Loop
+							}
+						}
 					} else {
 						if gamePos.IsBotTurn() {
 							moveixs := gamePos.MakeMove()
-							act := players.NewAction()
-							act.ActType = players.ACTMove
+							act := players.NewAction(players.ACTMove)
 							act.Move = moveixs
 
 							ok := netWrite(conn, act)
@@ -249,6 +313,9 @@ Loop:
 				break Loop
 			}
 		}
+	}
+	if cerrors.LogLevel() != cerrors.LOG_Default {
+		log.Printf("Number of game played %v", noGame)
 	}
 }
 

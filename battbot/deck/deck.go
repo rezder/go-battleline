@@ -204,7 +204,7 @@ func (d *Deck) DeckTroopNo() int {
 	return len(d.troops) - d.oppTroops + len(d.scoutReturnTroops)
 }
 
-//MaxValues returns the 3 max value a deck contain.
+//MaxValues returns the 4 max value a deck contain.
 func (d *Deck) MaxValues() (values []int) {
 	return maxValues(d.troops, d.scoutReturnTroops)
 }
@@ -225,6 +225,7 @@ func maxValues(troops map[int]bool, scoutReturnTroops []int) (values []int) {
 			}
 		}
 	}
+
 	return values
 }
 
@@ -239,9 +240,10 @@ func MaxValuesUpd(troopix int, values []int) (updValues []int, max bool) {
 	for ix, value := range updValues {
 		if troopValue > value {
 			if len(updValues) < cardNo {
+				updValues = append(updValues, 0)
 				copy(updValues[ix+1:], updValues[ix:])
 			} else {
-				copy(updValues[ix+1:], updValues[ix:4])
+				copy(updValues[ix+1:], updValues[ix:cardNo-1])
 			}
 			updValues[ix] = troopValue
 			upd = true
@@ -252,7 +254,7 @@ func MaxValuesUpd(troopix int, values []int) (updValues []int, max bool) {
 		updValues = append(updValues, troopValue)
 	}
 
-	if len(updValues) == cardNo && updValues[2] == 10 {
+	if len(updValues) == cardNo && updValues[cardNo-1] == 10 {
 		max = true
 	}
 	return updValues, max

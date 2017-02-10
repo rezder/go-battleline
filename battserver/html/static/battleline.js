@@ -1227,7 +1227,7 @@ var batt={};
                     svg.hand.moveToDishOpp(moveView.MoveCardix);
                     svg.flag.cardLastMoveUnMark();
                     svg.flag.cardLastMoveMark(moveView.MoveCardix);
-                    svg.flag.cardLastMoveMark(move.OutCard);
+                    svg.flag.cardLastMoveMark(move.Move.OutCard);
                     if (move.Move.InFlag>=0){
                         svg.flag.cardToFlag(move.Move.OutCard,move.Move.InFlag+1,false);
                     }else{
