@@ -2,7 +2,7 @@
 package cards
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 const (

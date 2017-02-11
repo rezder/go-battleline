@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battarchiver/arnet"
 	"github.com/rezder/go-battleline/battarchiver/battdb"
 	bat "github.com/rezder/go-battleline/battleline"
-	"github.com/rezder/go-error/cerrors"
-	"log"
+	"github.com/rezder/go-error/log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,26 +18,29 @@ func main() {
 	backupPortFlag := flag.String("backupport", "", "Back http server port. No port no server")
 	clientFlag := flag.String("client", "", "Url of client without protecol if specified client is poked when the server is ready")
 	myAddrFlag := flag.String("addr", "arch", "Archiver addr only used if client is specified, port is added to the address")
-	logFlag := flag.Int("loglevel", 2, "Log level 0 default lowest, 2 highest") //TODO change default 0
+	logFlag := flag.Int("loglevel", 2, "Log level 0 default lowest, 3 highest") //TODO change default 0
 	dbFileFlag := flag.String("dbfile", "bdb.db", "The database file name")
 	flag.Parse()
-	cerrors.InitLog(*logFlag)
+	log.InitLog(*logFlag)
 
 	bd, err := bolt.Open(*dbFileFlag, 0600, nil)
 	if err != nil {
-		log.Printf("Open data base file failed %v", err)
+		err = errors.Wrapf(err, "Open data base file %v failed", *dbFileFlag)
+		log.PrintErr(err)
 		return
 	}
 	defer bd.Close()
 	bdb := battdb.New(battdb.KeyPlayersTime, bd, 10000)
 	err = bdb.Init()
 	if err != nil {
-		log.Printf("Init database failed %v", err)
+		err = errors.Wrapf(err, "Init database %v failed", *dbFileFlag)
+		log.PrintErr(err)
 		return
 	}
 	nz, err := arnet.NewZmqReciver(*portFlag)
 	if err != nil {
-		log.Printf("Creating net listener failed %v", err)
+		err = errors.Wrapf(err, "Creating zmq game listener on port %v failed", *portFlag)
+		log.PrintErr(err)
 		return
 	}
 	defer nz.Close()
@@ -55,7 +58,7 @@ func main() {
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	log.Println("Server up and running. Close with ctrl+c")
+	log.Print(log.Min, "Server up and running. Close with ctrl+c")
 	<-stop
 	nz.Close()
 	<-saveFinCh
@@ -72,7 +75,8 @@ Loop:
 			if open {
 				game, err := arnet.ZmqDecoder(gameBytes)
 				if err != nil {
-					log.Printf("Decoding ms falid %v", err)
+					err = errors.Wrap(err, "Decoding game msg failed") //TODO do not need stack remove with new interface
+					log.PrintErr(err)
 				} else {
 					games = append(games, game)
 				}
@@ -82,13 +86,11 @@ Loop:
 		}
 		_, err := bdb.Puts(games)
 		if err != nil {
-			log.Println("Saving games in database failded %v", err)
+			log.PrintErr(err)
 		} else {
 			noSaved = noSaved + len(games)
 			if noSaved == 1 || noSaved%50 == 0 {
-				if cerrors.LogLevel() == cerrors.LOG_Debug {
-					log.Printf("Number of saved games: %v\n", noSaved)
-				}
+				log.Printf(log.DebugMsg, "Number of saved games: %v\n", noSaved)
 			}
 		}
 

@@ -2,11 +2,11 @@ package html
 
 import (
 	"encoding/gob"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battserver/games"
 	"github.com/rezder/go-battleline/battserver/players"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"math/rand"
@@ -94,7 +94,7 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 			err = nil
 			clients = NewClients(games) //first start
 		} else {
-			err = cerrors.Wrap(err, 1, "Open clients file")
+			err = errors.Wrap(err, log.ErrNo(1)+"Open clients file")
 		}
 	}
 	return clients, err
@@ -106,7 +106,7 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 func (clients *Clients) save() (err error) {
 	file, err := os.Create(clientsFileNAME)
 	if err != nil {
-		err = cerrors.Wrap(err, 2, "Create clients file")
+		err = errors.Wrap(err, log.ErrNo(2)+"Create clients file")
 		return err
 	}
 	defer file.Close()

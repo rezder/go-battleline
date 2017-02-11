@@ -1,7 +1,6 @@
 package flag
 
 import (
-	//"errors"
 	//"fmt"
 	"bytes"
 	"encoding/gob"

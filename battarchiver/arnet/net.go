@@ -5,10 +5,11 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/pebbe/zmq4"
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battarchiver/battdb"
 	bat "github.com/rezder/go-battleline/battleline"
+	"github.com/rezder/go-error/log"
 	"io"
-	"log"
 	"net"
 	"net/http"
 )
@@ -21,7 +22,8 @@ func PokeListener(ln net.Listener, addCh chan<- string) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("Poke Accept failed: %v", err)
+			err = errors.Wrap(err, "Poke Accept failed")
+			log.PrintErr(err)
 			break
 		}
 		buf := new(bytes.Buffer)
@@ -35,13 +37,15 @@ func PokeClient(clientAdr, myAddr string) {
 	//adr  "golang.org:80"
 	conn, err := net.Dial("tcp", clientAdr)
 	if err != nil {
-		log.Printf("Poke client dial failed %v", err)
+		err = errors.Wrap(err, "Poke client dial failed")
+		log.PrintErr(err)
 		return
 	}
 	defer conn.Close()
 	n, err := fmt.Fprintf(conn, myAddr)
 	if err != nil {
-		log.Printf("Poke client write failed %v, send n bytes", err, n)
+		err = errors.Wrapf(err, "Poke client write failed sending %v bytes", n)
+		log.PrintErr(err)
 	}
 }
 
@@ -53,7 +57,8 @@ func StartBackUpServer(bdb *battdb.Db, port string) {
 		})
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
-		log.Printf("Backup http server failed %v", err)
+		err = errors.Wrap(err, "Backup http server failed")
+		log.PrintErr(err)
 	}
 }
 
@@ -125,7 +130,8 @@ func zmqListen(receiver *zmq4.Socket, gameCh chan<- []byte) {
 	for {
 		msBytes, err = receiver.RecvBytes(0)
 		if err != nil {
-			log.Printf("Net work receiver zmq faild %v. closing receiver\n", err)
+			err = errors.Wrap(err, "Closing receiver. Net work receiver zmq faild")
+			log.PrintErr(err)
 			break
 		} else {
 			gameCh <- msBytes
@@ -186,7 +192,8 @@ func zmqSend(
 		if open {
 			msBytes, err = ZmqEncode(game)
 			if err != nil {
-				log.Printf("Game in coding for zmq failed", err)
+				err = errors.Wrap(err, "Game encoding for zmq failed")
+				log.PrintErr(err)
 			} else {
 				_, err = sender.SendBytes(msBytes, 0)
 				if err != nil { //TODO MAYBE resend.

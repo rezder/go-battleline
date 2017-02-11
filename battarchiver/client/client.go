@@ -1,9 +1,10 @@
 package client
 
 import (
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battarchiver/arnet"
 	bat "github.com/rezder/go-battleline/battleline"
-	"log"
+	"github.com/rezder/go-error/log"
 	"net"
 	"strconv"
 )
@@ -45,7 +46,8 @@ func start(
 	if len(serverAddr) != 0 {
 		conn, err = arnet.NewZmqSender(serverAddr)
 		if err != nil {
-			log.Printf("Creating connection to %v failed %v", serverAddr, err)
+			err = errors.Wrapf(err, "Creating connection to %v failed", serverAddr)
+			log.PrintErr(err)
 		} else {
 			serverAddrs = append(serverAddrs, serverAddr)
 			conn.Start()
@@ -71,7 +73,8 @@ Loop:
 						for len(serverAddrs) > 0 {
 							conn, err = arnet.NewZmqSender(serverAddrs[0])
 							if err != nil {
-								log.Printf("Creating connection to %v failed %v", serverAddr, err)
+								err = errors.Wrapf(err, "Creating connection to %v failed", serverAddr)
+								log.PrintErr(err)
 								serverAddrs = serverAddrs[1:len(serverAddrs)]
 							} else {
 								break
@@ -91,7 +94,8 @@ Loop:
 			if len(serverAddrs) == 1 {
 				conn, err = arnet.NewZmqSender(serverAddrs[0])
 				if err != nil {
-					log.Printf("Creating connection to %v failed %v", serverAddrs[0], err)
+					err = errors.Wrapf(err, "Creating connection to %v failed", serverAddrs[0])
+					log.PrintErr(err)
 					serverAddrs = serverAddrs[1:len(serverAddrs)]
 				} else {
 					conn.Start()
@@ -118,7 +122,8 @@ func (c *Client) Archive(game *bat.Game) {
 func (c *Client) Stop() {
 	err := c.ln.Close()
 	if err != nil {
-		log.Printf("Closing server join listner failed %v", err)
+		err = errors.Wrap(err, "Closing server, join listner failed")
+		log.PrintErr(err)
 	}
 	close(c.gameCh)
 }

@@ -3,9 +3,11 @@
 The plan is to see the game as independed move based on position, I think that is ok because
 the order of move really does not matter. So for machine learning to work the game position 
 must formulated to fit machine learning. I feel a little stupid realising that the game position
-can be viewed as 70 cards and their position and 9 flags and their position and any move is just
+can be viewed as 70 cards and their positions and 9 flags and their position and any move is just
 a change of postions. The game position as view from the bot also need the numbers of tactic
 and troop cards of the opponent to have a complete picture.
+Basicly every card game be described a number of cards and their positions and a move as a number
+of cards to move and their new positions.
 
 ## Game postion
 
@@ -122,7 +124,8 @@ func convertFrom(flags [8]bool)(x uint8){
 ### Scout return move
 
 Consits of two cards to record it we use the first and second card and
-the Deck as desitnation. First is the first returned card.
+the Deck as desitnation. First is the first returned card. Cards is the hand
+number.
 
 
 ## Definition
@@ -168,9 +171,9 @@ CLAIMBot=1
 CLAIMOpp=2
 
 ### Move first card
-Cardix 1-70
+Cardix 1-9
 NoneCard=0
-SPCClaimFlag=71
+SPCClaimFlag=10
 
 ### Move second card
 Cardix 1-66

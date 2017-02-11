@@ -2,8 +2,8 @@
 package flag
 
 import (
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battleline/cards"
 	math "github.com/rezder/go-math/int"
 	slice "github.com/rezder/go-slice/int"

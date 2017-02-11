@@ -2,7 +2,6 @@
 *.o
 *.a
 *.so
-
 # Folders
 _obj
 _test
@@ -22,3 +21,6 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+# Database files
+*.db

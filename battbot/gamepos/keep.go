@@ -7,9 +7,8 @@ import (
 	"github.com/rezder/go-battleline/battbot/flag"
 	bat "github.com/rezder/go-battleline/battleline"
 	"github.com/rezder/go-battleline/battleline/cards"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	slice "github.com/rezder/go-slice/int"
-	"log"
 )
 
 type keep struct {
@@ -59,9 +58,7 @@ func newKeep(
 			k.flagHand = keepMap.calcHand(k.handTroopixs)
 		}
 	}
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Keep: flag,flagHand: %v,%v\n", k.flag, k.flagHand)
-	}
+	log.Printf(log.Debug, "Keep: flag,flagHand: %v,%v\n", k.flag, k.flagHand)
 	return k
 }
 func (k *keep) flagSize() int {
@@ -195,10 +192,10 @@ func (k *keep) deckCalcPickTac(
 				logTxt = "Many flag need tactic cards"
 				pickTac = true
 			}
-			if len(logTxt) != 0 && cerrors.LogLevel() == cerrors.LOG_Debug {
-				log.Println(logTxt)
-				log.Printf("Offence Flags: %v Offence Tactics: %v\n", offFlagSet, offenceTacSet)
-				log.Printf("Defence Flags: %v Defence Tactics: %v\n", defFlagSet, defenceTacSet)
+			if len(logTxt) != 0 {
+				logTxt = logTxt + fmt.Sprintf("\nOffence Flags: %v Offence Tactics: %v\n", offFlagSet, offenceTacSet)
+				logTxt = logTxt + fmt.Sprintf("Defence Flags: %v Defence Tactics: %v\n", defFlagSet, defenceTacSet)
+				log.Print(log.Debug, logTxt)
 			}
 		}
 	}
@@ -483,11 +480,9 @@ func (k *keep) demandDump(flagAna *flag.Analysis) (troopix int) {
 		troopix = minTroop(k.handTroopixs)
 		logTxt = "Min troop"
 	}
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Dump move card,flag: %v,%v\n", troopix, flagAna.Flagix)
-		log.Println(logTxt)
-		log.Printf("Keeps: %v", k)
-	}
+	logTxt = fmt.Sprintf("Dump move card,flag: %v,%v\n", troopix, flagAna.Flagix) + logTxt
+	logTxt = logTxt + fmt.Sprintf("\nKeeps: %v", k)
+	log.Print(log.Debug, logTxt)
 	return troopix
 }
 

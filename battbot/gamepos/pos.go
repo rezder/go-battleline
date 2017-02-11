@@ -8,7 +8,7 @@ import (
 	"github.com/rezder/go-battleline/battleline/cards"
 	pub "github.com/rezder/go-battleline/battserver/publist"
 	"github.com/rezder/go-battleline/battserver/tables"
-	"log"
+	"github.com/rezder/go-error/log"
 )
 
 //Pos is a game position.
@@ -254,7 +254,9 @@ func (pos *Pos) MakeMove() (moveix [2]int) {
 		case bat.MoveScoutReturn:
 			moveix[1] = makeMoveScoutReturn(pos)
 		default:
-			log.Panicf("All cases should be covered %+v", move)
+			logTxt := fmt.Sprintf("All cases should be covered %+v", move)
+			log.Print(log.Min, logTxt)
+			panic(logTxt)
 
 		}
 

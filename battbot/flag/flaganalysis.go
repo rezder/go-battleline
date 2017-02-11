@@ -5,9 +5,8 @@ import (
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battleline/cards"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	slice "github.com/rezder/go-slice/int"
-	"log"
 	"sort"
 )
 
@@ -134,9 +133,7 @@ func NewAnalysis(
 		if fa.IsTargetMade {
 			fa.IsLost = lost(fa.TargetRank, fa.TargetSum, fa.BotMaxSum, fa.BotMaxRank)
 		}
-		if cerrors.LogLevel() == cerrors.LOG_Debug {
-			log.Printf("Flag:%v Lost:%v BotRank:%v BotSum:%v TargetRank:%v TargetSum:%v\n", fa.Flagix, fa.IsLost, fa.BotMaxRank, fa.BotMaxSum, fa.TargetRank, fa.TargetSum)
-		}
+		log.Printf(log.Debug, "Flag:%v Lost:%v BotRank:%v BotSum:%v TargetRank:%v TargetSum:%v\n", fa.Flagix, fa.IsLost, fa.BotMaxRank, fa.BotMaxSum, fa.TargetRank, fa.TargetSum)
 	}
 
 	return fa

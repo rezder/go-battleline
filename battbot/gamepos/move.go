@@ -1,14 +1,14 @@
 package gamepos
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battbot/combi"
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
 	bat "github.com/rezder/go-battleline/battleline"
 	"github.com/rezder/go-battleline/battleline/cards"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	slice "github.com/rezder/go-slice/int"
-	"log"
 	"strconv"
 )
 
@@ -180,9 +180,7 @@ func makeMoveScoutReturn(pos *Pos) (moveix int) {
 }
 
 func makeMoveHand(pos *Pos) (moveixs [2]int) {
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Hand: %v\n", pos.playHand)
-	}
+	log.Printf(log.Debug, "Hand: %v\n", pos.playHand)
 	isBotFirst := true
 	flagsAna, deckMaxValues := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isBotFirst)
 	analyzeFlagsAddFlagValue(flagsAna)
@@ -505,9 +503,7 @@ func deserterKillEnvSim(
 			simFlag := flag.Copy()
 			simFlag.OppRemoveCardix(envix)
 			simFlag = simMudTrimFlag(simFlag, envix)
-			if cerrors.LogLevel() == cerrors.LOG_Debug {
-				log.Printf("Deserter kill enviroment move\nSim Flag %+v\nOld Flag %+v", simFlag, flag)
-			}
+			log.Printf(log.Debug, "Deserter kill enviroment move\nSim Flag %+v\nOld Flag %+v", simFlag, flag)
 			simIsWin, simIsLost := moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
 			if desertEnvix == 0 {
 				isWin = simIsWin
@@ -643,9 +639,7 @@ func lostFlagDumpMove(
 	if lostFlagix != -1 {
 		cardix = keep.requestFlagHandLowestValue(keep.handTroopixs)
 		if cardix != 0 {
-			if cerrors.LogLevel() == cerrors.LOG_Debug {
-				log.Println("Made a Lost Flag Dump move")
-			}
+			log.Println(log.Debug, "Made a Lost Flag Dump move")
 			move = *bat.NewMoveCardFlag(lostFlagix)
 		}
 	}
@@ -664,9 +658,7 @@ func prioritizePlayableFlags(flagsAna map[int]*flag.Analysis) (flagixs []int) {
 			flagixs = append(flagixs, sortixs[i])
 		}
 	}
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Prioritized flags: %v\n", flagixs)
-	}
+	log.Printf(log.Debug, "Prioritized flags: %v\n", flagixs)
 	return flagixs
 }
 func priNCardsMove(n int, flagixs []int, flagsAna map[int]*flag.Analysis) (troopix int, move bat.Move) {
@@ -915,9 +907,7 @@ func priNewFlagMove(flagixs []int,
 		}
 	}
 	if troopix != 0 {
-		if cerrors.LogLevel() == cerrors.LOG_Debug {
-			log.Printf("%v Cardix: %v", logTxt, troopix)
-		}
+		log.Printf(log.Debug, "%v Cardix: %v", logTxt, troopix)
 		move = *bat.NewMoveCardFlag(moveFlagix)
 	}
 
@@ -1082,9 +1072,7 @@ func moveFlagHandSim(
 	fa := flag.NewAnalysis(simFlag, simHandTroopixs, deckMaxValues, deck, simFlagix, true)
 	isLost = fa.IsLost
 	isWin = fa.IsWin()
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Simulated flag: %v, win,loss: %v,%v\n Analysis: %+v\n", simFlagix, isWin, isLost, fa)
-	}
+	log.Printf(log.Debug, "Simulated flag: %v, win,loss: %v,%v\n Analysis: %+v\n", simFlagix, isWin, isLost, fa)
 	return isWin, isLost
 }
 func tacticMoveSim(flagix int, flag *flag.Flag,
@@ -1096,10 +1084,8 @@ func tacticMoveSim(flagix int, flag *flag.Flag,
 	simFlag := flag.Copy()
 	simFlag.PlayAddCardix(tacix)
 
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		tac, _ := cards.DrTactic(tacix)
-		log.Printf("Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac.Name(), simFlag, flag)
-	}
+	tac, _ := cards.DrTactic(tacix)
+	log.Printf(log.Debug, "Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac.Name(), simFlag, flag)
 	isWin, isLost = moveFlagHandSim(simFlag, flagix, handTroopixs, deck, deckMaxValues)
 
 	return isWin, isLost
@@ -1153,10 +1139,8 @@ func priFlagLoop(
 		flagAna := flagsAna[flagix]
 		troopix, logTxt = pff(flagAna)
 		if troopix != 0 {
-			if cerrors.LogLevel() == cerrors.LOG_Debug {
-				log.Println(logTxt)
-				log.Printf("Cardix: %v", troopix)
-			}
+			logTxt = logTxt + fmt.Sprintf("\nCardix: %v", troopix)
+			log.Print(log.Debug, logTxt)
 			move = *bat.NewMoveCardFlag(flagix)
 			break
 		}
@@ -1190,9 +1174,7 @@ func priFlagKeepLoop(
 }
 
 func findMoveHandIndex(movesHand map[string][]bat.Move, cardix int, move bat.Move) (moveix int) {
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		log.Printf("Hand move: %v,%v\n\n", cardix, move)
-	}
+	log.Printf(log.Debug, "Hand move: %v,%v\n\n", cardix, move)
 	moveix = findMoveIndex(movesHand[strconv.Itoa(cardix)], move)
 	return moveix
 }
@@ -1205,9 +1187,10 @@ func findMoveIndex(moves []bat.Move, move bat.Move) (moveix int) {
 		}
 	}
 	if moveix < 0 {
-		log.Printf("Fail to find legal move.\nMoves: %v\nMove: %v\n ", moves, move)
+		logTxt := fmt.Sprintf("Fail to find legal move.\nMoves: %v\nMove: %v\n ", moves, move)
+		log.Printf(log.Min, logTxt)
 		moveix = 0
-		panic("Failed to find move")
+		panic(logTxt)
 	}
 	return moveix
 }

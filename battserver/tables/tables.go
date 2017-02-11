@@ -4,11 +4,11 @@ package tables
 
 import (
 	"encoding/gob"
+	"github.com/pkg/errors"
 	arch "github.com/rezder/go-battleline/battarchiver/client"
 	bat "github.com/rezder/go-battleline/battleline"
 	pub "github.com/rezder/go-battleline/battserver/publist"
-	"github.com/rezder/go-error/cerrors"
-	"log"
+	"github.com/rezder/go-error/log"
 	"os"
 	"strconv"
 )
@@ -63,14 +63,10 @@ func (s *Server) Start() {
 
 //Stop stops the tables server.
 func (s *Server) Stop() {
-	if cerrors.IsVerbose() {
-		log.Println("Closing start game channel on tables")
-	}
+	log.Print(log.DebugMsg, "Closing start game channel on tables")
 	close(s.StartGameChCl.Close)
 	<-s.doneCh
-	if cerrors.IsVerbose() {
-		log.Println("Receiving done from tables")
-	}
+	log.Print(log.DebugMsg, "Receiving done from tables")
 }
 
 //Start tables server.
@@ -223,7 +219,7 @@ func (games *SaveGames) copyClearPos() (c *SaveGames) {
 func (games *SaveGames) save() (err error) {
 	file, err := os.Create(SAVEGamesFile)
 	if err != nil {
-		err = cerrors.Wrap(err, 15, "Create games file")
+		err = errors.Wrap(err, log.ErrNo(15)+"Create games file")
 		return err
 	}
 	defer file.Close()
@@ -246,7 +242,7 @@ func loadSaveGames() (games *SaveGames, err error) {
 			err = nil
 			games = NewSaveGames() //first start
 		} else {
-			err = cerrors.Wrap(err, 16, "Open saved games file")
+			err = errors.Wrap(err, log.ErrNo(16)+"Open saved games file")
 			return games, err
 		}
 	}

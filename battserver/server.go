@@ -3,9 +3,9 @@ package main
 
 import (
 	"flag"
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battserver/html"
-	"github.com/rezder/go-error/cerrors"
-	"log"
+	"github.com/rezder/go-error/log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -20,9 +20,9 @@ func main() {
 	archiverPortFlag := flag.Int("archport", 7171, "Arciver tcp port")
 	saveFlag := flag.Bool("save", false, "Save games.")
 	saveDirFlag := flag.String("savedir", "temp", "Save game directory")
-	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 2 highest")
+	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 3 highest")
 	flag.Parse()
-	cerrors.InitLog(*logFlag)
+	log.InitLog(*logFlag)
 	var port string
 	if *portFlag == 80 { //Add https port if use https
 		port = ""
@@ -32,11 +32,8 @@ func main() {
 	errCh := make(chan error, 10)
 	httpServer, err := html.New(errCh, port, *saveFlag, *saveDirFlag, *archiverPortFlag)
 	if err != nil {
-		if cerrors.LogLevel() != cerrors.LOG_Debug {
-			log.Printf("Create server fail. Error: %v\n", err)
-		} else {
-			log.Printf("Create server fail. Error: %+v\n", err)
-		}
+		err = errors.Wrap(err, "Create http server failed")
+		log.PrintErr(err)
 		return
 	}
 	finErrCh := make(chan struct{})
@@ -44,11 +41,9 @@ func main() {
 	httpServer.Start()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	log.Println("Server up and running. Close with ctrl+c")
+	log.Print(log.Min, "Server up and running. Close with ctrl+c")
 	<-stop
-	if cerrors.IsVerbose() {
-		log.Println("Server closed with interrupt signal")
-	}
+	log.Print(log.Verbose, "Server closed with interrupt signal")
 	httpServer.Stop()
 	close(errCh)
 	<-finErrCh
@@ -69,11 +64,7 @@ func errServer(errChan chan error, finCh chan struct{}) {
 	for {
 		err, open := <-errChan
 		if open {
-			if cerrors.LogLevel() != cerrors.LOG_Debug {
-				log.Printf("Error: %v", err)
-			} else {
-				log.Printf("Error: %+v", err)
-			}
+			log.PrintErr(err)
 		} else {
 			close(finCh)
 			break

@@ -3,12 +3,12 @@ package players
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	bat "github.com/rezder/go-battleline/battleline"
 	pub "github.com/rezder/go-battleline/battserver/publist"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	"golang.org/x/net/websocket"
 	"io"
-	"log"
 	"strconv"
 )
 
@@ -58,14 +58,10 @@ func (s *Server) Start() {
 	go start(s.JoinCh, s.DisableCh, s.pubList, s.startGameChCl, s.finishedCh)
 }
 func (s *Server) Stop() {
-	if cerrors.IsVerbose() {
-		log.Println("Closing players join channel")
-	}
+	log.Print(log.DebugMsg, "Closing players join channel")
 	close(s.JoinCh)
 	<-s.finishedCh
-	if cerrors.IsVerbose() {
-		log.Println("Receiving players finished")
-	}
+	log.Print(log.DebugMsg, "Receiving players finished")
 }
 
 // Start starts the players server.
@@ -239,9 +235,7 @@ Loop:
 				case ACTInvRetract:
 					actRetractInvite(sendInvites, act)
 				case ACTMove:
-					if cerrors.IsVerbose() {
-						log.Printf("handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
-					}
+					log.Printf(log.DebugMsg, "handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
 					actMove(act, gameState, sendCh, player.errCh, player.id)
 				case ACTSave:
 					if gameState.waitingForClient() || gameState.waitingForServer() {
@@ -249,14 +243,14 @@ Loop:
 					} else {
 						errTxt := "Requesting game save with no game active!"
 						sendSysMess(sendCh, errTxt)
-						player.errCh <- cerrors.Wrap(NewPlayerErr(errTxt, player.id), 19, "")
+						player.errCh <- errors.Wrap(NewPlayerErr(errTxt, player.id), log.ErrNo(19))
 					}
 				case ACTQuit:
 					if gameState.waitingForClient() {
 						gameState.respCh <- [2]int{0, pub.SMQuit}
 					} else {
 						sendSysMess(sendCh, "Quitting game out of turn is not possible.")
-						player.errCh <- cerrors.Wrap(NewPlayerErr("Quitting game out of turn", player.id), 20, "")
+						player.errCh <- errors.Wrap(NewPlayerErr("Quitting game out of turn", player.id), log.ErrNo(20))
 					}
 				case ACTWatch:
 					upd = actWatch(watchGames, act, watchGameCh, player.doneComCh, readList,
@@ -266,7 +260,7 @@ Loop:
 				case ACTList:
 					upd = true
 				default:
-					player.errCh <- cerrors.Wrap(NewPlayerErr("Action do not exist", player.id), 21, "")
+					player.errCh <- errors.Wrap(NewPlayerErr("Action do not exist", player.id), log.ErrNo(21))
 				}
 				if upd {
 					readList = player.pubList.Read()
@@ -607,19 +601,17 @@ func actMove(act *Action, gameState *GameState, sendCh chan<- interface{}, errCh
 			}
 		}
 		if valid {
-			if cerrors.IsVerbose() {
-				log.Println("Sending move to table")
-			}
+			log.Print(log.DebugMsg, "Sending move to table")
 			gameState.sendMove(act.Move)
 		} else {
 			txt := "Illegal Move"
 			sendSysMess(sendCh, txt)
-			errCh <- cerrors.Wrap(NewPlayerErr("Illegal move", id), 22, "")
+			errCh <- errors.Wrap(NewPlayerErr("Illegal move", id), log.ErrNo(22))
 		}
 	} else {
 		txt := "Is not your time to move.!"
 		sendSysMess(sendCh, txt)
-		errCh <- cerrors.Wrap(NewPlayerErr("Move out of turn", id), 23, "")
+		errCh <- errors.Wrap(NewPlayerErr("Move out of turn", id), log.ErrNo(23))
 	}
 }
 
@@ -917,7 +909,7 @@ Loop:
 		if !broke && !playerStop {
 			err := websocket.JSON.Send(ws, netWriteAddJSONType(data))
 			if err != nil {
-				errCh <- cerrors.Wrap(err, 24, "Websocket send")
+				errCh <- errors.Wrap(err, log.ErrNo(24)+"Websocket send")
 				broke = true
 			} else {
 				if len(dataCh) > wrtBuffLIMIT {
@@ -971,16 +963,14 @@ Loop:
 	for {
 		var act Action
 		err := websocket.JSON.Receive(ws, &act)
-		if cerrors.IsVerbose() {
-			log.Printf("Action received: %v, Error: %v\n", act, err)
-		}
+		log.Printf(log.DebugMsg, "Action received: %v, Error: %v\n", act, err)
 		if err == io.EOF {
 			break Loop
 		} else if err != nil {
 			select {
 			case <-doneCh:
 			default:
-				errCh <- cerrors.Wrap(err, 25, "Websocket receive")
+				errCh <- errors.Wrap(err, log.ErrNo(25)+"Websocket receive")
 			}
 			break Loop //maybe to harsh
 		} else {

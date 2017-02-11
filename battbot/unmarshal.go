@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	"github.com/pkg/errors"
 	bat "github.com/rezder/go-battleline/battleline"
 	pub "github.com/rezder/go-battleline/battserver/publist"
 	"github.com/rezder/go-battleline/battserver/tables"

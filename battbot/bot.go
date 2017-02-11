@@ -2,16 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battbot/gamepos"
 	"github.com/rezder/go-battleline/battserver/players"
 	pub "github.com/rezder/go-battleline/battserver/publist"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	"golang.org/x/net/websocket"
 	"io"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -34,7 +33,7 @@ func main() {
 	flag.StringVar(&port, "port", "8181", "The port")
 	flag.StringVar(&name, "name", "Rene", "User name")
 	flag.StringVar(&pw, "pw", "12345678", "User password")
-	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 2 highest")
+	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 3 highest")
 	flag.BoolVar(&sendInvite, "send", false, "If true send invites else accept invite")
 	flag.Parse()
 	if len(port) != 0 {
@@ -42,23 +41,17 @@ func main() {
 	} else {
 		addrPort = addr
 	}
-	cerrors.InitLog(logLevel)
+	log.InitLog(logLevel)
 	cookies, err := login(scheme, addrPort, addr, name, pw)
 	if err != nil {
-		if cerrors.LogLevel() != cerrors.LOG_Debug {
-			log.Printf("Error: %v", err)
-		} else {
-			log.Printf("Error: %+v", err)
-		}
+		err = errors.Wrap(err, "Login failed")
+		log.PrintErr(err)
 		return
 	}
 	conn, err := createWs(scheme, addrPort, cookies)
 	if err != nil {
-		if cerrors.LogLevel() != cerrors.LOG_Debug {
-			log.Printf("Error: %v", err)
-		} else {
-			log.Printf("Error: %+v", err)
-		}
+		err = errors.Wrap(err, "Creating websocket failed")
+		log.PrintErr(err)
 		return
 	}
 	defer conn.Close()
@@ -67,15 +60,13 @@ func main() {
 	go start(conn, doneCh, finConnCh, sendInvite, name)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	log.Printf("Bot (%v) up and running. Close with ctrl+c\n", name)
+	log.Printf(log.Min, "Bot (%v) up and running. Close with ctrl+c\n", name)
 Loop:
 	for {
 		select {
 		case <-stop:
 			close(doneCh)
-			if cerrors.IsVerbose() {
-				log.Println("Bot stopped with interrupt signal")
-			}
+			log.Println(log.Verbose, "Bot stopped with interrupt signal")
 		case <-finConnCh:
 			break Loop
 		}
@@ -89,7 +80,7 @@ func login(scheme string, addrPort string, addr string, name string,
 	client := new(http.Client) //TODO can handle https maybe because of a nginx bug solved in 1.11 current docker version is 1.10
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		panic("Jar error")
+		return cookies, err
 	}
 	client.Jar = jar
 	resp, err := client.PostForm(scheme+"://"+addrPort+"/form/login",
@@ -183,11 +174,8 @@ Loop:
 							var list map[string]*pub.Data
 							err := json.Unmarshal(jsonDataTemp.Data, &list)
 							if err != nil {
-								if cerrors.LogLevel() != cerrors.LOG_Debug {
-									log.Printf("List unmarshal error: %v", err)
-								} else {
-									log.Printf("List unmarshal error: %+v", err)
-								}
+								err = errors.Wrap(err, "Unmarshal List failed")
+								log.PrintErr(err)
 								close(messDoneCh)
 								break Loop
 							}
@@ -201,9 +189,7 @@ Loop:
 							if invite != 0 {
 								act := players.NewAction(players.ACTInvite)
 								act.ID = invite
-								if cerrors.LogLevel() == cerrors.LOG_Debug {
-									log.Printf("Sending invite to %v", invite)
-								}
+								log.Printf(log.DebugMsg, "Sending invite to %v", invite)
 								ok := netWrite(conn, act)
 								if !ok {
 									close(messDoneCh)
@@ -216,11 +202,8 @@ Loop:
 					var invite pub.Invite
 					err := json.Unmarshal(jsonDataTemp.Data, &invite)
 					if err != nil {
-						if cerrors.LogLevel() != cerrors.LOG_Debug {
-							log.Printf("Invite unmarshal error: %v", err)
-						} else {
-							log.Printf("Invite unmarshal error: %+v", err)
-						}
+						err = errors.Wrap(err, "Unmarshal Invite failed")
+						log.PrintErr(err)
 						close(messDoneCh)
 						break Loop
 					}
@@ -228,9 +211,7 @@ Loop:
 						if gamePos == nil {
 							act := players.NewAction(players.ACTInvAccept)
 							act.ID = invite.InvitorID
-							if cerrors.LogLevel() == cerrors.LOG_Debug {
-								log.Printf("Accepting invite from %v", invite.InvitorID)
-							}
+							log.Printf(log.DebugMsg, "Accepting invite from %v", invite.InvitorID)
 							ok := netWrite(conn, act)
 							if !ok {
 								close(messDoneCh)
@@ -240,9 +221,7 @@ Loop:
 					} else {
 						act := players.NewAction(players.ACTInvDecline)
 						act.ID = invite.InvitorID
-						if cerrors.LogLevel() == cerrors.LOG_Debug {
-							log.Printf("Declining invite from %v", invite.InvitorID)
-						}
+						log.Printf(log.DebugMsg, "Declining invite from %v", invite.InvitorID)
 						ok := netWrite(conn, act)
 						if !ok {
 							close(messDoneCh)
@@ -256,13 +235,8 @@ Loop:
 						noGame = noGame + 1
 					}
 					mv, err := unmarshalMoveJSON(jsonDataTemp.Data)
-
 					if err != nil {
-						if cerrors.LogLevel() != cerrors.LOG_Debug {
-							log.Printf("Move unmarshal error: %v", err)
-						} else {
-							log.Printf("Move unmarshal error: %+v", err)
-						}
+						err = errors.Wrap(err, "Unmarshal Move failed")
 						close(messDoneCh)
 						break Loop
 					}
@@ -271,9 +245,7 @@ Loop:
 						gamePos = nil
 						if sendIvites {
 							act := players.NewAction(players.ACTList)
-							if cerrors.LogLevel() == cerrors.LOG_Debug {
-								log.Println("Request list")
-							}
+							log.Println(log.DebugMsg, "Request list")
 							ok := netWrite(conn, act)
 							if !ok {
 								close(messDoneCh)
@@ -298,7 +270,10 @@ Loop:
 					var closeCon players.CloseCon
 					err := json.Unmarshal(jsonDataTemp.Data, &closeCon)
 					if err == nil {
-						log.Printf("Server closed connection: %v", closeCon.Reason)
+						log.Printf(log.DebugMsg, "Server closed connection: %v", closeCon.Reason)
+					} else {
+						err = errors.Wrap(err, "Unmarshal CloseCon failed")
+						log.PrintErr(err)
 					}
 					close(messDoneCh)
 
@@ -314,20 +289,15 @@ Loop:
 			}
 		}
 	}
-	if cerrors.LogLevel() != cerrors.LOG_Default {
-		log.Printf("Number of game played %v", noGame)
-	}
+	log.Printf(log.Verbose, "Number of game played %v", noGame)
 }
 
 //netWrite writes to the websocket.
 func netWrite(conn *websocket.Conn, act *players.Action) bool {
 	err := websocket.JSON.Send(conn, act)
 	if err != nil {
-		if cerrors.LogLevel() != cerrors.LOG_Debug {
-			log.Printf("Send action: %v\n error: %v", act, err)
-		} else {
-			log.Printf("Send action: %v\n error: %+v", act, err)
-		}
+		err = errors.Wrapf(err, "Writing action %v to websocket failed", act)
+		log.PrintErr(err)
 		return false
 	}
 	return true
@@ -350,11 +320,8 @@ Loop:
 		} else if err == io.EOF {
 			break Loop
 		} else {
-			if cerrors.LogLevel() != cerrors.LOG_Debug {
-				log.Printf("Error: %v", err)
-			} else {
-				log.Printf("Error: %+v", err)
-			}
+			err = errors.Wrap(err, "Reading from websocket failed")
+			log.PrintErr(err)
 			break Loop
 		}
 	}

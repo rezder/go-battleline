@@ -2,12 +2,12 @@ package tables
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	bat "github.com/rezder/go-battleline/battleline"
 	"github.com/rezder/go-battleline/battleline/flag"
 	pub "github.com/rezder/go-battleline/battserver/publist"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	slice "github.com/rezder/go-slice/int"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -46,13 +46,9 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		deltCardix = 0
 		claimFailMap = nil
 		mover = game.Pos.Player
-		if cerrors.IsVerbose() {
-			log.Printf("Waiting for mover ix: %v id: %v", mover, ids[mover])
-		}
+		log.Printf(log.DebugMsg, "Waiting for mover ix: %v id: %v", mover, ids[mover])
 		moveix, open = <-moveChs[mover]
-		if cerrors.IsVerbose() {
-			log.Printf("Recived move ix:%v from mover ix: %v id:%v", moveix, mover, ids[mover])
-		}
+		log.Printf(log.DebugMsg, "Recived move ix:%v from mover ix: %v id:%v", moveix, mover, ids[mover])
 		if !open {
 			isSaveMove = true
 			move = *NewMoveSave()
@@ -91,13 +87,9 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 			move = updateClaim(game.Pos, claimFailMap, claimView)
 		}
 		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, game.Pos, ids)
-		if cerrors.IsVerbose() {
-			log.Printf("Sending move to playerid: %v\n%v\n", ids[0], move1)
-		}
+		log.Printf(log.DebugMsg, "Sending move to playerid: %v\n%v\n", ids[0], move1)
 		playerChs[0] <- move1
-		if cerrors.IsVerbose() {
-			log.Printf("Sending move to playerid: %v\n%v\n", ids[1], move2)
-		}
+		log.Printf(log.DebugMsg, "Sending move to playerid: %v\n%v\n", ids[1], move2)
 		playerChs[1] <- move2
 		benchCh <- moveBench
 		if game.Pos.State == bat.TURNFinish || game.Pos.State == bat.TURNQuit || isSaveMove {
@@ -127,10 +119,10 @@ func saveGame(ids [2]int, game *bat.Game, errCh chan<- error, saveDir string) {
 		defer file.Close()
 		err = bat.Save(game, file, true)
 		if err != nil {
-			errCh <- cerrors.Wrap(err, 17, "Saving server games")
+			errCh <- errors.Wrap(err, log.ErrNo(17)+"Saving server games")
 		}
 	} else {
-		err = cerrors.Wrap(err, 18, "Create server games file")
+		err = errors.Wrap(err, log.ErrNo(18)+"Create server games file")
 		errCh <- err
 	}
 }

@@ -6,8 +6,7 @@ import (
 	"github.com/rezder/go-battleline/battbot/flag"
 	bat "github.com/rezder/go-battleline/battleline"
 	"github.com/rezder/go-battleline/battleline/cards"
-	"github.com/rezder/go-error/cerrors"
-	"log"
+	"github.com/rezder/go-error/log"
 	"sort"
 	"strconv"
 )
@@ -32,10 +31,9 @@ func lostFlagTacticDbFlagMove(
 				if dbFlagAnas.Len() > 0 {
 					sort.Sort(dbFlagAnas)
 					bestFlagAna := dbFlagAnas[dbFlagAnas.Len()-1]
-					if cerrors.LogLevel() == cerrors.LOG_Debug {
-						tac, _ := cards.DrTactic(tacix)
-						log.Printf("Double flag. Lost flag: %v, Tactic: %v, Analysis simulated Moves: %+v\n", flagix, tac.Name(), bestFlagAna)
-					}
+					tac, _ := cards.DrTactic(tacix)
+					logtxt := "Double flag. Lost flag: %v, Tactic: %v, Analysis simulated Moves: %+v\n"
+					log.Printf(log.Debug, logtxt, flagix, tac.Name(), bestFlagAna)
 					if bestFlagAna.isWinWin() || flagAna.IsLoosingGame {
 						move = bestFlagAna.move
 						cardix = tacix
@@ -92,10 +90,8 @@ func dbFlagSimMove(
 
 	lostFlagSim := flagsAna[lostFlagix].Flag.Copy()
 	dbFlagSimFlagUpd(outFlagix == lostFlagix, cardix, tacix, lostFlagSim)
-	if cerrors.LogLevel() == cerrors.LOG_Debug {
-		tac, _ := cards.DrTactic(tacix)
-		log.Printf("Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, lostFlagSim, flagsAna[lostFlagix].Flag)
-	}
+	tac, _ := cards.DrTactic(tacix)
+	log.Printf(log.Debug, "Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, lostFlagSim, flagsAna[lostFlagix].Flag)
 	lostFlagSimAna = flag.NewAnalysis(lostFlagSim, handTroopixs, deckMaxValues, deck, lostFlagix, true)
 
 	if inFlagix != bat.REDeployDishix {
@@ -105,10 +101,8 @@ func dbFlagSimMove(
 		}
 		collFlagSim := flagsAna[collix].Flag.Copy()
 		dbFlagSimFlagUpd(outFlagix != lostFlagix, cardix, tacix, collFlagSim)
-		if cerrors.LogLevel() == cerrors.LOG_Debug {
-			tac, _ := cards.DrTactic(tacix)
-			log.Printf("Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, collFlagSim, flagsAna[collix].Flag)
-		}
+		tac, _ := cards.DrTactic(tacix)
+		log.Printf(log.Debug, "Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, collFlagSim, flagsAna[collix].Flag)
 		collFlagSimAna = flag.NewAnalysis(collFlagSim, handTroopixs, deckMaxValues, deck, collix, true)
 	}
 	return lostFlagSimAna, collFlagSimAna

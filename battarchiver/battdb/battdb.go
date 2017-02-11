@@ -5,8 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 	bat "github.com/rezder/go-battleline/battleline"
-	"github.com/rezder/go-error/cerrors"
+	"github.com/rezder/go-error/log"
 	"net/http"
 	"strconv"
 	"time"
@@ -35,7 +36,7 @@ func (bdb *Db) Init() error {
 	err := bdb.db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(bdb.bucket)
 		if err != nil {
-			return cerrors.Wrapf(err, 1, "Creating bucket: %v", string(bdb.bucket))
+			return errors.Wrapf(err, log.ErrNo(1)+"Creating bucket %v", string(bdb.bucket))
 		}
 		return nil
 	})
