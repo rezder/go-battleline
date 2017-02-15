@@ -1062,11 +1062,11 @@ var batt={};
 
                         let txt="";
                         let ex="";
-                        for(let flagix in move.FailMap){
-                            txt=txt+"Claim failed for flag: "+(parseInt(flagix)+1);
-                            txt=txt+"\n";
-                            ex=exTxt(move.FailMap[flagix]);
-                            if (ex!==""){
+                        for(let flagix=0;flagix<move.FailsExs.length;flagix++){
+                            if (move.FailsExs[flagix]){
+                                txt=txt+"Claim failed for flag: "+(flagix+1);
+                                txt=txt+"\n";
+                                ex=exTxt(move.FailsExs[flagix]);
                                 txt=txt+"For example: "+ex;
                                 txt=txt+"\n";
                             }

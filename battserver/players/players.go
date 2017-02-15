@@ -474,7 +474,7 @@ func actWatch(watchGames map[int]*pub.WatchChCl, act *Action,
 	_, found := watchGames[act.ID] // This test only works for game started, the bench server should reject
 	// any repeat request to start game.
 	if found {
-		txt := fmt.Sprintf("Start watching id: %v faild as you are already watching", act.ID)
+		txt := fmt.Sprintf("Start watching id: %v failed as you are already watching", act.ID)
 		sendSysMess(sendCh, txt)
 	} else {
 		watch := new(pub.WatchData)

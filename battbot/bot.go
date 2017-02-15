@@ -26,6 +26,7 @@ func main() {
 	var scheme string // http or https
 	var pw string
 	var logLevel int
+	var limitNoGame int
 	var addrPort string
 	var sendInvite bool
 	flag.StringVar(&scheme, "scheme", "http", "Scheme http or https")
@@ -35,6 +36,7 @@ func main() {
 	flag.StringVar(&pw, "pw", "12345678", "User password")
 	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 3 highest")
 	flag.BoolVar(&sendInvite, "send", false, "If true send invites else accept invite")
+	flag.IntVar(&limitNoGame, "limit", 0, "When the number of game played reach the limit the bot closes down")
 	flag.Parse()
 	if len(port) != 0 {
 		addrPort = addr + ":" + port
@@ -57,7 +59,7 @@ func main() {
 	defer conn.Close()
 	doneCh := make(chan struct{})
 	finConnCh := make(chan struct{})
-	go start(conn, doneCh, finConnCh, sendInvite, name)
+	go start(conn, doneCh, finConnCh, sendInvite, name, limitNoGame)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Printf(log.Min, "Bot (%v) up and running. Close with ctrl+c\n", name)
@@ -152,7 +154,9 @@ func start(
 	doneCh <-chan struct{},
 	finConnCh chan<- struct{},
 	sendIvites bool,
-	name string) {
+	name string,
+	limitNoGame int) {
+
 	noGame := 0
 	defer close(finConnCh)
 	messCh := make(chan *JsonDataTemp)
@@ -243,6 +247,10 @@ Loop:
 
 					if gamePos.UpdMove(mv) {
 						gamePos = nil
+						if noGame == limitNoGame {
+							close(messDoneCh)
+							break Loop
+						}
 						if sendIvites {
 							act := players.NewAction(players.ACTList)
 							log.Println(log.DebugMsg, "Request list")

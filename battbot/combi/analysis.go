@@ -36,7 +36,6 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 	ana.Comb = comb
 	nAll := uint64(len(drawSet))
 	dAll := uint64(drawNo)
-	ana.All = math.Comb(nAll, dAll)
 	valid, flagTroops, flagMorales, color := anaCombiFlagCards(comb.Troops, flagCards, comb.Formation.Value)
 	if !valid {
 		ana.Prop = 0
@@ -62,9 +61,11 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 					}
 					if !invalidOnly {
 						anaWedgePhalanx(ana, nAll, dAll, formationNo, flagTroops, flagMorales, handTroops, drawTroops)
-						if reduceCalc { // one out 3 is bad when draw two cards
-							ana.Valid = ana.Valid - math.Comb(nAll-uint64(3), dAll-uint64(2))
-							ana.Prop = float64(ana.Valid) / float64(ana.All)
+						//This the rar case of mud,123 joker and troop with value 3.
+						if reduceCalc { // 1 out 3 is bad when draw two cards
+							if nAll > dAll {
+								ana.Valid = ana.Valid - math.Comb(nAll-uint64(3), dAll-uint64(2))
+							}
 						}
 					} else {
 						ana.Prop = 0
@@ -148,12 +149,12 @@ func anaSkirmish(ana *Analysis, nAll, dAll uint64, formationNo int,
 								}
 							}
 						}
-						drawMaxValid := min(dAll, nValid)
-						for d := drawMaxValid; d >= dValid; d-- {
+						drawMaxValid := min(dAll, nValid)             //Can't use cards that I can't draw.
+						drawMinValid := max(dValid, nValid+dAll-nAll) //Must use all drawn cards.
+						for d := drawMaxValid; d >= drawMinValid; d-- {
 							ana.Valid = ana.Valid + (anaSkirmishCombi(values, missingNo, int(d), moralValues) *
 								math.Comb(nAll-nValid, dAll-d))
 						}
-						ana.Prop = float64(ana.Valid) / float64(ana.All)
 					}
 				}
 			} else {
@@ -168,6 +169,12 @@ func min(x, y uint64) uint64 {
 	}
 	return y
 }
+func max(x, y uint64) uint64 {
+	if x > y {
+		return x
+	}
+	return y
+}
 
 //anaSkirmishCombi calculate the valid n over d combinations of valid skirmish cards buy looking at the distinct
 //drawn values. When the number of distinct values equal the number of cards we need to make the combination,
@@ -175,10 +182,14 @@ func min(x, y uint64) uint64 {
 func anaSkirmishCombi(values []int, missingNo, d int, moralValues map[int]bool) (validNo uint64) {
 	validNo = 0
 	math.Perm(len(values), d, func(perm []int) bool {
-		unique := make(map[int]bool)
+		var unique [11]bool //for speed maps are expensive
+		uniqueNo := 0
 		for _, ix := range perm {
-			unique[values[ix]] = true
-			if len(unique) >= missingNo {
+			if !unique[values[ix]] {
+				uniqueNo = uniqueNo + 1
+				unique[values[ix]] = true
+			}
+			if uniqueNo >= missingNo {
 				if len(moralValues) == missingNo {
 					equal := true
 					for v := range unique {
@@ -251,7 +262,6 @@ func anaBattalion(ana *Analysis, nAll, dAll uint64, formationNo, strength int,
 							elementNo, sum, factors, values, handTroops, drawTroops)
 					}
 					ana.Valid = anaBattalionPerm(handTroops, drawTroops, sum, elementNo, nAll, dAll)
-					ana.Prop = float64(ana.Valid) / float64(ana.All)
 				}
 			}
 		} else {
@@ -529,6 +539,13 @@ func anaBattalionPermCombi(drawTroops, handTroops []int, sum, elementNo, d int) 
 
 //anaWedgePhalanx update the analysis with the valid numbers of combination and the
 //probability for a wedge or a phalanx combination.
+//The idea is calculate all possible combinations with the valid cards "nValid"
+//and multiply with all the possible combination of the none valid cards.
+//Every number of valid cards is calulted seperately if 5 valid card exist and we need
+//two cards to make a combination then we calulate 5,4,3,2 and there coresponding
+//non valid combinations if draw 10 cards dAll that will be 5,6,7 and 8.
+//The restriction min() and max() make sure we always make a combination that adds up
+//to all our drawn cards.
 //#ana
 func anaWedgePhalanx(ana *Analysis, nAll uint64, dAll uint64, formationNo int, flagTroops []int,
 	flagMorales map[int]map[int]bool, handTroops []int, drawTroops []int) {
@@ -540,11 +557,11 @@ func anaWedgePhalanx(ana *Analysis, nAll uint64, dAll uint64, formationNo int, f
 		nValid := uint64(len(drawTroops))
 		dValid := uint64(missingNo)
 		if nValid >= dValid {
-			drawMaxValid := min(dAll, nValid)
-			for d := drawMaxValid; d >= dValid; d-- {
+			drawMaxValid := min(dAll, nValid)             //Can't use cards that I can't draw.
+			drawMinValid := max(dValid, nValid+dAll-nAll) //Must use all drawn cards.
+			for d := drawMaxValid; d >= drawMinValid; d-- {
 				ana.Valid = ana.Valid + (math.Comb(nValid, d) * math.Comb(nAll-nValid, dAll-d))
 			}
-			ana.Prop = float64(ana.Valid) / float64(ana.All)
 		}
 	}
 }

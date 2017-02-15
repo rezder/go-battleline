@@ -34,7 +34,6 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	var mover int
 
 	var deltCardix int
-	var claimFailMap map[string][]int //may contain zero index for 4 card
 	var isClaim bool
 	var claim bat.MoveClaim
 	var claimView *MoveClaimView
@@ -44,7 +43,7 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 		isClaim = false
 		isSaveMove = false
 		deltCardix = 0
-		claimFailMap = nil
+		var claimsFailExs [9][]int //may contain zero index for 4 card
 		mover = game.Pos.Player
 		log.Printf(log.DebugMsg, "Waiting for mover ix: %v id: %v", mover, ids[mover])
 		moveix, open = <-moveChs[mover]
@@ -81,10 +80,10 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 					claimView = NewMoveClaimView(claim)
 				}
 			}
-			deltCardix, claimFailMap = game.Move(moveix[1])
+			deltCardix, claimsFailExs = game.Move(moveix[1])
 		}
 		if isClaim {
-			move = updateClaim(game.Pos, claimFailMap, claimView)
+			move = updateClaim(game.Pos, claimsFailExs, claimView)
 		}
 		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, game.Pos, ids)
 		log.Printf(log.DebugMsg, "Sending move to playerid: %v\n%v\n", ids[0], move1)
@@ -129,16 +128,17 @@ func saveGame(ids [2]int, game *bat.Game, errCh chan<- error, saveDir string) {
 
 //updateClaim update the MoveClaimView with the succesfully claim flags and the win
 //indicator. The updated view is casted and returned as the move.
-func updateClaim(pos *bat.GamePos, claimFailMap map[string][]int, claimView *MoveClaimView) (move bat.Move) {
+func updateClaim(
+	pos *bat.GamePos,
+	claimsFailExs [9][]int,
+	claimView *MoveClaimView) (move bat.Move) {
 
 	for _, v := range claimView.Claim {
 		if pos.Flags[v].Claimed() {
 			claimView.Claimed = append(claimView.Claimed, v)
 		}
 	}
-	if len(claimFailMap) != 0 {
-		claimView.FailMap = claimFailMap
-	}
+	claimView.FailsExs = claimsFailExs
 	if pos.State == bat.TURNFinish {
 		claimView.Win = true
 	}
@@ -470,7 +470,7 @@ type MoveClaimView struct {
 	Claim    []int //The players claimed this flags
 	Claimed  []int //The players claimed flag that was not rejected
 	Win      bool
-	FailMap  map[string][]int
+	FailsExs [9][]int
 	JsonType string
 }
 
@@ -478,25 +478,12 @@ func (m MoveClaimView) Equal(other MoveClaimView) (equal bool) {
 	if m.Win == other.Win && slice.Equal(m.Claim, other.Claim) &&
 		slice.Equal(m.Claimed, other.Claimed) {
 		equal = true
-		if len(m.FailMap) == len(other.FailMap) {
-			if len(m.FailMap) != 0 {
-				for flagix, ex := range m.FailMap {
-					otherEx, found := other.FailMap[flagix]
-					if found {
-						if !slice.Equal(ex, otherEx) {
-							equal = false
-							break
-						}
-					} else {
-						equal = false
-						break
-					}
-				}
-			} else {
-				equal = true
+		for flagix, ex := range m.FailsExs {
+			otherEx := other.FailsExs[flagix]
+			if !slice.Equal(ex, otherEx) {
+				equal = false
+				break
 			}
-		} else {
-			equal = false
 		}
 	}
 	return equal

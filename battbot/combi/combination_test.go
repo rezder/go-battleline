@@ -58,7 +58,6 @@ func TestAnaPhalanxShortStack(t *testing.T) {
 	ana := Ana(combi[14], flagCards, handCards, drawSet, drawNo, false)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[14], flagCards, handCards, drawNo, ana)
-	t.Error("Forced error")
 }
 
 func TestAnaBattalion(t *testing.T) {

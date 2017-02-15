@@ -170,7 +170,6 @@ func makeMoveScoutReturn(pos *Pos) (moveix int) {
 		noReturnTroops := noReturn - len(tacixs)
 		troopixs = keep.demandScoutReturn(noReturnTroops, flagsAna, pos.deck)
 	}
-
 	move := *bat.NewMoveScoutReturn(tacixs, troopixs)
 	pos.playHand.PlayMulti(move.Tac)
 	pos.playHand.PlayMulti(move.Troop)
@@ -737,7 +736,7 @@ func minTroop(troopixs []int) (troopix int) {
 }
 func maxMinTroop(troopixs []int) (maxTroopix, minTroopix int) {
 	maxValue := 0
-	minValue := 0
+	minValue := cards.NOTroop + 1
 	for _, troopix := range troopixs {
 		troop, _ := cards.DrTroop(troopix)
 		if troop.Value() > maxValue {

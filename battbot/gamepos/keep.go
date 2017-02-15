@@ -391,7 +391,6 @@ func (k *keep) demandScoutReturn(
 	} else {
 		missTroopsNo := no - len(troopixs)
 		leftTroopixs := slice.WithOutNew(k.handTroopixs, troopixs)
-
 		missixs := keepScoutReturnDemand(flagsAna, deck, leftTroopixs, missTroopsNo, k.priFlagixs)
 		troopixs = append(troopixs, missixs...)
 	}
@@ -405,7 +404,7 @@ func keepScoutReturnRequest(handTroopixs []int, keepFlag, keepFlagHand map[int]b
 	if len(handTroopixs)-len(keepFlagHand) > 1 {
 		troopixs = keep2LowestValue(handTroopixs, keepFlagHand)
 	} else if len(handTroopixs)-len(keepFlag) > 1 {
-		troopixs = keep2LowestValue(handTroopixs, keepFlagHand)
+		troopixs = keep2LowestValue(handTroopixs, keepFlag)
 	} else {
 		if len(handTroopixs)-len(keepFlagHand) == 1 {
 			troopixs = append(troopixs, keepLowestValue(handTroopixs, keepFlagHand))
@@ -444,7 +443,7 @@ func keepScoutReturnDemand(
 			}
 			keepFlag := keepMap.calcHand(handTroopixs)
 			if len(handTroopixs)-len(keepFlag) >= missTroopsNo {
-				if len(handTroopixs)-len(keepFlag) == 2 {
+				if len(handTroopixs)-len(keepFlag) > 1 && missTroopsNo == 2 {
 					troopixs = keep2LowestValue(handTroopixs, keepFlag)
 				} else {
 					troopix := keepLowestValue(handTroopixs, keepFlag)

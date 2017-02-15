@@ -41,7 +41,7 @@ func TestMq(t *testing.T) {
 	if open {
 		gameSend, err := arnet.ZmqDecoder(gameBytes)
 		if err != nil {
-			t.Errorf("Game decode failde %v", err)
+			t.Errorf("Game decode failed %v", err)
 		}
 		gameSend.CalcPos()
 		if !game.Equal(gameSend) {

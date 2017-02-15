@@ -1,10 +1,6 @@
 // Package cards contain the cards of battleline.
 package cards
 
-import (
-	"github.com/pkg/errors"
-)
-
 const (
 	//NOTroop is the number of troop cards.
 	NOTroop = 60
@@ -225,29 +221,29 @@ type Formation struct {
 }
 
 //DrCard returns the Card of the card index.
-func DrCard(ix int) (c Card, err error) {
+func DrCard(ix int) (Card, bool) {
 	if ix > 0 && ix < NOTroop+NOTac+1 {
-		return Cards[ix], err
+		return Cards[ix], true
 	}
-	return nil, errors.New("Card do not exist")
+	return nil, false
 }
 
 //DrTroop returns the Troop card of the card index.
-func DrTroop(ix int) (c *Troop, err error) {
-	troop, ok := Cards[ix].(Troop)
+func DrTroop(cardix int) (*Troop, bool) {
+	troop, ok := Cards[cardix].(Troop)
 	if ok {
-		return &troop, err
+		return &troop, ok
 	}
-	return nil, errors.New("Troop do not exist")
+	return nil, ok
 }
 
 //DrTactic returns the Tactic card of the card index.
-func DrTactic(ix int) (c *Tactic, err error) {
-	tactic, ok := Cards[ix].(Tactic)
+func DrTactic(cardix int) (*Tactic, bool) {
+	tactic, ok := Cards[cardix].(Tactic)
 	if ok {
-		return &tactic, err
+		return &tactic, ok
 	}
-	return nil, errors.New("Card do not exist")
+	return nil, ok
 }
 
 //IsEnv checks if card index is a environment tactic card.

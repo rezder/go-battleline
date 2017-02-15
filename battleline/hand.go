@@ -78,10 +78,9 @@ func (hand *Hand) String() (txt string) {
 
 //Play removes a card from the hand.
 func (hand *Hand) Play(cardix int) {
-	cardTac, _ := cards.DrTactic(cardix)
-	if cardTac != nil {
+	if cards.IsTac(cardix) {
 		hand.Tacs = slice.Remove(hand.Tacs, cardix)
-	} else if cardTroop, _ := cards.DrTroop(cardix); cardTroop != nil {
+	} else if cards.IsTroop(cardix) {
 		hand.Troops = slice.Remove(hand.Troops, cardix)
 	} else {
 		panic("Card index is not valid")
@@ -97,10 +96,9 @@ func (hand *Hand) PlayMulti(cardixs []int) {
 
 //Draw adds card to hand.
 func (hand *Hand) Draw(cardix int) {
-	cardTac, _ := cards.DrTactic(cardix)
-	if cardTac != nil {
+	if cards.IsTac(cardix) {
 		hand.Tacs = append(hand.Tacs, cardix)
-	} else if cardTroop, _ := cards.DrTroop(cardix); cardTroop != nil {
+	} else if cards.IsTroop(cardix) {
 		hand.Troops = append(hand.Troops, cardix)
 	} else {
 		panic("Card index is not valid")
@@ -153,9 +151,9 @@ func (dish *Dish) String() (txt string) {
 
 //DishCard add card to the dish.
 func (dish *Dish) DishCard(cardix int) {
-	if tac, _ := cards.DrTactic(cardix); tac != nil {
+	if cards.IsTac(cardix) {
 		dish.Tacs = append(dish.Tacs, cardix)
-	} else if troop, _ := cards.DrTroop(cardix); troop != nil {
+	} else if cards.IsTroop(cardix) {
 		dish.Troops = append(dish.Troops, cardix)
 	} else {
 		panic("Card should exist")

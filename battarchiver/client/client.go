@@ -56,7 +56,7 @@ func start(
 Loop:
 	for {
 		select {
-		case game, open := <-gameCh:
+		case game, open := <-gameCh: //TODO what if 25 game buffer is to small and it blocks because zmq is to slow. Should it close down archiver and try a new one. Hint check len(gameCh and close if full)
 			if !open {
 				break Loop
 			} else {
@@ -65,12 +65,15 @@ Loop:
 					select {
 					case conn.GameCh <- game:
 					case resendGame := <-conn.BrokenCh:
+						log.Printf(log.DebugMsg, "Zmq broken closing game channel on %v", serverAddrs[0])
 						close(conn.GameCh)
 						<-conn.FinCh
+						log.Printf(log.DebugMsg, "Zmq broken %v return done close connection.", serverAddrs[0])
 						conn.Close()
 						conn = nil
 						serverAddrs = serverAddrs[1:len(serverAddrs)]
 						for len(serverAddrs) > 0 {
+							log.Printf(log.DebugMsg, "Old zmq broken starting %v", serverAddrs[0])
 							conn, err = arnet.NewZmqSender(serverAddrs[0])
 							if err != nil {
 								err = errors.Wrapf(err, "Creating connection to %v failed", serverAddr)
@@ -78,7 +81,6 @@ Loop:
 								serverAddrs = serverAddrs[1:len(serverAddrs)]
 							} else {
 								break
-
 							}
 						}
 						if conn != nil {
@@ -110,7 +112,9 @@ Loop:
 		case <-conn.BrokenCh:
 			<-conn.FinCh
 		}
+		log.Print(log.DebugMsg, "Closing zmq connection")
 		conn.Close()
+		log.Print(log.DebugMsg, "Closed zmq connection")
 	}
 	close(finishCh)
 

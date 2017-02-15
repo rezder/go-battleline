@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -29,6 +30,7 @@ func (pages *Pages) addFile(file string) {
 func (pages *Pages) addDir(dir string) (err error) {
 	dirInfo, err := ioutil.ReadDir(dir)
 	if err != nil {
+		err = errors.Wrapf(err, "Error reading directory %v", dir)
 		return err
 	}
 	for _, fInfo := range dirInfo {
@@ -46,6 +48,7 @@ func (pages *Pages) load() (err error) {
 	for name := range pages.list {
 		b, err = ioutil.ReadFile(name)
 		if err != nil {
+			err = errors.Wrapf(err, "Error reading file %v", name)
 			return err
 		}
 		pages.list[name] = b

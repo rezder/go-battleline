@@ -18,7 +18,7 @@ func main() {
 	backupPortFlag := flag.String("backupport", "", "Back http server port. No port no server")
 	clientFlag := flag.String("client", "", "Url of client without protecol if specified client is poked when the server is ready")
 	myAddrFlag := flag.String("addr", "arch", "Archiver addr only used if client is specified, port is added to the address")
-	logFlag := flag.Int("loglevel", 3, "Log level 0 default lowest, 3 highest")
+	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 3 highest")
 	dbFileFlag := flag.String("dbfile", "bdb.db", "The database file name")
 	flag.Parse()
 	log.InitLog(*logFlag)

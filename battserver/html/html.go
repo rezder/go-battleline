@@ -56,20 +56,26 @@ func New(errCh chan<- error, port string, save bool, saveDir string, archiverPor
 	}
 	var netListener *net.TCPListener
 	netListener, err = net.ListenTCP("tcp", laddr)
-	//netListener, err = net.ListenTCP("tcp", ":8181")
-	if err == nil {
-		s.netListener = netListener
-		var gameServer *games.Server
-		gameServer, err = games.New(errCh, save, saveDir, archiverPort)
-		if err == nil {
-			var clients *Clients
-			clients, err = loadClients(gameServer)
-			if err == nil {
-				s.clients = clients
-				s.doneCh = make(chan struct{})
-			}
-		}
+	if err != nil {
+		err = errors.Wrapf(err, "TCP listen on %v failed", laddr)
+		return s, err
 	}
+	//netListener, err = net.ListenTCP("tcp", ":8181")
+
+	s.netListener = netListener
+	var gameServer *games.Server
+	gameServer, err = games.New(errCh, save, saveDir, archiverPort)
+	if err != nil {
+		return s, err
+	}
+	var clients *Clients
+	clients, err = loadClients(gameServer)
+	if err != nil {
+		return s, err
+	}
+	s.clients = clients
+	s.doneCh = make(chan struct{})
+
 	return s, err
 }
 
@@ -158,7 +164,7 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 			}
 			err = ws.Close()
 			if err != nil {
-				err = errors.Wrap(err, log.ErrNo(9)+"Player faild to join closing websocket")
+				err = errors.Wrap(err, log.ErrNo(9)+"Player failed to join closing websocket")
 				errCh <- err
 			}
 		}

@@ -7,7 +7,6 @@ import (
 	"github.com/rezder/go-battleline/battleline/flag"
 	"github.com/rezder/go-card/deck"
 	"os"
-	"strconv"
 )
 
 const (
@@ -140,7 +139,7 @@ func (game *Game) Pass() {
 //Move makes a none card move. Claim flags, Getting or returning cards to deck.
 //dealtix the card in deal move.
 //claimFailMap the failed claim map in a claim flag move. Is never nil.
-func (game *Game) Move(move int) (dealtix int, claimFailMap map[string][]int) {
+func (game *Game) Move(move int) (dealtix int, claimsFailExs [9][]int) {
 	game.addMove(0, move)
 	pos := game.Pos //Update
 	pos.Info = ""
@@ -149,7 +148,7 @@ func (game *Game) Move(move int) (dealtix int, claimFailMap map[string][]int) {
 	case TURNFlag:
 		moveC, ok := pos.Moves[move].(MoveClaim)
 		if ok {
-			claimFailMap = moveClaimFlag(pos.Player, moveC.Flags, &pos.Flags, &pos.Hands, &pos.DeckTroop)
+			claimsFailExs = moveClaimFlag(pos.Player, moveC.Flags, &pos.Flags, &pos.Hands, &pos.DeckTroop)
 		} else {
 			panic("There should be only claim moves")
 		}
@@ -175,7 +174,7 @@ func (game *Game) Move(move int) (dealtix int, claimFailMap map[string][]int) {
 		panic("Unexpected turn state")
 	}
 	pos.next(false, &pos.Hands, &pos.Flags, &pos.DeckTac, &pos.DeckTroop, &pos.Dishs)
-	return dealtix, claimFailMap
+	return dealtix, claimsFailExs
 }
 
 //moveScoutReturn make the return from scout.
@@ -202,19 +201,20 @@ func moveScoutRet(move *MoveScoutReturn, deckTack *deck.Deck, deckTroop *deck.De
 }
 
 //moveClaimFlag make a claim flag move.
-//claims is the flag indexs that should be claimed if possible.
+//claimixs is the flag indexs that should be claimed if possible.
+//claimsFailExs jsoned so nil is change to empty array empty and nil is not different, we must always have a example if
+//claim failed.
 //#flags
 func moveClaimFlag(playerix int, claimixs []int, flags *[NOFlags]*flag.Flag, hands *[2]*Hand,
-	deckTroop *deck.Deck) (claimFailMap map[string][]int) {
+	deckTroop *deck.Deck) (claimsFailExs [9][]int) {
 	unPlayCards := simTroops(deckTroop, hands[0].Troops, hands[1].Troops)
-	claimFailMap = make(map[string][]int)
 	for _, claim := range claimixs {
 		ok, ex := flags[claim].ClaimFlag(playerix, unPlayCards) //ex contain 0
 		if !ok {
-			claimFailMap[strconv.Itoa(claim)] = ex //json like strings
+			claimsFailExs[claim] = ex
 		}
 	}
-	return claimFailMap
+	return claimsFailExs
 }
 
 //moveDeck make select deck move.

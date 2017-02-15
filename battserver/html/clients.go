@@ -78,27 +78,29 @@ func NewClients(games *games.Server) (clients *Clients) {
 //the mutexs.
 func loadClients(games *games.Server) (clients *Clients, err error) {
 	file, err := os.Open(clientsFileNAME)
-	if err == nil {
-		defer file.Close()
-		decoder := gob.NewDecoder(file)
-		lc := *NewClients(games)
-		err = decoder.Decode(&lc)
-		if err == nil {
-			clients = &lc
-			for _, client := range clients.List {
-				client.mu = new(sync.Mutex)
-			}
-		}
-	} else {
+	if err != nil {
 		if os.IsNotExist(err) {
 			err = nil
 			clients = NewClients(games) //first start
 		} else {
-			err = errors.Wrap(err, log.ErrNo(1)+"Open clients file")
+			err = errors.Wrapf(err, log.ErrNo(1)+"Open clients file %v", clientsFileNAME)
+			return clients, err
 		}
 	}
-	return clients, err
 
+	defer file.Close()
+	decoder := gob.NewDecoder(file)
+	lc := *NewClients(games)
+	err = decoder.Decode(&lc)
+	if err != nil {
+		err = errors.Wrapf(err, "Decoding user file %v failed", clientsFileNAME)
+		return clients, err
+	}
+	clients = &lc
+	for _, client := range clients.List {
+		client.mu = new(sync.Mutex)
+	}
+	return clients, err
 }
 
 // save saves the client list to file.
@@ -273,7 +275,7 @@ func (clients *Clients) addNew(name string, pwTxt string) (sid string, err error
 		client, found := clients.List[name]
 		if !found {
 			var pwh []byte
-			pwh, err = bcrypt.GenerateFromPassword([]byte(pwTxt), pwCOST)
+			pwh, err = bcrypt.GenerateFromPassword([]byte(pwTxt), pwCOST) //TODO we need salt some day
 			if err == nil {
 				client = createClient(name, clients.NextID, pwh)
 				clients.NextID = clients.NextID + 1

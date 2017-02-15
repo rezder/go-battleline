@@ -3,7 +3,7 @@ package main
 
 import (
 	"flag"
-	"github.com/pkg/errors"
+	//"github.com/pkg/profile"
 	"github.com/rezder/go-battleline/battserver/html"
 	"github.com/rezder/go-error/log"
 	"os"
@@ -23,6 +23,7 @@ func main() {
 	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 3 highest")
 	flag.Parse()
 	log.InitLog(*logFlag)
+	//defer profile.Start(profile.MemProfile, profile.NoShutdownHook).Stop()
 	var port string
 	if *portFlag == 80 { //Add https port if use https
 		port = ""
@@ -32,7 +33,6 @@ func main() {
 	errCh := make(chan error, 10)
 	httpServer, err := html.New(errCh, port, *saveFlag, *saveDirFlag, *archiverPortFlag)
 	if err != nil {
-		err = errors.Wrap(err, "Create http server failed")
 		log.PrintErr(err)
 		return
 	}

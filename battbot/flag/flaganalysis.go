@@ -6,6 +6,7 @@ import (
 	botdeck "github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battleline/cards"
 	"github.com/rezder/go-error/log"
+	math "github.com/rezder/go-math/int"
 	slice "github.com/rezder/go-slice/int"
 	"sort"
 )
@@ -242,8 +243,8 @@ func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationS
 		if targetSum >= botMaxSum {
 			playableCards = make([]int, 0, len(botHandTroops))
 			for _, cardix := range botHandTroops {
-				troop, err := cards.DrTroop(cardix)
-				if err == nil {
+				troop, ok := cards.DrTroop(cardix)
+				if ok {
 					if troop.Value() >= deckValues[formationSize-len(flagTroops)-1] {
 						playableCards = append(playableCards, cardix)
 					}
@@ -255,8 +256,8 @@ func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationS
 			needValue := targetSum - flagSum
 			avgNeedValue := float32(needValue) / float32(formationSize-len(flagTroops))
 			for _, cardIx := range botHandTroops {
-				troop, err := cards.DrTroop(cardIx)
-				if err == nil {
+				troop, ok := cards.DrTroop(cardIx)
+				if ok {
 					if needValue > 0 {
 						if float32(troop.Value()) >= avgNeedValue {
 							playableCards = append(playableCards, cardIx)
@@ -274,8 +275,13 @@ func sumCards(deckValues, flagTroops, botHandTroops []int, targetSum, formationS
 func CalcMaxRank(flagCards []int, handCards []int, drawSet map[int]bool,
 	drawNo int, mud bool) (rank int) {
 	combinations := combi.CombinationsMud(mud)
+	allCombi := math.Comb(uint64(len(drawSet)), uint64(drawNo))
 	for _, comb := range combinations {
 		ana := combi.Ana(comb, flagCards, handCards, drawSet, drawNo, mud)
+		ana.All = allCombi
+		if ana.Valid > 0 {
+			ana.Prop = float64(ana.Valid) / float64(allCombi)
+		}
 		if ana.Prop > 0 {
 			rank = ana.Comb.Rank
 			break
@@ -408,7 +414,6 @@ func calcMaxRankNewFlagOneMoral(
 	allDrawSet map[int]bool,
 	formationSize int,
 	combinations []*combi.Combination) (rank int) {
-	//TODO if fail check if jokker kan help only one joker.
 	calcBatt := false
 Loop:
 	for _, comb := range combinations {
@@ -531,8 +536,8 @@ func findMissingTroops(missingNo int, troops []int, deckSet map[int]bool) (found
 	return found
 }
 func validJoker(troopix, moralix int) (valid bool) {
-	troop, err := cards.DrTroop(troopix)
-	if err == nil {
+	troop, ok := cards.DrTroop(troopix)
+	if ok {
 		if moralix == cards.TC123 {
 			if troop.Value() > 0 && troop.Value() < 4 {
 				valid = true
@@ -586,8 +591,8 @@ func maxTroopValue(troops map[int]bool) int {
 }
 func MoraleTroopsSum(flagTroops []int) (sum int) {
 	for _, cardix := range flagTroops {
-		troop, err := cards.DrTroop(cardix)
-		if err == nil {
+		troop, ok := cards.DrTroop(cardix)
+		if ok {
 			sum = sum + troop.Value()
 		} else {
 			sum = sum + cards.MoraleMaxValue(cardix)
@@ -632,9 +637,14 @@ func rankAnalyze(flagCards []int, handCards []int, drawSet map[int]bool,
 	combinations := combi.Combinations(formationNo)
 	formationMade := len(flagCards) == formationNo
 	ranks = make([]*combi.Analysis, len(combinations))
+	allCombi := math.Comb(uint64(len(drawSet)), uint64(drawNo))
 	for i, comb := range combinations {
 		ana := combi.Ana(comb, flagCards, handCards, drawSet, drawNo, mud)
 		ranks[i] = ana
+		ana.All = allCombi
+		if ana.Valid > 0 {
+			ana.Prop = float64(ana.Valid) / float64(allCombi)
+		}
 		if formationMade && ana.Prop == 1 {
 			break
 		}

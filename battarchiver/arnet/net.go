@@ -97,6 +97,7 @@ func NewZmqReciver(port string) (nz *NetZmqReciver, err error) {
 		nz.context = nil
 		return nz, err
 	}
+	nz.soc.SetLinger(0) // http://api.zeromq.org/4-1:zmq-ctx-term
 	err = nz.soc.Bind("tcp://*:" + port)
 	if err != nil {
 		nz.soc.Close()
@@ -130,7 +131,7 @@ func zmqListen(receiver *zmq4.Socket, gameCh chan<- []byte) {
 	for {
 		msBytes, err = receiver.RecvBytes(0)
 		if err != nil {
-			err = errors.Wrap(err, "Closing receiver. Net work receiver zmq faild")
+			err = errors.Wrap(err, "Closing receiver. Net work receiver zmq failed")
 			log.PrintErr(err)
 			break
 		} else {
@@ -159,6 +160,8 @@ func NewZmqSender(addr string) (nz *NetZmqSender, err error) {
 		nz.context = nil
 		return nz, err
 	}
+	nz.soc.SetLinger(0) //see http://api.zeromq.org/4-1:zmq-ctx-term
+	// could a little but I done think I need it.
 	err = nz.soc.Connect("tcp://" + addr) //"tcp://localhost:5558"
 	if err != nil {
 		nz.soc.Close()
@@ -187,6 +190,7 @@ func zmqSend(
 	var msBytes []byte
 	var game *bat.Game
 	var open bool
+	var n int
 	for {
 		game, open = <-gameCh
 		if open {
@@ -195,7 +199,9 @@ func zmqSend(
 				err = errors.Wrap(err, "Game encoding for zmq failed")
 				log.PrintErr(err)
 			} else {
-				_, err = sender.SendBytes(msBytes, 0)
+				log.Print(log.DebugMsg, "Zmq sends game")
+				n, err = sender.SendBytes(msBytes, 0)
+				log.Printf(log.DebugMsg, "Zmq send %v bytes", n)
 				if err != nil { //TODO MAYBE resend.
 					brokenCh <- game
 				}

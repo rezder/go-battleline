@@ -172,7 +172,7 @@ func putGetTest(dbname string, keyf func(*bat.Game) []byte, t *testing.T) {
 	}
 	for i, g := range savedGames {
 		if g == nil {
-			t.Fatalf("Load failded key: %v", string(keys[i]))
+			t.Fatalf("Load failed key: %v", string(keys[i]))
 		}
 	}
 }

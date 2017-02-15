@@ -144,8 +144,8 @@ func (flag *Flag) Remove(cardix int, playerix int) (mudix0 int, mudix1 int, err 
 	opp := flag.Players[opponent(playerix)] // updated
 	mudix1 = -1
 	mudix0 = -1
-	card, err := cards.DrCard(cardix)
-	if err != nil {
+	card, ok := cards.DrCard(cardix)
+	if !ok {
 		panic("Card do not exist")
 	}
 	errMessage := fmt.Sprintf("Player %v do not have card %v", playerix, card.Name())
@@ -244,8 +244,8 @@ func opponent(playerix int) int {
 func (flag *Flag) Set(cardix int, playerix int) (err error) {
 	player := flag.Players[playerix]        // updated
 	opp := flag.Players[opponent(playerix)] // updated
-	card, err := cards.DrCard(cardix)
-	if err != nil {
+	card, ok := cards.DrCard(cardix)
+	if !ok {
 		panic("Card do not exist")
 	}
 	errMessage := fmt.Sprintf("Player %v do not have space for card %v", playerix, card.Name())
@@ -323,8 +323,8 @@ func sortInt(a []int) {
 
 // sortIntValue calculate the sort value of a card in the players troop.
 func sortIntValue(ix int) int {
-	troop, err := cards.DrTroop(ix)
-	if err == nil {
+	troop, ok := cards.DrTroop(ix)
+	if ok {
 		return troop.Value()
 	}
 	return ix
@@ -389,8 +389,8 @@ func evalSim(mud bool, fog bool, troops []int, played int) (formation *cards.For
 // evalStrenght evalue the strenght of a formation.
 func evalStrenght(form []int, v123 int, vLeader int) (st int) {
 	for _, cardix := range form {
-		troop, err := cards.DrTroop(cardix)
-		if err == nil {
+		troop, ok := cards.DrTroop(cardix)
+		if ok {
 			st = st + troop.Value()
 		} else if cardix == cards.TC8 {
 			st += 8
@@ -415,20 +415,20 @@ func evalStrenght(form []int, v123 int, vLeader int) (st int) {
 func evalFormation(troopixs []int) (formation *cards.Formation, v123 int, vLeader int) {
 	var tac1, tac2, tac3 int
 	troops := make([]*cards.Troop, 0, 4)
-	troop, err := cards.DrTroop(troopixs[0])
-	if err != nil {
+	troop, ok := cards.DrTroop(troopixs[0])
+	if !ok {
 		tac1 = troopixs[0]
 	} else {
 		troops = append(troops, troop)
 	}
-	troop, err = cards.DrTroop(troopixs[1])
-	if err != nil {
+	troop, ok = cards.DrTroop(troopixs[1])
+	if !ok {
 		tac2 = troopixs[1]
 	} else {
 		troops = append(troops, troop)
 	}
-	troop, err = cards.DrTroop(troopixs[2])
-	if err != nil {
+	troop, ok = cards.DrTroop(troopixs[2])
+	if !ok {
 		tac3 = troopixs[2]
 	} else {
 		troops = append(troops, troop)
@@ -921,14 +921,15 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 					ok = true
 				} else {
 					ok = false
+					eks = make([]int, len(opPlayer.Troops))
 					copy(eks, opPlayer.Troops[:])
 				}
 			} else { // opponent no formation
 				sortInt(opPlayer.Troops[:]) //============Sort Oponnent Troops=====================
 				opTroops := make([]*cards.Troop, 0, 3)
 				for _, v := range opPlayer.Troops {
-					opTroop, err := cards.DrTroop(v)
-					if err == nil {
+					opTroop, ok := cards.DrTroop(v)
+					if ok {
 						opTroops = append(opTroops, opTroop)
 					}
 				}
@@ -939,7 +940,6 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 
 				if !ok {
 					ok, eks = claimFlagSimulation(player.Formation, player.Strenght, opPlayer.Troops, mud, fog, unPlayCards)
-
 				}
 			}
 		}
@@ -1107,8 +1107,7 @@ func usedTacTac(Env []int, troops []int) (tacs []int) {
 	}
 	for _, cardix := range troops {
 		if cardix != 0 {
-			_, err := cards.DrTactic(cardix)
-			if err == nil {
+			if cards.IsTac(cardix) {
 				tacs = append(tacs, cardix)
 			}
 		}
