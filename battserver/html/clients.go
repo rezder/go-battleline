@@ -86,19 +86,19 @@ func loadClients(games *games.Server) (clients *Clients, err error) {
 			err = errors.Wrapf(err, log.ErrNo(1)+"Open clients file %v", clientsFileNAME)
 			return clients, err
 		}
-	}
-
-	defer file.Close()
-	decoder := gob.NewDecoder(file)
-	lc := *NewClients(games)
-	err = decoder.Decode(&lc)
-	if err != nil {
-		err = errors.Wrapf(err, "Decoding user file %v failed", clientsFileNAME)
-		return clients, err
-	}
-	clients = &lc
-	for _, client := range clients.List {
-		client.mu = new(sync.Mutex)
+	} else {
+		defer file.Close()
+		decoder := gob.NewDecoder(file)
+		lc := *NewClients(games)
+		err = decoder.Decode(&lc)
+		if err != nil {
+			err = errors.Wrapf(err, "Decoding user file %v failed", clientsFileNAME)
+			return clients, err
+		}
+		clients = &lc
+		for _, client := range clients.List {
+			client.mu = new(sync.Mutex)
+		}
 	}
 	return clients, err
 }

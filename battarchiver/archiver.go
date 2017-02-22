@@ -60,8 +60,10 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Print(log.Min, "Server up and running. Close with ctrl+c")
 	<-stop
+	log.Print(log.DebugMsg, "Recieved interupt signal or terminate closing down")
 	nz.Close()
 	<-saveFinCh
+	log.Print(log.DebugMsg, "Closed down")
 }
 
 func startSaveServer(bdb *battdb.Db, gameCh <-chan []byte, finCh chan<- struct{}) {
