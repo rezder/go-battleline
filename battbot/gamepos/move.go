@@ -914,6 +914,7 @@ func priNewFlagMove(flagixs []int,
 
 }
 
+//newFlagSelectFlag selects the new flag to play on.
 func newFlagSelectFlag(troopix int, flagixs []int, flagsAna map[int]*flag.Analysis) (flagix int) {
 	flagix = -1
 	newFlagixs := make([]int, 0, len(flagixs))
@@ -930,7 +931,7 @@ func newFlagSelectFlag(troopix int, flagixs []int, flagsAna map[int]*flag.Analys
 			troop, _ := cards.DrTroop(troopix)
 			troopValue := troop.Value()
 			switch {
-			case troopValue > 7:
+			case troopValue > 7: //TODO this too simple we need to look rank compare it to target and bot rank,and if flag is lose game
 				flagix = newFlagixs[0]
 			case troopValue < 8 && troopValue > 5:
 				flagix = newFlagixs[len(newFlagixs)/2]

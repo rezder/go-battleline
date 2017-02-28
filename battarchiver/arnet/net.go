@@ -70,11 +70,15 @@ type NetZmq struct {
 
 func (nz *NetZmq) Close() (err error) {
 	if nz.soc != nil {
+		log.Print(log.DebugMsg, "Close socket")
 		err = nz.soc.Close()
+		log.Print(log.DebugMsg, "Socket closed")
 		nz.soc = nil
 	}
 	if nz.context != nil {
+		log.Print(log.DebugMsg, "Terminate context")
 		err = nz.context.Term()
+		log.Print(log.DebugMsg, "Context terminated")
 		nz.context = nil
 	}
 	return err

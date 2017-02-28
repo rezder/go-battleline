@@ -61,7 +61,12 @@ func main() {
 	log.Print(log.Min, "Server up and running. Close with ctrl+c")
 	<-stop
 	log.Print(log.DebugMsg, "Recieved interupt signal or terminate closing down")
-	nz.Close()
+	nz.Close() //TODO zmq c libary also receive the interupt signal
+	//This intruduce some kind of raise problem in zmq4 go or c code terminate
+	// seems to hang if Close is called before c lib receive the interupt
+	// A second interupt signal will then sometime hit the c libery an release
+	// the Close but not always sometime it is just dead.
+	//maybe we should wait a second
 	<-saveFinCh
 	log.Print(log.DebugMsg, "Closed down")
 }
@@ -97,6 +102,7 @@ Loop:
 		}
 
 	}
+	log.Printf(log.DebugMsg, "Final number of saved games: %v\n", noSaved)
 	close(finCh)
 }
 func cropNo(no int) (updNo int) {

@@ -12,19 +12,29 @@ func TestWedgeOneMorale(t *testing.T) {
 	deck := []int{9, 10, 1, 11, 22}
 	formationSize := 3
 	expRank := 1
-	createSetFrom(deck)
 	rank := calcMaxRankNewFlag(flagCards, handCards, createSetFrom(deck), formationSize)
 	if rank != expRank {
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
 	}
 }
 func TestPhalanx(t *testing.T) {
+	flagCards := []int{53, 33}
+	handCards := []int{}
+	deck := []int{56, 18, 43, 58, 52, 21, 57, 51, 59, 5, 22, 55, 54, 30}
+	formationSize := 3
+	expRank := 16
+	rank := CalcMaxRank(flagCards, handCards, createSetFrom(deck), 10, formationSize == 4)
+	if rank != expRank {
+		t.Logf("Combination %v", combi.Combinations(formationSize)[expRank-1])
+		t.Errorf("Expect rank %v got %v\n", expRank, rank)
+	}
+}
+func TestPhalanxNewFlag(t *testing.T) {
 	flagCards := []int{}
 	handCards := []int{}
 	deck := []int{19, 10, 31, 41, 52, 59, 49}
 	formationSize := 3
 	expRank := 10
-	createSetFrom(deck)
 	rank := calcMaxRankNewFlag(flagCards, handCards, createSetFrom(deck), formationSize)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -37,7 +47,6 @@ func TestBattalionOneMorale(t *testing.T) {
 	deck := []int{4, 10, 31, 41, 52}
 	formationSize := 3
 	expRank := 24
-	createSetFrom(deck)
 	rank := calcMaxRankNewFlag(flagCards, handCards, createSetFrom(deck), formationSize)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -50,7 +59,6 @@ func TestBattalion3Morale(t *testing.T) {
 	deck := []int{4, 10, 31, 41, 52}
 	formationSize := 3
 	expRank := 25
-	createSetFrom(deck)
 	rank := calcMaxRankNewFlag(flagCards, handCards, createSetFrom(deck), formationSize)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -63,7 +71,6 @@ func TestLineOneMorale(t *testing.T) {
 	deck := []int{19, 10, 31, 41, 52}
 	formationSize := 3
 	expRank := 40
-	createSetFrom(deck)
 	rank := calcMaxRankNewFlag(flagCards, handCards, createSetFrom(deck), formationSize)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])

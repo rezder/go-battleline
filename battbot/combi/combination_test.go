@@ -37,6 +37,7 @@ func TestAnaWedge(t *testing.T) {
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
 	//t.Error("Forced error")
 }
+
 func TestAnaPhalanx(t *testing.T) {
 	combinations := []int{8, 18, 28, 38}
 	dummies := []int{5, 6, 7, 17, 22, 33, 52, 21, 33}
@@ -45,10 +46,27 @@ func TestAnaPhalanx(t *testing.T) {
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
 	//t.Error("Forced error")
 }
+func TestAnaPhalanxShortStack2(t *testing.T) {
+	combi := Combinations(3)
+	drawSet := make(map[int]bool)
+	goodCards := []int{56, 18, 43, 58, 52, 21, 57, 51, 59, 5, 22, 55, 54, 30}
+	for _, troop := range goodCards {
+		drawSet[troop] = true
+	}
+	drawNo := 7 + ((len(drawSet) - 7) / 2)
+	flagCards := []int{53, 33}
+	handCards := []int{}
+	ana := Ana(combi[15], flagCards, handCards, drawSet, drawNo, false)
+	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
+		*combi[14], flagCards, handCards, drawNo, ana)
+	if ana.Valid != 715 {
+		t.Errorf("Valid combination should be 715 but is %v", ana.Valid)
+	}
+}
 func TestAnaPhalanxShortStack(t *testing.T) {
 	combi := Combinations(3)
 	drawSet := make(map[int]bool)
-	goodCards := []int{9, 1, 14, 37, 49, 38, 11}
+	goodCards := []int{9, 1, 14, 37, 49, 38, 24}
 	for _, troop := range goodCards {
 		drawSet[troop] = true
 	}
@@ -58,6 +76,9 @@ func TestAnaPhalanxShortStack(t *testing.T) {
 	ana := Ana(combi[14], flagCards, handCards, drawSet, drawNo, false)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[14], flagCards, handCards, drawNo, ana)
+	if ana.Valid != 1 {
+		t.Errorf("Valid combination should be 1 but is %v", ana.Valid)
+	}
 }
 
 func TestAnaBattalion(t *testing.T) {

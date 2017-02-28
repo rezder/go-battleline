@@ -557,8 +557,11 @@ func anaWedgePhalanx(ana *Analysis, nAll uint64, dAll uint64, formationNo int, f
 		nValid := uint64(len(drawTroops))
 		dValid := uint64(missingNo)
 		if nValid >= dValid {
-			drawMaxValid := min(dAll, nValid)             //Can't use cards that I can't draw.
-			drawMinValid := max(dValid, nValid+dAll-nAll) //Must use all drawn cards.
+			drawMaxValid := min(dAll, nValid) //Can't use cards that I can't draw.
+			drawMinValid := dValid
+			if nValid+dAll > nAll {
+				drawMinValid = max(dValid, nValid+dAll-nAll) //Must use all drawn cards.
+			}
 			for d := drawMaxValid; d >= drawMinValid; d-- {
 				ana.Valid = ana.Valid + (math.Comb(nValid, d) * math.Comb(nAll-nValid, dAll-d))
 			}
