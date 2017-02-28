@@ -68,22 +68,6 @@ type NetZmq struct {
 	soc     *zmq4.Socket
 }
 
-func (nz *NetZmq) Close() (err error) {
-	if nz.soc != nil {
-		log.Print(log.DebugMsg, "Close socket")
-		err = nz.soc.Close()
-		log.Print(log.DebugMsg, "Socket closed")
-		nz.soc = nil
-	}
-	if nz.context != nil {
-		log.Print(log.DebugMsg, "Terminate context")
-		err = nz.context.Term()
-		log.Print(log.DebugMsg, "Context terminated")
-		nz.context = nil
-	}
-	return err
-}
-
 type NetZmqReciver struct {
 	NetZmq
 	GameCh chan []byte
@@ -101,7 +85,6 @@ func NewZmqReciver(port string) (nz *NetZmqReciver, err error) {
 		nz.context = nil
 		return nz, err
 	}
-	nz.soc.SetLinger(0) // http://api.zeromq.org/4-1:zmq-ctx-term
 	err = nz.soc.Bind("tcp://*:" + port)
 	if err != nil {
 		nz.soc.Close()
@@ -116,6 +99,16 @@ func NewZmqReciver(port string) (nz *NetZmqReciver, err error) {
 
 func (nz *NetZmqReciver) Start() {
 	go zmqListen(nz.soc, nz.GameCh)
+}
+func (nz *NetZmqReciver) Close() (err error) {
+
+	if nz.context != nil {
+		log.Print(log.DebugMsg, "Terminate context")
+		err = nz.context.Term()
+		log.Print(log.DebugMsg, "Context terminated")
+		nz.context = nil
+	}
+	return err
 }
 
 //zmqServe listent for incoming games.
@@ -137,6 +130,8 @@ func zmqListen(receiver *zmq4.Socket, gameCh chan<- []byte) {
 		if err != nil {
 			err = errors.Wrap(err, "Closing receiver. Net work receiver zmq failed")
 			log.PrintErr(err)
+			receiver.Close()
+			log.Print(log.DebugMsg, "Socket closed")
 			break
 		} else {
 			gameCh <- msBytes
@@ -164,8 +159,7 @@ func NewZmqSender(addr string) (nz *NetZmqSender, err error) {
 		nz.context = nil
 		return nz, err
 	}
-	nz.soc.SetLinger(0) //see http://api.zeromq.org/4-1:zmq-ctx-term
-	// could a little but I done think I need it.
+	nz.soc.SetLinger(1)                   //see http://api.zeromq.org/4-1:zmq-ctx-term
 	err = nz.soc.Connect("tcp://" + addr) //"tcp://localhost:5558"
 	if err != nil {
 		nz.soc.Close()
@@ -183,7 +177,21 @@ func NewZmqSender(addr string) (nz *NetZmqSender, err error) {
 func (nz *NetZmqSender) Start() {
 	go zmqSend(nz.soc, nz.GameCh, nz.FinCh, nz.BrokenCh)
 }
-
+func (nz *NetZmqSender) Close() (err error) {
+	if nz.soc != nil {
+		log.Print(log.DebugMsg, "Close socket")
+		err = nz.soc.Close()
+		log.Print(log.DebugMsg, "Socket closed")
+		nz.soc = nil
+	}
+	if nz.context != nil {
+		log.Print(log.DebugMsg, "Terminate context")
+		err = nz.context.Term()
+		log.Print(log.DebugMsg, "Context terminated")
+		nz.context = nil
+	}
+	return err
+}
 func zmqSend(
 	sender *zmq4.Socket,
 	gameCh <-chan *bat.Game,

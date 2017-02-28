@@ -21,10 +21,11 @@ Card Position:
 * **Dish** DISHOpp or DISHBot
 * **Hand** HANDOpp or HANDBot Opponent can only have two cards the scout returned cards.
 That information is not contained in game it is learned from earlier moves **?????**
+HandLegal the cards that can be moved we mays as well add that information
 * **Deck** DECK,DECKScout1,DECKScout2 where 1 and 2 refer to the cards that have been returned in
 a scout retun move. 2 is top card in the deck if there is two cards.
 
-This gives 18+2+2+3=25 positions.
+This gives 18+2+3+3=26 positions.
 
 ### Variables flags
 
@@ -159,10 +160,10 @@ CPDishOpp=19
 
 CPHandBot=20
 CPHandOpp=21
-
-CPDeck=22
-CPDeckScout1=23
-CPDeckScout2=24
+CPHandLegal=22
+CPDeck=23
+CPDeckScout1=24
+CPDeckScout2=25
 
 ### Flag positions
 
@@ -171,12 +172,12 @@ CLAIMBot=1
 CLAIMOpp=2
 
 ### Move first card
-Cardix 1-9
+Cardix 1-9 could use hand number hand number legal or card. I think and modify when making data
 NoneCard=0
 SPCClaimFlag=10
 
 ### Move second card
-Cardix 1-66
+Cardix 1-70 ex 61,62,63,64 can only be in scout return
 NoneCard=0
 ClaimFlag for flag 1 one or zero
 
