@@ -90,13 +90,23 @@ func TestAnaBattalion(t *testing.T) {
 	//t.Error("Forced error")
 }
 
+func TestAnaSkirmishSimple(t *testing.T) {
+	combinations := []int{1, 32, 43, 44}
+	dummies := []int{5, 6, 7, 18, 25, 37, 58, 29, 36}
+	combiNo3 := 46
+	flagCards := combinations[:1]
+	handCards := make([]int, 7)
+	copy(handCards, dummies[:7])
+	combiTest(t, combiNo3, flagCards, handCards, dummies[7:], 3)
+	//t.Error("Forced error")
+}
 func TestAnaSkirmish123(t *testing.T) {
 	combinations := []int{1, 32, 43, 44}
 	dummies := []int{5, 6, 7, 18, 25, 37, 58, 29, 36}
 	combiNo3 := 46
 	combiNo4 := 49
 	combiMultiTest(t, combiNo3, combiNo4, combinations, dummies)
-	//	t.Error("Forced error")
+	//t.Error("Forced error")
 }
 func TestAnaSkirmish123GoodOdds(t *testing.T) {
 	//combinations := []int{1, 32, 43}

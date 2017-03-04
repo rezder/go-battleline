@@ -149,8 +149,11 @@ func anaSkirmish(ana *Analysis, nAll, dAll uint64, formationNo int,
 								}
 							}
 						}
-						drawMaxValid := min(dAll, nValid)             //Can't use cards that I can't draw.
-						drawMinValid := max(dValid, nValid+dAll-nAll) //Must use all drawn cards.
+						drawMaxValid := min(dAll, nValid) //Can't use cards that I can't draw.
+						drawMinValid := dValid
+						if nValid+dAll > nAll {
+							drawMinValid = max(dValid, nValid+dAll-nAll) //Must use all drawn cards.
+						}
 						for d := drawMaxValid; d >= drawMinValid; d-- {
 							ana.Valid = ana.Valid + (anaSkirmishCombi(values, missingNo, int(d), moralValues) *
 								math.Comb(nAll-nValid, dAll-d))
