@@ -3,10 +3,11 @@ package battleline
 
 import (
 	"encoding/gob"
+	"os"
+
 	"github.com/rezder/go-battleline/battleline/cards"
 	"github.com/rezder/go-battleline/battleline/flag"
 	"github.com/rezder/go-card/deck"
-	"os"
 )
 
 const (
@@ -78,21 +79,27 @@ func (game *Game) ResetGame() (moves [][2]int) {
 
 //histMove update game with stored move.
 //#game
-func histMove(move [2]int, game *Game) {
+func histMove(moveixs [2]int, game *Game) (move Move, moveCardix int, isPass, isGiveUp bool) {
 	switch {
-	case move[1] == SMGiveUp:
+	case moveixs[1] == SMGiveUp:
 		game.Quit(game.Pos.Player)
-	case move[1] == SMPass:
+		isGiveUp = true
+	case moveixs[1] == SMPass:
 		game.Pass()
-	case move[1] >= 0:
-		if move[0] > 0 {
-			game.MoveHand(move[0], move[1])
+		isPass = true
+	case moveixs[1] >= 0:
+		if moveixs[0] > 0 {
+			move = game.Pos.MovesHand[moveixs[0]][moveixs[1]]
+			game.MoveHand(moveixs[0], moveixs[1])
+			moveCardix = moveixs[0]
 		} else {
-			game.Move(move[1])
+			move = game.Pos.Moves[moveixs[1]]
+			game.Move(moveixs[1])
 		}
 	default:
 		panic("This should not happen. Move data is corrupt")
 	}
+	return move, moveCardix, isPass, isGiveUp
 }
 
 //CalcPos calculate the current posistion from the initial position and
@@ -540,4 +547,12 @@ func Load(file *os.File) (game *Game, err error) {
 	}
 
 	return game, err
+}
+func (game *Game) GameMoveLoop(posFunc func(gameMoveix int, pos *GamePos, moveCardix, moveix int, move Move, isGiveUp, isPass bool)) {
+	moves := game.ResetGame()
+	for gameMoveix, moveixs := range moves {
+		prePos := game.Pos.Copy()
+		move, moveCardix, isGiveUp, isPass := histMove(moveixs, game)
+		posFunc(gameMoveix, prePos, moveCardix, moveixs[1], move, isGiveUp, isPass)
+	}
 }

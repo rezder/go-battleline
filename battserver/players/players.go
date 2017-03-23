@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/websocket"
 	"io"
 	"strconv"
+	"time"
 )
 
 const (
@@ -962,6 +963,8 @@ func netRead(ws *websocket.Conn, accCh chan<- *Action, doneCh chan struct{}, err
 Loop:
 	for {
 		var act Action
+		ts := time.Now().Add(10 * time.Minute)
+		ws.SetReadDeadline(ts)
 		err := websocket.JSON.Receive(ws, &act)
 		log.Printf(log.DebugMsg, "Action received: %v, Error: %v\n", act, err)
 		if err == io.EOF {

@@ -2,15 +2,16 @@ package main
 
 import (
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battarchiver/arnet"
 	"github.com/rezder/go-battleline/battarchiver/battdb"
 	bat "github.com/rezder/go-battleline/battleline"
 	"github.com/rezder/go-error/log"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
@@ -61,12 +62,7 @@ func main() {
 	log.Print(log.Min, "Server up and running. Close with ctrl+c")
 	<-stop
 	log.Print(log.DebugMsg, "Recieved interupt signal or terminate closing down")
-	nz.Close() //TODO zmq c libary also receive the interupt signal
-	//This intruduce some kind of raise problem in zmq4 go or c code terminate
-	// seems to hang if Close is called before c lib receive the interupt
-	// A second interupt signal will then sometime hit the c libery an release
-	// the Close but not always sometime it is just dead.
-	//maybe we should wait a second
+	nz.Close() //zmq c libary also receive the interupt signal
 	<-saveFinCh
 	log.Print(log.DebugMsg, "Closed down")
 }

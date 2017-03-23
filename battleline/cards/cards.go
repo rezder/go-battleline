@@ -263,6 +263,11 @@ func IsLeader(ix int) bool {
 	return ix == TCAlexander || ix == TCDarius
 }
 
+//IsGuile checks if card is guile card
+func IsGuile(ix int) bool {
+	return ix == TCScout || ix == TCDeserter || ix == TCTraitor || ix == TCRedeploy
+}
+
 //MoraleMaxValue returns the maximum value a morale card can have.
 func MoraleMaxValue(cardix int) int {
 	switch cardix {
@@ -282,10 +287,10 @@ func MoraleMaxValue(cardix int) int {
 
 //IsTac checks if a card index is a tactic card.
 func IsTac(ix int) bool {
-	return ix > NOTroop
+	return ix > NOTroop && ix <= NOTroop+NOTac
 }
 
 //IsTroop checks if a cardix is troop card.
 func IsTroop(ix int) bool {
-	return ix <= NOTroop
+	return ix <= NOTroop && ix > 0
 }

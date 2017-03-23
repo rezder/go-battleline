@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -163,9 +164,19 @@ func start(
 	messDoneCh := make(chan struct{})
 	go netRead(conn, messCh, messDoneCh)
 	var gamePos *gamepos.Pos
+	pongTimer := time.NewTimer(7 * time.Minute)
 Loop:
 	for {
 		select {
+		case <-pongTimer.C:
+			act := players.NewAction(players.ACTList)
+			log.Println(log.DebugMsg, "Timer Request list")
+			ok := netWrite(conn, act)
+			if !ok {
+				close(messDoneCh)
+				break Loop
+			}
+			pongTimer.Reset(7 * time.Minute)
 		case <-doneCh:
 			close(messDoneCh)
 			break Loop
@@ -297,6 +308,7 @@ Loop:
 			}
 		}
 	}
+	pongTimer.Stop()
 	log.Printf(log.Verbose, "Number of game played %v", noGame)
 }
 

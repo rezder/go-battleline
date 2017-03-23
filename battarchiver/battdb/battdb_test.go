@@ -1,12 +1,13 @@
 package battdb
 
 import (
-	"github.com/boltdb/bolt"
-	bat "github.com/rezder/go-battleline/battleline"
-	"github.com/rezder/go-battleline/battleline/cards"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/boltdb/bolt"
+	bat "github.com/rezder/go-battleline/battleline"
+	"github.com/rezder/go-battleline/battleline/cards"
 )
 
 func TestUpdateTimePlayers(t *testing.T) {
@@ -46,7 +47,7 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Scann failed for prefix without function ids %v, error: %v", ids, err)
 	}
-	searchGames, _, err := bdb.Search(func(game *bat.Game) bool {
+	searchGames, _, err := bdb.Search(func(game *bat.Game, _ []byte) bool {
 		if game.PlayerIds[0] > 2 || game.PlayerIds[0] < 1 ||
 			game.PlayerIds[1] > 2 || game.PlayerIds[1] < 1 {
 			return false
@@ -68,7 +69,7 @@ func TestSearch(t *testing.T) {
 		t.Errorf("Scann failed found %v games expected %v", len(prefixGames), 8)
 	}
 }
-func testSearch(game *bat.Game) bool {
+func testSearch(game *bat.Game, _ []byte) bool {
 	game.CalcPos()
 	for _, cardix := range game.Pos.Hands[0].Troops {
 		troop, _ := cards.DrTroop(cardix)

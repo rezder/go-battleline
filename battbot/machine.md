@@ -19,13 +19,28 @@ Card Position:
 
 * **Flag** opponent/bot denoted FLAGxO,FLAGxB  x is a number from 1-9. 
 * **Dish** DISHOpp or DISHBot
-* **Hand** HANDOpp or HANDBot Opponent can only have two cards the scout returned cards.
-That information is not contained in game it is learned from earlier moves **?????**
-HandLegal the cards that can be moved we mays as well add that information
-* **Deck** DECK,DECKScout1,DECKScout2 where 1 and 2 refer to the cards that have been returned in
-a scout retun move. 2 is top card in the deck if there is two cards.
+* **Hand** HANDLegal or HAND Legal the cards that can be moved.
+* **Deck** DECK 
 
-This gives 18+2+3+3=26 positions.
+This gives 18+2+3=23 positions.
+
+### Varaibles scout return
+* **SReturnBot1** First returned card 1-70 excepet 64 the scout return and 0 for no card.
+cleared when card hit the table.
+* **SReturnBot2** Second returned card 1-70 excepet 64 the scout return and 0 for no card.
+cleared when card hit the table
+* **OppKnownDeckTacNo** The number of cards the opponent knows in tactic deck
+* **OppKnownDeckTroopNo** The number of cards the opponent knows in troop deck
+* **OppKnownHand1** The opponent may uptill two cards as a result of the opponent haveing played scout return.
+* **OppKnownHand2** See above and these fields is cleared when **both** cards have hit the table.
+The have information about the known deck numbers of cards. We could clear if know dbuckStd     = "Std" // Card to flag and pass.
+	buckDeck    = "Deck"
+	buckClaim   = "Claim"
+	buckSpecial = "Special" //Traitor,Scout,Deserter, Redeploy, scoutReturn.
+	buckGames   = "Game"
+	buckWin     = "Win"
+	buckLose    = "Lose"
+	keyMeta     = "Meta"eck cards.
 
 ### Variables flags
 
@@ -48,6 +63,9 @@ between 0-7.
 * **Troop cards** TROOPNo the number of troops including any known from scout returned.
 * **Tactic cards** TACNo the number of troops including any known from scout returned.
 
+### Varaiables pass
+
+* **Pass** One if pass is allowed 0 else.
 ## Move
 
 Every move need learn on it own but based on the same data except claim 
@@ -136,34 +154,29 @@ of uint8 which equal to byte.
 
 ### Card positions
 
-CPFlag1B=0
-CPFlag1P=1
-CPFlag2B=2
-CPFlag2P=3
-CPFlag3B=4
-CPFlag3P=5
-CPFlag4B=6
-CPFlag4P=7
-CPFlag5B=8
-CPFlag5P=9
-CPFlag6B=10
-CPFlag6P=11
-CPFlag7B=12
-CPFlag7P=13
-CPFlag8B=14
-CPFlag8P=15
-CPFlag9B=16
-CPFlagG9P=17
-
-CPDishBot=18
-CPDishOpp=19
-
-CPHandBot=20
-CPHandOpp=21
-CPHandLegal=22
-CPDeck=23
-CPDeckScout1=24
-CPDeckScout2=25
+CPDishBot=0
+CPFlag1Bot=1
+CPFlag2Bot=2
+CPFlag3Bot=3
+CPFlag4Bot=4
+CPFlag5Bot=5
+CPFlag6Bot=6
+CPFlag7Bot=7
+CPFlag8Bot=8
+CPFlag8Bot=9
+CPDishOpp=10
+CPFlag1Opp=11
+CPFlag2Opp=12
+CPFlag3Opp=13
+CPFlag4Opp=14
+CPFlag5Opp=15
+CPFlag6Opp=16
+CPFlag7Opp=17
+CPFlag8Opp=18
+CPFlag9Opp=19
+CPHandLegal=20
+CPHand=21
+CPDeck=22
 
 ### Flag positions
 
@@ -172,14 +185,14 @@ CLAIMBot=1
 CLAIMOpp=2
 
 ### Move first card
-Cardix 1-9 could use hand number hand number legal or card. I think and modify when making data
+Cardix 1-9 could use hand number hand number legal or card. I like card and modify when making data.
 NoneCard=0
-SPCClaimFlag=10
+SPCClaimFlag=100
 
 ### Move second card
-Cardix 1-70 ex 61,62,63,64 can only be in scout return
+Cardix 1-70 ex 64 and 61,62,63 can only be in scout return
 NoneCard=0
-ClaimFlag for flag 1 one or zero
+ClaimFlag for flag 9 one or zero one claimed
 
 ### Move destination
 
@@ -196,37 +209,39 @@ MDFlag9=9
 MDDeckTac=10
 MDDeckTroop=11
 MDDeck=12
-ClaimFlag is 8 bits where first bit is flag2 up to flag9.
+ClaimFlag is 8 bits where first bit is flag1 up to flag8. 1 is claimed.
 
 
 ### Machine Learn Data
 
-A array of 84 uint8 (byte)
+A array of 92 uint8 (byte)
+0 Move index
+1-70 Card postions in cardix order.
+71-79 Flag positions int flagix order.
+80 Opponent number of troops cards. 
+81 Opponent number of tactic cards.
+82 Scout return bot first card
+83 Scout return bot second card
+84 The number of cards the oppponent knows in tactic card deck.
+85 The number of cards the oppponent knows in troop card deck.
+86 Opponent know card on bot hand
+87 Opponent know card on bot hand
+88 Pass
+89 Move hand card.
+90 Move flag card.
+91 Move destination.
 
-0-69 Card postions in cardix order.
-70-78 Flag positions int flagix order.
-79 Opponent number of troops cards. 
-80 Opponent number of tactic cards.
-81 Move hand card.
-82 Move flag card.
-83 Move destination.
-
-### Claim card positions.
-
-CCFlagB=0
-CCFlagO=1
-CCVisual=2
-CCNoneVisual=3
 
 ## Database
 
 The database could be a "Game" bucket with key from the game database
-containing a "Result" bucket.
+containing a "Detail" bucket.
 
-The Result bucket has keys WSid,WNSid,LSid,LSid
-where W and L is for wining and losing and S is for starting and N for not
-starting, id is the player id. Result contains the "Pos" bucket.
+The Detail bucket has keys Start NoStart MetaData
 
-The Pos bucket has the move index as key.
+NoStart has buckets: Handmoves,DeckMoves, Claim moves
+Start has buckets: --||--
+MetaData contain aggregated information ex. The winner, giveup, drawn/played tactic cards starter/no starter, Number moves. Avg strengh of cards starter/nostarter 
+
 
 

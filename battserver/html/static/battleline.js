@@ -2135,7 +2135,7 @@ var batt={};
 	      exp.ACT_WATCHSTOP  = 9;
 	      exp.ACT_LIST       = 10;
         exp.ACT_SAVE       = 11;
-
+       
         function actionBuilder(aType){
             let res={ActType:aType};
             res.id=function(idNo){
@@ -2190,6 +2190,7 @@ var batt={};
                 game.clear();
                 table.players.clear();
                 exp.unconnected=true;
+                pongClear();
             };
             conn.onerror=function(event){
                 console.log(event.code);
@@ -2198,6 +2199,7 @@ var batt={};
                 game.clear();
                 table.players.clear();
                 exp.unconnected=true;
+                pongClear();
                 let txt="Connection err. You must login again.\n";
                 msg.recieved({Message:txt});
             };
@@ -2226,6 +2228,7 @@ var batt={};
                     break;
                 case JT_CloseCon:
                     msg.recieved({Message:json.Data.Reason});
+                    pongClear();
                     conn.close();
                     game.clear();
                     table.players.clear();
@@ -2236,7 +2239,22 @@ var batt={};
                 }
             };
         }
+
         exp.addListener=addListener;
+        let pong;
+        function pongStart(){
+            pong=window.setInterval(pongAct,5*60000);
+        }
+        function pongClear(){
+            if (pong){
+                window.clearInterval(pong);
+                pong=null;
+            }
+        }
+        function pongAct(){
+            actionBuilder(exp.ACT_LIST).send();
+        }
+        exp.pongStart=pongStart;
         return exp;
     }
     window.onload=function(){
@@ -2249,6 +2267,7 @@ var batt={};
         let game=createGame(document,ws,svg,msg);
         let table=createTable(document,msg,ws,game,cookies);
         ws.addListener(table,msg,game);
+        ws.pongStart();
         window.onbeforeunload = function(e) {
             if (!ws.unconnected){
                 let dialogText="";

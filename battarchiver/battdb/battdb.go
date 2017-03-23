@@ -4,31 +4,35 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	bat "github.com/rezder/go-battleline/battleline"
 	"github.com/rezder/go-error/log"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 //Db is a battleline database
 type Db struct {
-	keyf     func(*bat.Game) []byte
-	db       *bolt.DB
-	bucket   []byte
-	maxFetch int
+	keyf       func(*bat.Game) []byte
+	db         *bolt.DB
+	bucket     []byte
+	maxFetchNo int
 }
 
 //New  create a battleline database.
-func New(keyf func(*bat.Game) []byte, db *bolt.DB, maxFetch int) *Db {
+func New(keyf func(*bat.Game) []byte, db *bolt.DB, maxFetchNo int) *Db {
 	bdb := new(Db)
 	bdb.db = db
 	bdb.keyf = keyf
 	bdb.bucket = []byte("BattBucket")
-	bdb.maxFetch = maxFetch
+	bdb.maxFetchNo = maxFetchNo
 	return bdb
+}
+func (bdb *Db) MaxFetchNo() int {
+	return bdb.maxFetchNo
 }
 
 //Init init the battleline bucket if does not exist.
@@ -161,11 +165,12 @@ func (bdb *Db) Gets(keys [][]byte) (games []*bat.Game, err error) {
 }
 func filterGame(games []*bat.Game,
 	game *bat.Game,
-	filterF func(*bat.Game) bool,
+	key []byte,
+	filterF func(*bat.Game, []byte) bool,
 	maxFetch int) ([]*bat.Game, bool) {
 	isMaxFetch := false
 
-	if filterF == nil || filterF(game) {
+	if filterF == nil || filterF(game, key) {
 		games = append(games, game)
 		if len(games) == maxFetch {
 			isMaxFetch = true
@@ -177,7 +182,7 @@ func filterGame(games []*bat.Game,
 //ScannStartEnd scans a interval of keys.
 //The keys must be bytes comparable and the start key must exist.
 func (bdb *Db) ScannStartEnd(
-	filterF func(*bat.Game) bool,
+	filterF func(game *bat.Game, key []byte) bool,
 	start []byte,
 	end []byte) (games []*bat.Game, isMaxFetch bool, err error) {
 	err = bdb.db.View(func(tx *bolt.Tx) error {
@@ -188,7 +193,7 @@ func (bdb *Db) ScannStartEnd(
 			if decodeErr != nil {
 				return decodeErr
 			}
-			games, isMaxFetch = filterGame(games, game, filterF, bdb.maxFetch)
+			games, isMaxFetch = filterGame(games, game, k, filterF, bdb.maxFetchNo)
 			if isMaxFetch {
 				break
 			}
@@ -201,7 +206,7 @@ func (bdb *Db) ScannStartEnd(
 
 //ScannPrefix makes a prefix scann.
 func (bdb *Db) ScannPrefix(
-	filterF func(*bat.Game) bool,
+	filterF func(game *bat.Game, key []byte) bool,
 	prefix []byte) (games []*bat.Game, isMaxFetch bool, err error) {
 	err = bdb.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bdb.bucket)
@@ -211,7 +216,7 @@ func (bdb *Db) ScannPrefix(
 			if decodeErr != nil {
 				return decodeErr
 			}
-			games, isMaxFetch = filterGame(games, game, filterF, bdb.maxFetch)
+			games, isMaxFetch = filterGame(games, game, k, filterF, bdb.maxFetchNo)
 			if isMaxFetch {
 				break
 			}
@@ -225,23 +230,61 @@ func (bdb *Db) ScannPrefix(
 //Search the full database from the last entry.
 //The search stops if the max numbers of records is reach.
 func (bdb *Db) Search(
-	filterF func(*bat.Game) bool) (games []*bat.Game, isMaxFetch bool, err error) {
+	filterF func(game *bat.Game, key []byte) bool) (games []*bat.Game, nextKey []byte, err error) {
 	err = bdb.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bdb.bucket)
 		c := b.Cursor()
+		isMaxFetch := false
 		for k, v := c.Last(); k != nil; k, v = c.Prev() {
 			game, decodeErr := decode(v)
 			if decodeErr != nil {
 				return decodeErr
 			}
-			games, isMaxFetch = filterGame(games, game, filterF, bdb.maxFetch)
+			games, isMaxFetch = filterGame(games, game, k, filterF, bdb.maxFetchNo)
 			if isMaxFetch {
+				k, _ = c.Prev()
+				if k != nil {
+					nextKey = k
+				}
 				break
 			}
 		}
 		return nil
 	})
-	return games, isMaxFetch, err
+	return games, nextKey, err
+}
+
+//Search the full database from the last entry.
+//The search stops if the max numbers of records is reach.
+func (bdb *Db) SearchLoop(
+	filterF func(game *bat.Game, key []byte) bool, startKey []byte) (games []*bat.Game, nextKey []byte, err error) {
+	err = bdb.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bdb.bucket)
+		c := b.Cursor()
+		isMaxFetch := false
+		var k, v []byte
+		if len(startKey) > 0 {
+			k, v = c.Seek(startKey)
+		} else {
+			k, v = c.Last()
+		}
+		for ; k != nil; k, v = c.Prev() {
+			game, decodeErr := decode(v)
+			if decodeErr != nil {
+				return decodeErr
+			}
+			games, isMaxFetch = filterGame(games, game, k, filterF, bdb.maxFetchNo)
+			if isMaxFetch {
+				k, _ = c.Prev()
+				if k != nil {
+					nextKey = k
+				}
+				break
+			}
+		}
+		return nil
+	})
+	return games, nextKey, err
 }
 
 // itob returns an 8-byte big endian representation of v.
@@ -269,16 +312,22 @@ func KeyPlayerIds(ids [2]int) (key []byte) {
 //plus player ids where the smalles player id comes first.
 func KeyPlayersTime(game *bat.Game) (key []byte) {
 	key = KeyPlayers(game)
-	ts := []byte(time.Now().Format(time.RFC3339))
-	key = append(key, ts...)
+	ts := time.Now()
+	ts3339 := []byte(ts.Format(time.RFC3339))
+	key = append(key, ts3339...)
+	frac100 := ts.Nanosecond() / 1000000
+	key = append(key, itob(frac100)...)
 	return key
 }
 
 //KeyTimePlayers define a key as player ids where the smalles player
 //id comes first plus timestamp 2006-01-02T15:04:05Z07:00.
 func KeyTimePlayers(game *bat.Game) (key []byte) {
-	key = []byte(time.Now().Format(time.RFC3339))
+	ts := time.Now()
+	key = []byte(ts.Format(time.RFC3339))
 	key = append(key, KeyPlayers(game)...)
+	frac100 := ts.Nanosecond() / 1000000
+	key = append(key, itob(frac100)...)
 	return key
 }
 

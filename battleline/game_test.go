@@ -225,6 +225,7 @@ func gameMoveLoop(game *Game, posFunc func(*GamePos, int)) {
 		posFunc(game.Pos, i)
 	}
 }
+
 func createPos(game *Game) (testPos *TestPos) {
 	testPos = new(TestPos)
 	testPos.Pos = make(map[int]*GamePos)

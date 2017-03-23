@@ -154,6 +154,7 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 			updateMudDishixs(flag, move.Dishixs, pos.oppDish, pos.playDish)
 		case tables.MoveScoutReturnView:
 			if moveView.Mover {
+				//TODO Add opp know card in deck and on hand.
 			} else {
 				pos.deck.OppScoutReturn(move.Troop, move.Tac)
 			}
