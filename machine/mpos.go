@@ -155,7 +155,7 @@ func setCardPosDish(mpos MPos, cardixs []int, isOpponent bool, startix int) {
 			if isOpponent {
 				mpos[startix+cardix] = CardPosAll.DishOpp
 			} else {
-				mpos[cardix] = CardPosAll.DishBot
+				mpos[startix+cardix] = CardPosAll.DishBot
 			}
 		}
 	}
@@ -260,7 +260,7 @@ func newCardPosAllSingleton() (cp *CardPosAllSingleton) {
 	cp.DishBot = 0
 	cp.txtValues[0] = "DishBot"
 	cp.DishOpp = 10
-	cp.txtValues[0] = "DishOpp"
+	cp.txtValues[10] = "DishOpp"
 	for i := 0; i < 9; i++ {
 		botix := i + 1
 		oppix := i + 11
