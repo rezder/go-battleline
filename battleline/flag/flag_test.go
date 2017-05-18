@@ -80,7 +80,9 @@ func TestFlagT1NWedge(t *testing.T) {
 	flag8x123(t, []int{7, 6}, []int{11, 12}, 21, 6, &cards.FWedge)
 
 	//----------Buttom
-	flag := flag8x123(t, []int{10, 9}, []int{12, 13}, 27, 6, &cards.FWedge)
+	flag8x123(t, []int{10, 9}, []int{12, 13}, 27, 6, &cards.FWedge)
+	flag8x123(t, []int{10, 9}, []int{13, 14}, 27, 9, &cards.FWedge)
+	flag8x123(t, []int{10, 9}, []int{14, 15}, 27, 12, &cards.FWedge)
 
 	//----------Fog
 	flag8x123(t, []int{10, 9, cards.TCFog}, []int{12, 13}, 27, 8, &cards.FHost)
@@ -88,7 +90,7 @@ func TestFlagT1NWedge(t *testing.T) {
 	flag8x123(t, []int{9, 7}, []int{11, 13}, 24, 6, &cards.FWedge)
 
 	//-----------Top Mud
-	flag = flag8x123(t, []int{cards.TCMud, 5, 7, 6}, []int{11, 12, 14}, 26, 10, &cards.FWedge)
+	flag := flag8x123(t, []int{cards.TCMud, 5, 7, 6}, []int{11, 12, 14}, 26, 10, &cards.FWedge)
 	player1 := 0
 	player2 := 1
 	t.Logf("Remove mud 8 and 123")
@@ -119,15 +121,19 @@ func TestFlagT1NWedge(t *testing.T) {
 	if flag.Players[player2].Strenght != ex {
 		t.Errorf("Strenght wrong expect %v got %v", ex, flag.Players[player2].Strenght)
 	}
-	//-----------Middel Top
+	//-----------Mud Middel Top
 	flag8x123(t, []int{cards.TCMud, 6, 7, 9}, []int{11, 12, 14}, 30, 10, &cards.FWedge)
 
-	//-----------Middel button
+	//-----------Mud Middel buttom
 	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{11, 13, 14}, 34, 10, &cards.FWedge)
 
 	troops1 := []int{cards.TCMud, 10, 9, 8, cards.TC8} // Miss
 	troops2 := []int{1, 2, 3, cards.TC123}             //Miss big hole
 	flagStd(t, troops1, troops2, 35, 9, &cards.FBattalion)
+	//------------Mud Buttom
+	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{14, 15, 16}, 34, 18, &cards.FWedge)
+	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{13, 14, 15}, 34, 14, &cards.FWedge)
+	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{14, 13, 12}, 34, 10, &cards.FWedge)
 }
 func flagStd(t *testing.T, troops1, troops2 []int, ex1, ex2 int, formation *cards.Formation) (flag *Flag) {
 	flag = New()

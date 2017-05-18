@@ -526,7 +526,7 @@ func deserterKillEnvSim(
 func deserterKillTroopMoral(oppTroopixs []int, targetRank, formationSize int) (desertix int) {
 	tacixs, troopixs := sortFlagCards(oppTroopixs)
 	if targetRank != 0 {
-		combination := combi.Combinations(formationSize)[targetRank]
+		combination := combi.Combinations(formationSize)[targetRank-1]
 		switch combination.Formation.Value {
 		case cards.FWedge.Value:
 			fallthrough

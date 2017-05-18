@@ -580,16 +580,18 @@ func evalFormationT1123Line(troops []*cards.Troop, skipValue int) (line bool) {
 func evalFormationT1Line123(troops []*cards.Troop, skipValue int) (v123 int) {
 	if skipValue == 0 {
 		switch troops[0].Value() {
-		case 5:
+		case 6:
 			v123 = 3
+		case 5:
+			v123 = 5 - len(troops)
 		case 4:
-			v123 = 2
+			v123 = 4 - len(troops)
 		case 3:
 			v123 = 1
 		case 2:
 			v123 = 3
 		default:
-			panic("This is no expected 123 line")
+			panic(fmt.Sprintf("This is no expected 123 line first troop value: %v, troops: ", troops[0].Value(), troops))
 		}
 	} else {
 		v123 = skipValue
