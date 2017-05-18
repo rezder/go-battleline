@@ -472,10 +472,10 @@ var batt={};
             }
             return nameTxt;
         };
-        let backTroop= document.getElementById("backTroopGroup").cloneNode(true);
+        let backTroop= document.getElementById("backTroopGroup").cloneNode(true);//this does not work chrom 57.0.2987.110 (64-bit)
         let backTroopRect=document.getElementById("backTroopTopRect");
         let backTroopColor=backTroopRect.style.stroke;
-        let backTac= document.getElementById("backTacGroup").cloneNode(true);
+        let backTac= document.getElementById("backTacGroup").cloneNode(true);//saveing in chrom and loads fixit, and it works for removed groups ?
         let backTacRect=document.getElementById("backTacTopRect");
         let backTacColor=backTacRect.style.stroke;
         let lTroop1=document.getElementById("troop1Group");
@@ -519,6 +519,7 @@ var batt={};
             card.stripChildIds(cardGroup);
             return cardGroup;
         };
+
         hand.createBack=function(troop){
             let cardGroup;
             if (troop){

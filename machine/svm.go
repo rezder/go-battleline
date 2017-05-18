@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+//Fld a feature or a label in machine learning.
 type Fld interface {
 	String() string
 	UpdRowFloats(v uint8, nextix int, mat map[int]float64) (map[int]float64, int)
@@ -25,7 +26,7 @@ func ExtractMPosFld(fld Fld, mpos MPos) (v uint8) {
 	return v
 }
 
-func ExtractRow(mpos MPos, mMove MMove, flds []Fld) (y float64, x map[int]float64) {
+func ExtractSparseRow(mpos MPos, mMove MMove, flds []Fld) (y float64, x map[int]float64) {
 	x = make(map[int]float64)
 	if len(mMove) == 0 {
 		y = 1
@@ -36,6 +37,20 @@ func ExtractRow(mpos MPos, mMove MMove, flds []Fld) (y float64, x map[int]float6
 	for _, fld := range flds {
 		v := ExtractMPosFld(fld, mpos)
 		x, nextix = fld.UpdRowFloats(v, nextix, x)
+	}
+	return y, x
+}
+
+func ExtractRow(mpos MPos, mMove MMove, flds []Fld) (y uint8, x []uint8) {
+	x = make([]uint8, len(flds))
+	if len(mMove) == 0 {
+		y = 1
+	} else {
+		copy(mpos[len(mpos)-4:], mMove)
+	}
+	for i, fld := range flds {
+		v := ExtractMPosFld(fld, mpos)
+		x[i] = v
 	}
 	return y, x
 }

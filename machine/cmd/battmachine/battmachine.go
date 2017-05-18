@@ -22,6 +22,7 @@ func main() {
 	gameDbFileFlag := flag.String("dbgamefile", "", "The database file to read game from.")
 	outTypeFlag := flag.String("out", "Card", "The output type Card, Deck, Claim.")
 	gameLimitFlag := flag.Int("limit", 200, "The max number of games to write.")
+	sparseFlag := flag.Bool("sparse", true, "Sparse cathegories features.")
 	flag.Parse()
 	if *vFlag {
 		log.InitLog(log.Debug)
@@ -76,7 +77,7 @@ func main() {
 		}
 	}
 	stdWriter := bufio.NewWriter(os.Stdout)
-	mach.PrintMachineData(outType, stdWriter, mdb, *gameLimitFlag)
+	mach.PrintMachineData(outType, *sparseFlag, stdWriter, mdb, *gameLimitFlag)
 	stdWriter.Flush()
 }
 

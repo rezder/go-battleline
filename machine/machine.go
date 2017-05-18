@@ -49,17 +49,17 @@ func AddGames(bdb *battdb.Db, mdb *DbPos) (err error) {
 	}
 	return err
 }
-func PrintMachineData(outType int, writer io.Writer, posDb *DbPos, gameLimit int) (err error) {
+func PrintMachineData(outType int, sparse bool, writer io.Writer, posDb *DbPos, gameLimit int) (err error) {
 	//TODO more move types
 	switch outType {
 	case OutTypeMoveCard:
-		err = writePos(writer, posDb, gameLimit, MPosCreateFeatureFlds())
+		err = writePos(writer, posDb, gameLimit, MPosCreateFeatureFlds(), sparse)
 	case OutTypeDeck:
 	case OutTypeClaim:
 	}
 	return err
 }
-func writePos(writer io.Writer, posDb *DbPos, gameLimit int, flds []Fld) (err error) {
+func writePos(writer io.Writer, posDb *DbPos, gameLimit int, flds []Fld, sparse bool) (err error) {
 	db := posDb.db
 	err = db.View(func(tx *bolt.Tx) (verr error) {
 		gamesBucket := tx.Bucket(buckGames)
@@ -68,8 +68,8 @@ func writePos(writer io.Writer, posDb *DbPos, gameLimit int, flds []Fld) (err er
 		for gameKey, _ := gamesCursor.Last(); gameKey != nil; gameKey, _ = gamesCursor.Prev() {
 			gameBucket := gamesBucket.Bucket(gameKey)
 			winBucket := gameBucket.Bucket(buckWin)
-			readMovePosBucket(winBucket, buckStd, writer, flds)
-			readMovePosBucket(winBucket, buckSpecial, writer, flds)
+			readMovePosBucket(winBucket, buckStd, writer, flds, sparse)
+			readMovePosBucket(winBucket, buckSpecial, writer, flds, sparse)
 			noGame = noGame + 1
 			if noGame == gameLimit {
 				log.Print(log.Min, "Reach game limit")
@@ -81,13 +81,13 @@ func writePos(writer io.Writer, posDb *DbPos, gameLimit int, flds []Fld) (err er
 	})
 	return err
 }
-func readMovePosBucket(bucket *bolt.Bucket, posBucketKey []byte, writer io.Writer, flds []Fld) {
+func readMovePosBucket(bucket *bolt.Bucket, posBucketKey []byte, writer io.Writer, flds []Fld, sparse bool) {
 	posBucket := bucket.Bucket(posBucketKey)
 	posCursor := posBucket.Cursor()
 	var mMove []uint8
 	mPos := make([]uint8, mPosNoBytes)
 	count := 0
-	for posKey, mData := posCursor.Last(); posKey != nil; posKey, mData = posCursor.Prev() {
+	for posKey, mData := posCursor.First(); posKey != nil; posKey, mData = posCursor.Next() {
 		if len(mData) == mPosNoBytes {
 			copy(mPos, mData)
 			mMove = nil
@@ -95,26 +95,39 @@ func readMovePosBucket(bucket *bolt.Bucket, posBucketKey []byte, writer io.Write
 		} else {
 			mMove = mData
 		}
-		printlnOutTypeMove(writer, mPos, mMove, flds)
+		printlnOutTypeMove(writer, mPos, mMove, flds, sparse)
 	}
 }
 
-func printlnOutTypeMove(writer io.Writer, mpos, mMove []uint8, flds []Fld) {
-	y, x := ExtractRow(mpos, mMove, flds)
-	lnDelimiter := []byte("\n")
-	delimiter := []byte(" ")
-	ixDelimiter := []byte(":")
-	writer.Write([]byte(strconv.FormatFloat(y, 'f', -1, 64)))
-	sortKeys := make([]int, 0, len(x))
-	for i, _ := range x {
-		sortKeys = append(sortKeys, i)
+func printlnOutTypeMove(writer io.Writer, mpos, mMove []uint8, flds []Fld, sparse bool) {
+
+	if sparse {
+		y, x := ExtractSparseRow(mpos, mMove, flds)
+		lnDelimiter := []byte("\n")
+		delimiter := []byte(" ")
+		ixDelimiter := []byte(":")
+		writer.Write([]byte(strconv.FormatFloat(y, 'f', -1, 64)))
+		sortKeys := make([]int, 0, len(x))
+		for i, _ := range x {
+			sortKeys = append(sortKeys, i)
+		}
+		sort.Ints(sortKeys)
+		for _, key := range sortKeys {
+			writer.Write(delimiter)
+			writer.Write([]byte(strconv.Itoa(key)))
+			writer.Write(ixDelimiter)
+			writer.Write([]byte(strconv.FormatFloat(x[key], 'f', -1, 64)))
+		}
+		writer.Write(lnDelimiter)
+	} else {
+		y, x := ExtractRow(mpos, mMove, flds)
+		lnDelimiter := []byte("\n")
+		delimiter := []byte(",")
+		for _, v := range x {
+			writer.Write([]byte(strconv.Itoa(int(v))))
+			writer.Write(delimiter)
+		}
+		writer.Write([]byte(strconv.Itoa(int(y))))
+		writer.Write(lnDelimiter)
 	}
-	sort.Ints(sortKeys)
-	for _, key := range sortKeys {
-		writer.Write(delimiter)
-		writer.Write([]byte(strconv.Itoa(key)))
-		writer.Write(ixDelimiter)
-		writer.Write([]byte(strconv.FormatFloat(x[key], 'f', -1, 64)))
-	}
-	writer.Write(lnDelimiter)
 }
