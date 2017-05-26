@@ -37,7 +37,7 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 	nAll := uint64(len(drawSet))
 	dAll := uint64(drawNo)
 	valid, flagTroops, flagMorales, color := anaCombiFlagCards(comb.Troops, flagCards, comb.Formation.Value)
-	if !valid {
+	if !valid || formationNo-len(flagCards) > drawNo {
 		ana.Prop = 0
 	} else {
 		if len(flagTroops) != 0 {
