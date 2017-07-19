@@ -80,21 +80,21 @@ func deckScoutMove(
 func makeMoveDeck(pos *Pos) (moveix int) {
 	var move bat.MoveDeck
 	switch {
-	case pos.deck.DeckTacNo() == 0:
+	case pos.Deck.DeckTacNo() == 0:
 		move = *bat.NewMoveDeck(bat.DECKTroop)
-	case pos.deck.DeckTroopNo() == 0:
+	case pos.Deck.DeckTroopNo() == 0:
 		move = *bat.NewMoveDeck(bat.DECKTac)
 	default:
-		handTacNo := len(pos.playHand.Tacs)
-		tacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
+		handTacNo := len(pos.PlayHand.Tacs)
+		tacAna := newPlayableTacAna(pos.Flags, pos.PlayDish.Tacs, pos.OppDish.Tacs)
 
 		if handTacNo == 0 {
-			move = deckZeroTacMove(tacAna.botNo, tacAna.botLeader, pos.deck, pos.playHand.Troops, pos.flags)
+			move = deckZeroTacMove(tacAna.botNo, tacAna.botLeader, pos.Deck, pos.PlayHand.Troops, pos.Flags)
 		} else {
-			move = deckScoutMove(tacAna.botNo, pos.deck, pos.playHand, pos.flags)
+			move = deckScoutMove(tacAna.botNo, pos.Deck, pos.PlayHand, pos.Flags)
 		}
 	}
-	moveix = findMoveIndex(pos.turn.Moves, move)
+	moveix = findMoveIndex(pos.Turn.Moves, move)
 
 	return moveix
 }
@@ -156,42 +156,42 @@ func scoutReturnTacs(handTacixs []int, playLeader bool) (tacixs []int) {
 //return troops minimum not in keep.
 func makeMoveScoutReturn(pos *Pos) (moveix int) {
 	var tacixs, troopixs []int
-	noReturn := pos.playHand.Size() - bat.NOHandInit
+	noReturn := pos.PlayHand.Size() - bat.NOHandInit
 	isOppFirst := true
-	flagsAna, _ := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isOppFirst)
+	flagsAna, _ := analyzeFlags(pos.Flags, pos.PlayHand.Troops, pos.Deck, isOppFirst)
 	analyzeFlagsAddFlagValue(flagsAna)
-	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isOppFirst)
-	playTacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
-	tacixs = scoutReturnTacs(pos.playHand.Tacs, playTacAna.botLeader)
+	keep := newKeep(flagsAna, pos.PlayHand.Troops, pos.Deck, isOppFirst)
+	playTacAna := newPlayableTacAna(pos.Flags, pos.PlayDish.Tacs, pos.OppDish.Tacs)
+	tacixs = scoutReturnTacs(pos.PlayHand.Tacs, playTacAna.botLeader)
 	if len(tacixs) >= noReturn {
 		tacixs = tacixs[0:noReturn]
 		troopixs = make([]int, 0, 2)
 	} else {
 		noReturnTroops := noReturn - len(tacixs)
-		troopixs = keep.demandScoutReturn(noReturnTroops, flagsAna, pos.deck)
+		troopixs = keep.demandScoutReturn(noReturnTroops, flagsAna, pos.Deck)
 	}
 	move := *bat.NewMoveScoutReturn(tacixs, troopixs)
-	pos.playHand.PlayMulti(move.Tac)
-	pos.playHand.PlayMulti(move.Troop)
-	pos.deck.PlayScoutReturn(move.Troop, move.Tac)
-	moveix = findMoveIndex(pos.turn.Moves, move)
+	pos.PlayHand.PlayMulti(move.Tac)
+	pos.PlayHand.PlayMulti(move.Troop)
+	pos.Deck.PlayScoutReturn(move.Troop, move.Tac)
+	moveix = findMoveIndex(pos.Turn.Moves, move)
 	return moveix
 }
 
 func makeMoveHand(pos *Pos) (moveixs [2]int) {
-	log.Printf(log.Debug, "Hand: %v\n", pos.playHand)
+	log.Printf(log.Debug, "Hand: %v\n", pos.PlayHand)
 	isBotFirst := true
-	flagsAna, deckMaxValues := analyzeFlags(pos.flags, pos.playHand.Troops, pos.deck, isBotFirst)
+	flagsAna, deckMaxValues := analyzeFlags(pos.Flags, pos.PlayHand.Troops, pos.Deck, isBotFirst)
 	analyzeFlagsAddFlagValue(flagsAna)
 	analyzeFlagsAddLooseGameFlags(flagsAna)
-	keep := newKeep(flagsAna, pos.playHand.Troops, pos.deck, isBotFirst)
-	playTacAna := newPlayableTacAna(pos.flags, pos.playDish.Tacs, pos.oppDish.Tacs)
+	keep := newKeep(flagsAna, pos.PlayHand.Troops, pos.Deck, isBotFirst)
+	playTacAna := newPlayableTacAna(pos.Flags, pos.PlayDish.Tacs, pos.OppDish.Tacs)
 
-	if pos.turn.MovesPass {
-		cardix, move := lostFlagTacticMove(flagsAna, pos.playHand.Tacs, playTacAna,
-			pos.playHand.Troops, pos.deck, deckMaxValues, pos.turn.MovesHand)
+	if pos.Turn.MovesPass {
+		cardix, move := lostFlagTacticMove(flagsAna, pos.PlayHand.Tacs, playTacAna,
+			pos.PlayHand.Troops, pos.Deck, deckMaxValues, pos.Turn.MovesHand)
 		if cardix != 0 {
-			moveixs[1] = findMoveHandIndex(pos.turn.MovesHand, cardix, move)
+			moveixs[1] = findMoveHandIndex(pos.Turn.MovesHand, cardix, move)
 			moveixs[0] = cardix
 		} else {
 			moveixs[0] = 0
@@ -201,18 +201,18 @@ func makeMoveHand(pos *Pos) (moveixs [2]int) {
 	} else {
 		cardix := 0
 		var move bat.Move
-		if playTacAna.botNo > 0 && len(pos.playHand.Tacs) > 0 {
-			cardix, move = lostFlagTacticMove(flagsAna, pos.playHand.Tacs, playTacAna,
-				pos.playHand.Troops, pos.deck, deckMaxValues, pos.turn.MovesHand)
+		if playTacAna.botNo > 0 && len(pos.PlayHand.Tacs) > 0 {
+			cardix, move = lostFlagTacticMove(flagsAna, pos.PlayHand.Tacs, playTacAna,
+				pos.PlayHand.Troops, pos.Deck, deckMaxValues, pos.Turn.MovesHand)
 		}
 		if cardix == 0 {
 			cardix, move = lostFlagDumpMove(flagsAna, keep)
 		}
 		if cardix == 0 {
-			cardix, move = prioritizedMove(flagsAna, keep, playTacAna, pos.playHand, pos.deck, deckMaxValues)
+			cardix, move = prioritizedMove(flagsAna, keep, playTacAna, pos.PlayHand, pos.Deck, deckMaxValues)
 		}
 		moveixs[0] = cardix
-		moveixs[1] = findMoveHandIndex(pos.turn.MovesHand, cardix, move)
+		moveixs[1] = findMoveHandIndex(pos.Turn.MovesHand, cardix, move)
 	}
 	return moveixs
 }
@@ -863,7 +863,7 @@ func pfkfFog(flagAna *flag.Analysis, keep *keep) (troopix int, logTxt string) {
 	return troopix, logTxt
 }
 
-func priNewFlagMove(flagixs []int,
+func priNewFlagMove(flagixs []int, //TODO The new flag move should take in to accout the conflicting target like keep but for deck. the problem flag(10,_,8) should count against newflag 8,8,8.
 	flagsAna map[int]*flag.Analysis,
 	handAna map[int][]*combi.Analysis,
 	handTroopixs []int,

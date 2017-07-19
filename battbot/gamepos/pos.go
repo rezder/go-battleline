@@ -2,6 +2,7 @@ package gamepos
 
 import (
 	"fmt"
+
 	"github.com/rezder/go-battleline/battbot/deck"
 	"github.com/rezder/go-battleline/battbot/flag"
 	bat "github.com/rezder/go-battleline/battleline"
@@ -13,36 +14,36 @@ import (
 
 //Pos is a game position.
 type Pos struct {
-	playHand *bat.Hand
-	flags    [bat.NOFlags]*flag.Flag
-	playDish *bat.Dish
-	oppDish  *bat.Dish
-	deck     *deck.Deck
-	turn     *pub.Turn
+	PlayHand *bat.Hand
+	Flags    [bat.NOFlags]*flag.Flag
+	PlayDish *bat.Dish
+	OppDish  *bat.Dish
+	Deck     *deck.Deck
+	Turn     *pub.Turn
 }
 
 //New create a game position.
 func New() (pos *Pos) {
 	pos = new(Pos)
-	pos.playHand = bat.NewHand()
-	for i := range pos.flags {
-		pos.flags[i] = flag.New()
+	pos.PlayHand = bat.NewHand()
+	for i := range pos.Flags {
+		pos.Flags[i] = flag.New()
 	}
-	pos.playDish = bat.NewDish()
-	pos.oppDish = bat.NewDish()
-	pos.deck = deck.NewDeck()
+	pos.PlayDish = bat.NewDish()
+	pos.OppDish = bat.NewDish()
+	pos.Deck = deck.NewDeck()
 	return pos
 }
 
 //Reset resets the game position to before any move have been made.
 func (pos *Pos) Reset() {
-	pos.turn = nil
-	pos.deck.Reset()
-	pos.oppDish = bat.NewDish()
-	pos.playDish = bat.NewDish()
-	pos.playHand = bat.NewHand()
-	for i := range pos.flags {
-		pos.flags[i] = flag.New()
+	pos.Turn = nil
+	pos.Deck.Reset()
+	pos.OppDish = bat.NewDish()
+	pos.PlayDish = bat.NewDish()
+	pos.PlayHand = bat.NewHand()
+	for i := range pos.Flags {
+		pos.Flags[i] = flag.New()
 	}
 }
 
@@ -52,37 +53,37 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 	if moveView.State == bat.TURNFinish || moveView.State == bat.TURNQuit {
 		done = true
 	} else {
-		pos.turn = moveView.Turn
+		pos.Turn = moveView.Turn
 		switch move := moveView.Move.(type) {
 		case tables.MoveInit:
 			for _, cardix := range move.Hand {
-				pos.playHand.Draw(cardix)
-				pos.deck.PlayDraw(cardix)
+				pos.PlayHand.Draw(cardix)
+				pos.Deck.PlayDraw(cardix)
 			}
 		case tables.MoveInitPos:
-			for i := range pos.flags {
-				pos.flags[i] = flag.TransferTableFlag(move.Pos.Flags[i])
-				pos.deck.InitRemoveCards(pos.flags[i].OppEnvs)
-				pos.deck.InitRemoveCards(pos.flags[i].OppTroops)
-				pos.deck.InitRemoveCards(pos.flags[i].PlayEnvs)
-				pos.deck.InitRemoveCards(pos.flags[i].PlayTroops)
+			for i := range pos.Flags {
+				pos.Flags[i] = flag.TransferTableFlag(move.Pos.Flags[i])
+				pos.Deck.InitRemoveCards(pos.Flags[i].OppEnvs)
+				pos.Deck.InitRemoveCards(pos.Flags[i].OppTroops)
+				pos.Deck.InitRemoveCards(pos.Flags[i].PlayEnvs)
+				pos.Deck.InitRemoveCards(pos.Flags[i].PlayTroops)
 
 			}
-			pos.deck.InitRemoveCards(move.Pos.DishTacs)
+			pos.Deck.InitRemoveCards(move.Pos.DishTacs)
 			for _, cardix := range move.Pos.DishTacs {
-				pos.playDish.DishCard(cardix)
+				pos.PlayDish.DishCard(cardix)
 			}
-			pos.deck.InitRemoveCards(move.Pos.DishTroops)
+			pos.Deck.InitRemoveCards(move.Pos.DishTroops)
 			for _, cardix := range move.Pos.DishTroops {
-				pos.playDish.DishCard(cardix)
+				pos.PlayDish.DishCard(cardix)
 			}
-			pos.deck.InitRemoveCards(move.Pos.OppDishTacs)
+			pos.Deck.InitRemoveCards(move.Pos.OppDishTacs)
 			for _, cardix := range move.Pos.OppDishTacs {
-				pos.oppDish.DishCard(cardix)
+				pos.OppDish.DishCard(cardix)
 			}
-			pos.deck.InitRemoveCards(move.Pos.OppDishTroops)
+			pos.Deck.InitRemoveCards(move.Pos.OppDishTroops)
 			for _, cardix := range move.Pos.OppDishTroops {
-				pos.oppDish.DishCard(cardix)
+				pos.OppDish.DishCard(cardix)
 			}
 			oppTroops := 0
 			oppTacs := 0
@@ -94,34 +95,34 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 				}
 			}
 			//oppTroops init to 7 so must set incase opponent have less
-			pos.deck.OppSetInitHand(oppTroops, oppTacs)
+			pos.Deck.OppSetInitHand(oppTroops, oppTacs)
 
 			for _, cardix := range move.Pos.Hand {
-				pos.deck.PlayDraw(cardix)
-				pos.playHand.Draw(cardix)
+				pos.Deck.PlayDraw(cardix)
+				pos.PlayHand.Draw(cardix)
 			}
 		case bat.MoveCardFlag:
 			if moveView.Mover {
-				pos.playHand.Play(moveView.MoveCardix)
-				pos.flags[move.Flagix].PlayAddCardix(moveView.MoveCardix)
+				pos.PlayHand.Play(moveView.MoveCardix)
+				pos.Flags[move.Flagix].PlayAddCardix(moveView.MoveCardix)
 			} else {
-				pos.deck.OppPlay(moveView.MoveCardix)
-				pos.playHand.Play(moveView.MoveCardix)
-				pos.flags[move.Flagix].OppAddCardix(moveView.MoveCardix)
+				pos.Deck.OppPlay(moveView.MoveCardix)
+				pos.PlayHand.Play(moveView.MoveCardix)
+				pos.Flags[move.Flagix].OppAddCardix(moveView.MoveCardix)
 			}
 		case bat.MoveDeck:
 			if moveView.Mover {
-				pos.playHand.Draw(moveView.DeltCardix)
-				pos.deck.PlayDraw(moveView.DeltCardix)
+				pos.PlayHand.Draw(moveView.DeltCardix)
+				pos.Deck.PlayDraw(moveView.DeltCardix)
 				if moveView.MoveCardix == cards.TCScout {
-					pos.playHand.Play(cards.TCScout)
-					pos.playDish.DishCard(cards.TCScout)
+					pos.PlayHand.Play(cards.TCScout)
+					pos.PlayDish.DishCard(cards.TCScout)
 				}
 			} else { //Opponent
-				pos.deck.OppDraw(move.Deck == bat.DECKTroop)
+				pos.Deck.OppDraw(move.Deck == bat.DECKTroop)
 				if moveView.MoveCardix == cards.TCScout {
-					pos.deck.OppPlay(cards.TCScout)
-					pos.playDish.DishCard(cards.TCScout)
+					pos.Deck.OppPlay(cards.TCScout)
+					pos.PlayDish.DishCard(cards.TCScout)
 				}
 			}
 		case tables.MoveClaimView:
@@ -133,75 +134,75 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 					claimed = flag.CLAIMOpp
 				}
 				for _, v := range move.Claimed {
-					pos.flags[v].Claimed = claimed
+					pos.Flags[v].Claimed = claimed
 				}
 			}
 		case tables.MoveDeserterView:
-			flag := pos.flags[move.Move.Flag]
+			flag := pos.Flags[move.Move.Flag]
 			if moveView.Mover {
-				pos.playHand.Play(moveView.MoveCardix)     //Deserter card
-				pos.playDish.DishCard(moveView.MoveCardix) //Deserter card
+				pos.PlayHand.Play(moveView.MoveCardix)     //Deserter card
+				pos.PlayDish.DishCard(moveView.MoveCardix) //Deserter card
 
-				pos.oppDish.DishCard(move.Move.Card) //Target card
+				pos.OppDish.DishCard(move.Move.Card) //Target card
 				flag.OppRemoveCardix(move.Move.Card)
 			} else { //Opp move
-				pos.deck.OppPlay(moveView.MoveCardix)     //Deserter card
-				pos.oppDish.DishCard(moveView.MoveCardix) //Deserter card
+				pos.Deck.OppPlay(moveView.MoveCardix)     //Deserter card
+				pos.OppDish.DishCard(moveView.MoveCardix) //Deserter card
 
-				pos.playDish.DishCard(move.Move.Card) //Target card
+				pos.PlayDish.DishCard(move.Move.Card) //Target card
 				flag.PlayRemoveCardix(move.Move.Card)
 			}
-			updateMudDishixs(flag, move.Dishixs, pos.oppDish, pos.playDish)
+			updateMudDishixs(flag, move.Dishixs, pos.OppDish, pos.PlayDish)
 		case tables.MoveScoutReturnView:
 			if moveView.Mover {
 				//TODO Add opp know card in deck and on hand.
 			} else {
-				pos.deck.OppScoutReturn(move.Troop, move.Tac)
+				pos.Deck.OppScoutReturn(move.Troop, move.Tac)
 			}
 		case bat.MoveTraitor:
-			outFlag := pos.flags[move.OutFlag]
-			inFlag := pos.flags[move.InFlag]
+			outFlag := pos.Flags[move.OutFlag]
+			inFlag := pos.Flags[move.InFlag]
 
 			if moveView.Mover {
-				pos.playHand.Play(moveView.MoveCardix)     //Traitor card
-				pos.playDish.DishCard(moveView.MoveCardix) //Traitor card
+				pos.PlayHand.Play(moveView.MoveCardix)     //Traitor card
+				pos.PlayDish.DishCard(moveView.MoveCardix) //Traitor card
 
 				outFlag.OppRemoveCardix(move.OutCard)
 				inFlag.PlayAddCardix(move.OutCard)
 			} else { //Opp move
-				pos.deck.OppPlay(moveView.MoveCardix)     //Traitor card
-				pos.oppDish.DishCard(moveView.MoveCardix) //Traitor card
+				pos.Deck.OppPlay(moveView.MoveCardix)     //Traitor card
+				pos.OppDish.DishCard(moveView.MoveCardix) //Traitor card
 
 				outFlag.PlayRemoveCardix(move.OutCard)
 				inFlag.OppAddCardix(move.OutCard)
 			}
 		case tables.MoveRedeployView:
-			outFlag := pos.flags[move.Move.OutFlag]
+			outFlag := pos.Flags[move.Move.OutFlag]
 			var inFlag *flag.Flag
 			if move.Move.InFlag >= 0 {
-				inFlag = pos.flags[move.Move.InFlag]
+				inFlag = pos.Flags[move.Move.InFlag]
 			}
 			if moveView.Mover {
-				pos.playHand.Play(moveView.MoveCardix)     //Redeploy card
-				pos.playDish.DishCard(moveView.MoveCardix) //Redeploy card
+				pos.PlayHand.Play(moveView.MoveCardix)     //Redeploy card
+				pos.PlayDish.DishCard(moveView.MoveCardix) //Redeploy card
 				outFlag.PlayRemoveCardix(move.Move.OutCard)
 				if inFlag != nil {
 					inFlag.PlayAddCardix(move.Move.OutCard)
 				} else {
-					pos.playDish.DishCard(move.Move.OutCard)
+					pos.PlayDish.DishCard(move.Move.OutCard)
 				}
 
 			} else {
-				pos.deck.OppPlay(moveView.MoveCardix)     //Redeploy card
-				pos.oppDish.DishCard(moveView.MoveCardix) //Redeploy card
+				pos.Deck.OppPlay(moveView.MoveCardix)     //Redeploy card
+				pos.OppDish.DishCard(moveView.MoveCardix) //Redeploy card
 				outFlag.OppRemoveCardix(move.Move.OutCard)
 				if inFlag != nil {
 					inFlag.OppAddCardix(move.Move.OutCard)
 				} else {
-					pos.oppDish.DishCard(move.Move.OutCard)
+					pos.OppDish.DishCard(move.Move.OutCard)
 				}
 			}
-			updateMudDishixs(outFlag, move.RedeployDishixs, pos.oppDish, pos.playDish)
+			updateMudDishixs(outFlag, move.RedeployDishixs, pos.OppDish, pos.PlayDish)
 
 		case tables.MovePass:
 		case tables.MoveQuit:
@@ -217,41 +218,53 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 
 //updateMudDishixs update the dishes with extra cards that were removed from the
 //flag do to mud card no long exist on the flag.
-func updateMudDishixs(flag *flag.Flag, dishixs []int, oppDish *bat.Dish, playDish *bat.Dish) {
+func updateMudDishixs(flag *flag.Flag, dishixs []int, OppDish *bat.Dish, PlayDish *bat.Dish) {
 	for _, cardix := range dishixs {
 		if flag.OppRemoveCardix(cardix) {
-			oppDish.DishCard(cardix)
+			OppDish.DishCard(cardix)
 		}
 		if flag.PlayRemoveCardix(cardix) {
-			playDish.DishCard(cardix)
+			PlayDish.DishCard(cardix)
 		}
 	}
 }
 func (pos *Pos) String() string {
 	res := "&Pos{"
-	res = res + fmt.Sprintf("playHand: %v\n", *pos.playHand)
-	res = res + fmt.Sprintf("playDish: %v\n", *pos.playDish)
+	res = res + fmt.Sprintf("PlayHand: %v\n", *pos.PlayHand)
+	res = res + fmt.Sprintf("PlayDish: %v\n", *pos.PlayDish)
 	res = res + "flags: ["
-	for _, v := range pos.flags {
+	for _, v := range pos.Flags {
 		res = res + fmt.Sprint(*v)
 	}
 	res = res + "]\n"
-	res = res + fmt.Sprintf("oppDish: %v\n", *pos.oppDish)
-	res = res + fmt.Sprintf("deck: %v\n", *pos.deck)
+	res = res + fmt.Sprintf("OppDish: %v\n", *pos.OppDish)
+	res = res + fmt.Sprintf("deck: %v\n", *pos.Deck)
 	res = res + "}"
 	return res
 }
 
+//MakeTfMove calculate the next bot move using tensorflow data.
+func (pos *Pos) MakeTfMove(probas []float64, moveixs [][2]int) (moveix [2]int) {
+	var maxProba float64
+	for i, proba := range probas {
+		if maxProba < proba {
+			maxProba = proba
+			moveix = moveixs[i]
+		}
+	}
+	return moveix
+}
+
 //MakeMove calculate the next bot move.
 func (pos *Pos) MakeMove() (moveix [2]int) {
-	if pos.turn.Moves != nil {
+	if pos.Turn.Moves != nil {
 		moveix[1] = 0
-		switch move := pos.turn.Moves[0].(type) {
+		switch move := pos.Turn.Moves[0].(type) {
 		case bat.MoveDeck:
 			moveix[1] = makeMoveDeck(pos)
 
 		case bat.MoveClaim:
-			moveix[1] = makeMoveClaim(pos.turn.Moves)
+			moveix[1] = makeMoveClaim(pos.Turn.Moves)
 		case bat.MoveScoutReturn:
 			moveix[1] = makeMoveScoutReturn(pos)
 		default:
@@ -269,5 +282,10 @@ func (pos *Pos) MakeMove() (moveix [2]int) {
 
 //IsBotTurn returns if it bot time to move.
 func (pos *Pos) IsBotTurn() bool {
-	return pos.turn.MyTurn
+	return pos.Turn.MyTurn
+}
+
+//IsHandMove returns if hand move.
+func (pos *Pos) IsHandMove() bool {
+	return pos.Turn.Moves == nil
 }

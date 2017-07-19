@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battbot/gamepos"
+	"github.com/rezder/go-battleline/battbot/tf"
 	"github.com/rezder/go-battleline/battserver/players"
 	pub "github.com/rezder/go-battleline/battserver/publist"
+	"github.com/rezder/go-battleline/machine"
 	"github.com/rezder/go-error/log"
 	"golang.org/x/net/websocket"
 	"io"
@@ -24,6 +26,7 @@ func main() {
 	var addr string
 	var name string
 	var port string
+	var tfaddr string
 	var scheme string // http or https
 	var pw string
 	var logLevel int
@@ -32,7 +35,8 @@ func main() {
 	var sendInvite bool
 	flag.StringVar(&scheme, "scheme", "http", "Scheme http or https")
 	flag.StringVar(&addr, "addr", "game.rezder.com", "The server address with out port")
-	flag.StringVar(&port, "port", "8181", "The port")
+	flag.StringVar(&port, "port", "8181", "The game server port")
+	flag.StringVar(&tfaddr, "tfaddr", "", "The tensorflow server address example localhost:5555")
 	flag.StringVar(&name, "name", "Rene", "User name")
 	flag.StringVar(&pw, "pw", "12345678", "User password")
 	flag.IntVar(&logLevel, "loglevel", 0, "Log level 0 default lowest, 3 highest")
@@ -58,9 +62,18 @@ func main() {
 		return
 	}
 	defer conn.Close()
+	var tfcon *tf.Con
+	if len(tfaddr) > 0 {
+		tfcon, err = tf.New(tfaddr)
+		err = errors.Wrap(err, "Creating zmq socket failed")
+		if err != nil {
+			log.PrintErr(err)
+			return
+		}
+	}
 	doneCh := make(chan struct{})
 	finConnCh := make(chan struct{})
-	go start(conn, doneCh, finConnCh, sendInvite, name, limitNoGame)
+	go start(conn, doneCh, finConnCh, sendInvite, name, limitNoGame, tfcon)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Printf(log.Min, "Bot (%v) up and running. Close with ctrl+c\n", name)
@@ -156,7 +169,8 @@ func start(
 	finConnCh chan<- struct{},
 	sendIvites bool,
 	name string,
-	limitNoGame int) {
+	limitNoGame int,
+	tfcon *tf.Con) {
 
 	noGame := 0
 	defer close(finConnCh)
@@ -273,7 +287,24 @@ Loop:
 						}
 					} else {
 						if gamePos.IsBotTurn() {
-							moveixs := gamePos.MakeMove()
+							var moveixs [2]int
+							if tfcon != nil {
+								if !gamePos.IsHandMove() {
+									moveixs = gamePos.MakeMove()
+								} else {
+									byteData, moves := machine.CreatePosBot(gamePos)
+									probas, err := tfcon.ReqProba(byteData, len(moves))
+									if err != nil {
+										err = errors.Wrap(err, "Failed to get probabilities from tensorflow model")
+										log.PrintErr(err)
+										moveixs = gamePos.MakeMove()
+									} else {
+										moveixs = gamePos.MakeTfMove(probas, moves)
+									}
+								}
+							} else {
+								moveixs = gamePos.MakeMove()
+							}
 							act := players.NewAction(players.ACTMove)
 							act.Move = moveixs
 

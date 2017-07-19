@@ -31,7 +31,7 @@ cleared when card hit the table.
 cleared when card hit the table
 * **OppKnownDeckTacNo** The number of cards the opponent knows in tactic deck
 * **OppKnownDeckTroopNo** The number of cards the opponent knows in troop deck
-* **OppKnownHand1** The opponent may uptill two cards as a result of the opponent haveing played scout return.
+* **OppKnownHand1** The opponent may know up till two cards as a result of the opponent haveing played scout return.
 * **OppKnownHand2** See above and these fields is cleared when **both** cards have hit the table.
 The have information about the known deck numbers of cards. We could clear if know dbuckStd     = "Std" // Card to flag and pass.
 	buckDeck    = "Deck"

@@ -44,38 +44,38 @@ func TestMpos(t *testing.T) {
 	gamePos.Dishs[1].DishCard(cards.TCDeserter)
 	testSet(expMpos, cards.TCDeserter, CardPosAll.DishOpp)
 
-	gamePos.Flags[0].Set(cards.TCFog, 0)
+	_ = gamePos.Flags[0].Set(cards.TCFog, 0)
 	testSet(expMpos, cards.TCFog, CardPosAll.FlagBot[0])
-	gamePos.Flags[0].Set(20, 0)
+	_ = gamePos.Flags[0].Set(20, 0)
 	testSet(expMpos, 20, CardPosAll.FlagBot[0])
-	gamePos.Flags[0].Set(30, 0)
+	_ = gamePos.Flags[0].Set(30, 0)
 	testSet(expMpos, 30, CardPosAll.FlagBot[0])
-	gamePos.Flags[0].Set(40, 0)
+	_ = gamePos.Flags[0].Set(40, 0)
 	testSet(expMpos, 40, CardPosAll.FlagBot[0])
-	gamePos.Flags[0].Set(21, 1)
+	_ = gamePos.Flags[0].Set(21, 1)
 	testSet(expMpos, 21, CardPosAll.FlagOpp[0])
 	gamePos.Flags[0].Players[0].Won = true
 
 	testSet(expMpos, pFlag, ConePos.Bot)
 
-	gamePos.Flags[8].Set(cards.TCMud, 1)
+	_ = gamePos.Flags[8].Set(cards.TCMud, 1)
 	testSet(expMpos, cards.TCMud, CardPosAll.FlagOpp[8])
-	gamePos.Flags[8].Set(29, 1)
+	_ = gamePos.Flags[8].Set(29, 1)
 	testSet(expMpos, 29, CardPosAll.FlagOpp[8])
-	gamePos.Flags[8].Set(39, 1)
+	_ = gamePos.Flags[8].Set(39, 1)
 	testSet(expMpos, 39, CardPosAll.FlagOpp[8])
-	gamePos.Flags[8].Set(49, 1)
+	_ = gamePos.Flags[8].Set(49, 1)
 	testSet(expMpos, 49, CardPosAll.FlagOpp[8])
-	gamePos.Flags[8].Set(59, 1)
+	_ = gamePos.Flags[8].Set(59, 1)
 	testSet(expMpos, 59, CardPosAll.FlagOpp[8])
-	gamePos.Flags[8].Set(22, 0)
+	_ = gamePos.Flags[8].Set(22, 0)
 	testSet(expMpos, 22, CardPosAll.FlagBot[8])
 	gamePos.Flags[8].Players[1].Won = true
 	testSet(expMpos, pFlag+8, ConePos.Opp)
 
-	gamePos.Flags[4].Set(25, 0)
+	_ = gamePos.Flags[4].Set(25, 0)
 	testSet(expMpos, 25, CardPosAll.FlagBot[4])
-	gamePos.Flags[4].Set(26, 1)
+	_ = gamePos.Flags[4].Set(26, 1)
 	testSet(expMpos, 26, CardPosAll.FlagOpp[4])
 
 	moves := make(map[int][]bat.Move)
@@ -95,7 +95,7 @@ func TestMpos(t *testing.T) {
 	testSet(expMpos, 0, uint8(moveix))
 	cardix := 1
 	testSetMove(expMpos, pMoveFirstCard, uint8(cardix))
-	testSetMove(expMpos, pMoveFirstCardDest, MoveDestAll.Flag[2])
+	testSetMove(expMpos, pMoveFirstCardDest, CardPosAll.FlagBot[2])
 	mpos := CreatePos(gamePos, move[0], nil, false, cardix, 0, 0, moveix)
 	testCompare(mpos, expMpos, t)
 
@@ -117,10 +117,6 @@ func TestMpos(t *testing.T) {
 	testSet(expMpos, pOppKnowDeckTacsNo, 1)
 	testSet(expMpos, pOppKnowDeckTroopsNo, 0)
 	testSet(expMpos, pOppKnowHand, 1)
-
-	tacs = []int{cards.TCDarius}
-	troops = []int{1}
-	scoutR = *bat.NewMoveScoutReturn(tacs, troops)
 
 }
 func testCompare(mpos, expMpos MPos, t *testing.T) {

@@ -435,9 +435,9 @@ func getCardFlagMoves(flags []int) (moves []Move) {
 	return moves
 }
 
-// setMoveScout returns the scout moves.
+// getMoveScout returns the scout moves.
 // The numbers of moves should be len(tac)=nta and len(troop)=nto
-// (nta*nta-1) + nto*nto-1+nta*nto if there is enough cards and
+// nta*(nta-1) + nto*(nto-1) + nta*nto if there is enough cards and
 // there is two cards to return.
 func getMoveScoutReturn(hand *Hand) (m []Move) {
 	nta := len(hand.Tacs)
@@ -446,7 +446,7 @@ func getMoveScoutReturn(hand *Hand) (m []Move) {
 	if ret == 2 {
 		m = make([]Move, 0, 72)
 	} else {
-		m = make([]Move, 0, 18)
+		m = make([]Move, 0, 8)
 	}
 	if ret == 2 {
 		if nta > 1 {

@@ -17,29 +17,31 @@ type Meta struct {
 	NoMoves   uint8
 }
 
+// NewMeta create a new meta data structure.
 func NewMeta(playerids [2]int, starterix int) (m *Meta) {
 	m = new(Meta)
 	m.Starterix = uint8(starterix)
 	m.Players = [2]*MetaPlayer{NewMetaPlayer(playerids[0]), NewMetaPlayer(playerids[0])}
 	return m
 }
-func gobInitMeta() (m *Meta) {
-	m = new(Meta)
-	m.Players = [2]*MetaPlayer{gobInitMetaPlayer(), gobInitMetaPlayer()}
-	return m
-}
+
+// SetWinner set the winner.
 func (m *Meta) SetWinner(ix int) {
 	m.Winerix = uint8(ix)
 }
+
+//SetNoMoves set the number of moves.
 func (m *Meta) SetNoMoves(ix int) {
 	m.NoMoves = uint8(ix)
 }
+
+//AddLastPosInfo adds information from the last position.
 func (m *Meta) AddLastPosInfo(pos *bat.GamePos) {
 	troops := [2][]int{make([]int, 0, 37), make([]int, 0, 37)}
 	for i, player := range m.Players {
-		for _, tacix := range player.PlayedTacixs {
-			player.TaticCardixs = append(player.TaticCardixs, tacix)
-		}
+
+		player.TaticCardixs = append(player.TaticCardixs, player.PlayedTacixs...)
+
 		for _, cardix := range pos.Hands[i].Tacs {
 			if cards.IsGuile(cardix) {
 				player.TaticCardixs = append(player.TaticCardixs, cardix)
@@ -79,7 +81,7 @@ func (m *Meta) AddLastPosInfo(pos *bat.GamePos) {
 	//Avg sum on hand on flags on dish plus and minus traitor card
 }
 
-// MetaPlayers holds meta game information per player.
+//MetaPlayer holds meta game information per player.
 type MetaPlayer struct {
 	PlayerId          int
 	TaticCardixs      []int
@@ -90,6 +92,7 @@ type MetaPlayer struct {
 	traitorCardix     int
 }
 
+//NewMetaPlayer creates a meta player
 func NewMetaPlayer(id int) (m *MetaPlayer) {
 	m = gobInitMetaPlayer()
 	m.PlayerId = id
@@ -102,6 +105,7 @@ func gobInitMetaPlayer() (m *MetaPlayer) {
 	return m
 }
 
+//AddHandMove updates player with a move.
 func (m *MetaPlayer) AddHandMove(move bat.Move) {
 	switch cardMove := move.(type) {
 	case bat.MoveCardFlag:

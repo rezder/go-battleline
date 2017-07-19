@@ -7,27 +7,33 @@ import (
 	"github.com/rezder/go-battleline/battleline/cards"
 )
 
+//MMove a machine move.
 type MMove []uint8
 
 const (
 	mMoveNoBytes = 4
 )
 
+//TODO Maybe Add the 10 field per flag numbers of cards,colors,values the sum and max value - min value
+//Jokker value and color ?
 var (
-	pMoveFirstCard      = 0 //1851 71 does not include special SPCClaimFlag or SPCDeck
-	pMoveFirstCardDest  = 1 //1922 11 pos:deck,flag,dish
-	pMoveSecondCard     = 2 //1933 70 no scout
-	pMoveSecondCardDest = 3 //2003 11 pos:deck,dish,flag. Features 2013
+	pMoveFirstCard      = 0 // 1851 71
+	pMoveFirstCardDest  = 1 // 1922 10
+	pMoveSecondCard     = 2 // 1932 67
+	pMoveSecondCardDest = 3 // 1999 11 features 2009
 	pMoveSpecialCard    = 0
-	pMoveDeck           = 1
+	pMoveDeck           = 3
 	pMoveClaimFlag9     = 1
 	pMoveClaimFlags     = 2
 )
 
+// NewMMove creates a new machine move all values zero.
 func NewMMove() MMove {
 	mMove := make([]uint8, mMoveNoBytes)
 	return mMove
 }
+
+// CreateMMove creates a machine move from game move.
 func CreateMMove(cardix int, move bat.Move, pass bool) (mMove MMove) {
 	mMove = NewMMove()
 	if !pass {
@@ -41,32 +47,32 @@ func CreateMMove(cardix int, move bat.Move, pass bool) (mMove MMove) {
 				mMove[pMoveClaimFlag9], mMove[pMoveClaimFlags] = claimMoveToByte(move.Flags)
 			case bat.MoveScoutReturn:
 				mMove[pMoveFirstCard], mMove[pMoveSecondCard] = scoutReturnToByte(move.Tac, move.Troop)
-				mMove[pMoveFirstCardDest] = MoveDestAll.Deck
-				mMove[pMoveSecondCardDest] = MoveDestAll.Deck
+				mMove[pMoveFirstCardDest] = CardPosAll.Deck
+				mMove[pMoveSecondCardDest] = CardPosAll.Deck
 			}
 		} else {
 			mMove[pMoveFirstCard] = uint8(cardix)
 			switch cardMove := move.(type) {
 			case bat.MoveCardFlag:
-				mMove[pMoveFirstCardDest] = MoveDestAll.Flag[cardMove.Flagix]
+				mMove[pMoveFirstCardDest] = CardPosAll.FlagBot[cardMove.Flagix]
 			case bat.MoveDeserter:
-				mMove[pMoveFirstCardDest] = MoveDestAll.Dish
+				mMove[pMoveFirstCardDest] = CardPosAll.DishBot
 				mMove[pMoveSecondCard] = uint8(cardMove.Card)
-				mMove[pMoveSecondCardDest] = MoveDestAll.Dish
+				mMove[pMoveSecondCardDest] = CardPosAll.DishOpp
 			case bat.MoveRedeploy:
-				mMove[pMoveFirstCardDest] = MoveDestAll.Dish
+				mMove[pMoveFirstCardDest] = CardPosAll.DishBot
 				mMove[pMoveSecondCard] = uint8(cardMove.OutCard)
 				if cardMove.InFlag == -1 {
-					mMove[pMoveSecondCardDest] = MoveDestAll.Dish
+					mMove[pMoveSecondCardDest] = CardPosAll.DishBot
 				} else {
-					mMove[pMoveSecondCardDest] = MoveDestAll.Flag[cardMove.InFlag]
+					mMove[pMoveSecondCardDest] = CardPosAll.FlagBot[cardMove.InFlag]
 				}
 			case bat.MoveTraitor:
-				mMove[pMoveFirstCardDest] = MoveDestAll.Dish
+				mMove[pMoveFirstCardDest] = CardPosAll.DishBot
 				mMove[pMoveSecondCard] = uint8(cardMove.OutCard)
-				mMove[pMoveSecondCardDest] = MoveDestAll.Flag[cardMove.InFlag]
+				mMove[pMoveSecondCardDest] = CardPosAll.FlagBot[cardMove.InFlag]
 			case bat.MoveDeck: //scout
-				mMove[pMoveFirstCardDest] = MoveDestAll.Dish
+				mMove[pMoveFirstCardDest] = CardPosAll.DishBot
 				mMove[pMoveDeck] = deckMoveToByte(cardMove.Deck)
 			}
 
@@ -85,6 +91,8 @@ func flagixFromCardPos(cardPos uint8) (flagix int) {
 	}
 	return flagix
 }
+
+// Reverse recreates a game move from a machine move.
 func (mMove MMove) Reverse() (cardix int, move bat.Move, pass bool) {
 	if mMove[pMoveFirstCard] == 0 && mMove[pMoveSecondCard] == 0 {
 		pass = true
@@ -94,7 +102,7 @@ func (mMove MMove) Reverse() (cardix int, move bat.Move, pass bool) {
 	} else if mMove[pMoveSpecialCard] == SPCClaimFlag {
 		claimFlags := claimMoveToFlags(mMove[pMoveClaimFlags], mMove[pMoveClaimFlag9]) //TODO check if nil is ok
 		move = bat.NewMoveClaim(claimFlags)
-	} else if mMove[pMoveFirstCardDest] == MoveDestAll.Deck && mMove[pMoveFirstCard] != 0 {
+	} else if mMove[pMoveFirstCardDest] == CardPosAll.Deck && mMove[pMoveFirstCard] != 0 {
 		troops, tacs := scoutReturnToCards(mMove[pMoveFirstCard], mMove[pMoveSecondCard])
 		move = bat.NewMoveScoutReturn(tacs, troops)
 	} else {
@@ -217,51 +225,20 @@ func convertBitFlagToByte(flags [8]bool) (x uint8) {
 
 // Special move
 const (
+	// SPCClaimFlag special card value to indicate claim flag move.
 	SPCClaimFlag = 100
-	SPCDeck      = 101
+	// SPCDeck special card value to indicate deck move.
+	SPCDeck = 101
 )
 
-type MoveDestAllSingleton struct {
-	SimpleDom
-	Dish uint8
-	Flag [9]uint8
-	Deck uint8
-}
-
-var (
-	MoveDestAll *MoveDestAllSingleton
-)
-
-func init() {
-	MoveDestAll = newMoveDestAllSingleton()
-}
-
-func newMoveDestAllSingleton() (md *MoveDestAllSingleton) {
-	md = new(MoveDestAllSingleton)
-	md.SimpleDom = *new(SimpleDom)
-	md.name = "Move Destinations"
-	md.txtValues = make([]string, 11)
-	md.values = make([]uint8, 11)
-
-	md.Dish = 0
-	md.values[0] = 0
-	md.txtValues[0] = "Dish"
-	for i := 0; i < 9; i++ {
-		md.Flag[i] = uint8(i + 1)
-		md.txtValues[i] = fmt.Sprintf("Flag%v", i+1)
-		md.values[i+1] = uint8(i) + 1
-	}
-	md.Deck = 10
-	md.txtValues[10] = "Deck"
-	md.values[10] = 10
-	return md
-}
-
+// MPosJoin a machine position with all possible moves
+// The actual made move is in position and not included in moves.
 type MPosJoin struct {
 	pos   MPos
 	moves []MMove
 }
 
+// NewMPosJoin create machine pos join.
 func NewMPosJoin(mPos MPos, movesHand map[int][]bat.Move, passPossible bool, moveCardix, moveix int, movePass bool) (mpj *MPosJoin) {
 	mpj = new(MPosJoin)
 	mpj.pos = mPos
@@ -269,7 +246,7 @@ func NewMPosJoin(mPos MPos, movesHand map[int][]bat.Move, passPossible bool, mov
 		mpj.moves = make([]MMove, 0, 50)
 		for cardix, moves := range movesHand {
 			for ix, move := range moves {
-				if movePass || (moveCardix != cardix && moveix != ix) {
+				if movePass || !(moveCardix == cardix && moveix == ix) {
 					mMove := CreateMMove(cardix, move, movePass)
 					mpj.moves = append(mpj.moves, mMove)
 				}

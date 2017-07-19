@@ -2,31 +2,89 @@ package machine
 
 import (
 	"fmt"
-
+	botflag "github.com/rezder/go-battleline/battbot/flag"
+	bot "github.com/rezder/go-battleline/battbot/gamepos"
 	bat "github.com/rezder/go-battleline/battleline"
+	pub "github.com/rezder/go-battleline/battserver/publist"
+
 	"github.com/rezder/go-battleline/battleline/cards"
 	gflag "github.com/rezder/go-battleline/battleline/flag"
+	"strconv"
 )
 
+// MPos a machine position.
 type MPos []uint8
 
 const (
 	mPosNoBytes = 93
 )
 
+// NewMPos Create new machine position all all card position is zero
 func NewMPos() MPos {
 	mpos := make([]uint8, mPosNoBytes)
 	return mpos
 }
+
+// CreatePosBot create a machine positions from a bot position.
+// The positions are serialize.
+func CreatePosBot(pos *bot.Pos) (data []byte, moves [][2]int) {
+	mpos := setBotCardsPos(pos)
+	mpos[pMoveix] = uint8(0)
+	setBotConesPos(pos.Flags, mpos)
+	setBotOppontFields(pos.Deck.OppTacNo(), pos.Deck.OppTroopNo(), mpos)
+	setScoutReturnBotFields(pos.Deck.TfScoutReturnMoveTacs(), pos.Deck.TfScoutReturnMoveTroops(), mpos)
+	noTacs, noTroops, handCardixs := pos.Deck.OppKnowns()
+	setBotScoutReturnOppFields(noTacs, noTroops, handCardixs, mpos)
+	if pos.Turn.MovesPass {
+		mpos[pPass] = 1
+	}
+	var mmoves []MMove
+	mmoves, moves = createMMovesBot(pos.Turn.MovesHand, pos.Turn.MovesPass)
+	data = serializeBotPos(mpos, mmoves)
+	return data, moves
+}
+
+// createMposBot create machine moves and coresponding game server moves.
+func createMMovesBot(batMoves map[string][]bat.Move, pass bool) (mmoves []MMove, moves [][2]int) {
+	moves = make([][2]int, 0, 40)
+	mmoves = make([]MMove, 0, 40)
+	for cardixTxt, cardMoves := range batMoves {
+		cardix, _ := strconv.Atoi(cardixTxt)
+		for i, move := range cardMoves {
+			moves = append(moves, [2]int{cardix, i})
+			mmoves = append(mmoves, CreateMMove(cardix, move, false))
+		}
+	}
+	if pass {
+		moves = append(moves, [2]int{0, pub.SMPass})
+		mmoves = append(mmoves, NewMMove())
+	}
+	return mmoves, moves
+}
+
+// serializeBotPos join machine pos and moves and the serialize them.
+func serializeBotPos(mPos MPos, mmoves []MMove) (data []byte) {
+	data = make([]byte, 0, len(mmoves)*(mPosNoBytes-1))
+	for _, mMove := range mmoves {
+		newMove := AddMove(mPos, mMove)
+		data = append(data, newMove[1:]...)
+	}
+	return data
+}
+
+// CreatePos create machine pos from game position
 func CreatePos(pos *bat.GamePos, move, scoutRMove bat.Move, passMove bool, moveCardix, mover, scoutMover, gameMoveix int) MPos {
 	mpos := setCardsPos(pos, mover)
 	mpos[pMoveix] = uint8(gameMoveix)
 	setConesPos(pos.Flags, mover, mpos)
 	setOppontFields(pos.Hands[pos.Opp()], mpos)
-	if scoutMover == mover {
-		setScoutReturnBotFields(scoutRMove, mpos)
-	} else {
-		setScoutReturnOppFields(scoutRMove, mpos)
+	scoutReturnMove, ok := scoutRMove.(bat.MoveScoutReturn)
+	if ok {
+		if scoutMover == mover {
+			setScoutReturnBotFields(scoutReturnMove.Tac, scoutReturnMove.Troop, mpos)
+		} else {
+			setScoutReturnOppFields(scoutReturnMove.Tac, scoutReturnMove.Troop, mpos)
+		}
 	}
 	if pos.MovePass {
 		mpos[pPass] = 1
@@ -37,7 +95,21 @@ func CreatePos(pos *bat.GamePos, move, scoutRMove bat.Move, passMove bool, moveC
 	}
 	return mpos
 }
-func setConesPos(flags [9]*gflag.Flag, mover int, mpos MPos) {
+func setBotConesPos(flags [bat.NOFlags]*botflag.Flag, mpos MPos) {
+	intix := pFlag
+	for flagix, flag := range flags {
+		if !flag.IsClaimed() {
+			mpos[intix+flagix] = ConePos.None
+		} else {
+			if flag.Claimed == botflag.CLAIMPlay {
+				mpos[intix+flagix] = ConePos.Bot
+			} else {
+				mpos[intix+flagix] = ConePos.Opp
+			}
+		}
+	}
+}
+func setConesPos(flags [bat.NOFlags]*gflag.Flag, mover int, mpos MPos) {
 	intix := pFlag
 	for flagix, flag := range flags {
 		if !flag.Claimed() {
@@ -51,61 +123,66 @@ func setConesPos(flags [9]*gflag.Flag, mover int, mpos MPos) {
 		}
 	}
 }
+func setBotOppontFields(tacNo, troopNo int, mpos MPos) {
+	mpos[pOppHandTacsNo] = uint8(tacNo)
+	mpos[pOppHandTroopsNo] = uint8(troopNo)
+}
 func setOppontFields(hand *bat.Hand, mpos MPos) {
 	mpos[pOppHandTacsNo] = uint8(len(hand.Tacs))
 	mpos[pOppHandTroopsNo] = uint8(len(hand.Troops))
 }
-
-func setScoutReturnOppFields(move bat.Move, mpos MPos) {
-
-	scoutReturnMove, ok := move.(bat.MoveScoutReturn)
-	if ok {
-		tacHandNo, tacDeckNo := countCardsHandDeck(scoutReturnMove.Tac, mpos)
-		troopHandNo, troopDeckNo := countCardsHandDeck(scoutReturnMove.Troop, mpos)
-		mpos[pOppKnowDeckTacsNo] = uint8(tacDeckNo)
-		mpos[pOppKnowDeckTroopsNo] = uint8(troopDeckNo)
-		if tacHandNo+troopHandNo > 0 {
-			cardixs := make([]int, 0, 2)
-			cardixs = append(cardixs, scoutReturnMove.Tac...)
-			cardixs = append(cardixs, scoutReturnMove.Troop...)
-			for i, cardix := range cardixs {
-				mpos[pOppKnowHand+i] = uint8(cardix)
-			}
+func setBotScoutReturnOppFields(noTacs, noTroops int, cardixs []int, mpos MPos) {
+	mpos[pOppKnowDeckTacsNo] = uint8(noTacs)
+	mpos[pOppKnowDeckTroopsNo] = uint8(noTroops)
+	i := 0
+	for _, cardix := range cardixs {
+		if mpos[cardix] == CardPosAll.Hand || mpos[cardix] == CardPosAll.HandLegal {
+			mpos[pOppKnowHand+i] = uint8(cardix)
+			i = i + 1
 		}
-
 	}
 }
-func countCardsHandDeck(cardixs []int, mpos MPos) (handNo, deckNo int) {
+func setScoutReturnOppFields(tacs, troops []int, mpos MPos) {
+	tacOnHandixs, tacDeckNo := countCardsHandDeck(tacs, mpos)
+	troopOnHandixs, troopDeckNo := countCardsHandDeck(troops, mpos)
+	mpos[pOppKnowDeckTacsNo] = uint8(tacDeckNo)
+	mpos[pOppKnowDeckTroopsNo] = uint8(troopDeckNo)
+	if len(tacOnHandixs)+len(troopOnHandixs) > 0 {
+		cardixs := append(tacOnHandixs, troopOnHandixs...)
+		for i, cardix := range cardixs {
+			mpos[pOppKnowHand+i] = uint8(cardix)
+		}
+	}
+}
+func countCardsHandDeck(cardixs []int, mpos MPos) (onHandixs []int, deckNo int) {
 	for _, cardix := range cardixs {
 		if mpos[cardix] == CardPosAll.Deck {
 			deckNo = deckNo + 1
 		} else if mpos[cardix] == CardPosAll.Hand || mpos[cardix] == CardPosAll.HandLegal {
-			handNo = handNo + 1
+			onHandixs = append(onHandixs, cardix)
 		}
 	}
-	return handNo, deckNo
+	return onHandixs, deckNo
 }
-func setScoutReturnBotFields(move bat.Move, mpos MPos) {
+func setScoutReturnBotFields(tacs, troops []int, mpos MPos) {
 
-	scoutReturnMove, ok := move.(bat.MoveScoutReturn)
-	if ok {
-		if len(scoutReturnMove.Tac) == 1 {
-			mpos[pScoutRBotFirstCard] = uint8(scoutReturnMove.Tac[0])
-			if len(scoutReturnMove.Troop) == 1 {
-				mpos[pScoutRBotSecondCard] = uint8(scoutReturnMove.Troop[0])
-			}
-		} else {
-			if len(scoutReturnMove.Tac) == 2 {
-				mpos[pScoutRBotFirstCard] = uint8(scoutReturnMove.Tac[0])
-				mpos[pScoutRBotSecondCard] = uint8(scoutReturnMove.Tac[1])
-			} else if len(scoutReturnMove.Troop) == 2 {
-				mpos[pScoutRBotFirstCard] = uint8(scoutReturnMove.Troop[0])
-				mpos[pScoutRBotSecondCard] = uint8(scoutReturnMove.Troop[1])
-			}
+	if len(tacs) == 1 {
+		mpos[pScoutRBotFirstCard] = uint8(tacs[0])
+		if len(troops) == 1 {
+			mpos[pScoutRBotSecondCard] = uint8(troops[0])
 		}
-		scoutReturnBotClear(mpos, pScoutRBotFirstCard)
-		scoutReturnBotClear(mpos, pScoutRBotSecondCard)
+	} else {
+		if len(tacs) == 2 {
+			mpos[pScoutRBotFirstCard] = uint8(tacs[0])
+			mpos[pScoutRBotSecondCard] = uint8(tacs[1])
+		} else if len(troops) == 2 {
+			mpos[pScoutRBotFirstCard] = uint8(troops[0])
+			mpos[pScoutRBotSecondCard] = uint8(troops[1])
+		}
 	}
+	scoutReturnBotClear(mpos, pScoutRBotFirstCard)
+	scoutReturnBotClear(mpos, pScoutRBotSecondCard)
+
 }
 func scoutReturnBotClear(mpos MPos, ix int) {
 	if mpos[ix] != 0 {
@@ -114,6 +191,38 @@ func scoutReturnBotClear(mpos MPos, ix int) {
 			mpos[ix] = 0
 		}
 	}
+}
+func setBotCardsPos(pos *bot.Pos) MPos {
+	m := NewMPos()
+	startix := pCard - 1 //-1 is because cardix is not zero indexed
+	for i := pCard; i <= cards.NOTac+cards.NOTroop; i++ {
+		m[i] = CardPosAll.Deck
+	}
+	for _, cardix := range pos.PlayHand.Troops {
+		if cardix != 0 {
+			m[startix+cardix] = CardPosAll.Hand
+		}
+	}
+	for _, cardix := range pos.PlayHand.Tacs {
+		if cardix != 0 {
+			m[startix+cardix] = CardPosAll.Hand
+		}
+	}
+	for cardixTxt := range pos.Turn.MovesHand {
+		cardix, _ := strconv.Atoi(cardixTxt)
+		m[startix+cardix] = CardPosAll.HandLegal
+	}
+	for flagix, flag := range pos.Flags {
+		setCardPosFlag(m, flag.PlayEnvs, flagix, false, startix)
+		setCardPosFlag(m, flag.PlayTroops, flagix, false, startix)
+		setCardPosFlag(m, flag.OppEnvs, flagix, true, startix)
+		setCardPosFlag(m, flag.OppTroops, flagix, true, startix)
+	}
+	setCardPosDish(m, pos.OppDish.Tacs, true, startix)
+	setCardPosDish(m, pos.OppDish.Troops, true, startix)
+	setCardPosDish(m, pos.PlayDish.Tacs, false, startix)
+	setCardPosDish(m, pos.PlayDish.Troops, false, startix)
+	return m
 }
 func setCardsPos(pos *bat.GamePos, mover int) MPos {
 	m := NewMPos()
@@ -172,24 +281,32 @@ func setCardPosFlag(mpos MPos, cardixs []int, flagix int, isOpponent bool, start
 	}
 }
 
+// Domain a domain interface.
 type Domain interface {
 	Name() string
 	TxtToValue(string) uint8
 	ValueToTxt(uint8) string
 	DomValues() []uint8
 }
+
+//SimpleDom a standard domain just integer and text.
 type SimpleDom struct {
 	name      string
 	values    []uint8
 	txtValues []string
 }
 
+// DomValues returns the domain values.
 func (dom *SimpleDom) DomValues() []uint8 {
 	return dom.values
 }
+
+// Name the domain name.
 func (dom *SimpleDom) Name() string {
 	return dom.name
 }
+
+// ValueToTxt translate from value to text
 func (dom *SimpleDom) ValueToTxt(value uint8) string {
 	return domValueToTxt(dom.values, dom.txtValues, value)
 }
@@ -210,6 +327,8 @@ func domValueIndex(value uint8, values []uint8) (ix int, ok bool) {
 	}
 	return ix, ok
 }
+
+// TxtToValue translate from text to value.
 func (dom *SimpleDom) TxtToValue(txt string) uint8 {
 	return domTxtToValue(dom.values, dom.txtValues, txt)
 }
@@ -232,8 +351,10 @@ func domTxtToValue(values []uint8, txtValues []string, txtValue string) (value u
 }
 
 var (
+	//CardPosAll a all card postion domain.
 	CardPosAll *CardPosAllSingleton
-	ConePos    *ConePosSingleton
+	//ConePos a all cone postion domain.
+	ConePos *ConePosSingleton
 )
 
 func init() {
@@ -241,6 +362,7 @@ func init() {
 	ConePos = newConePosSingleton()
 }
 
+// CardPosAllSingleton all card positions domain.
 type CardPosAllSingleton struct {
 	SimpleDom
 	DishBot   uint8
@@ -266,8 +388,8 @@ func newCardPosAllSingleton() (cp *CardPosAllSingleton) {
 		oppix := i + 11
 		cp.FlagBot[i] = uint8(botix)
 		cp.FlagOpp[i] = uint8(oppix)
-		cp.txtValues[botix] = fmt.Sprint("Flag%vBot", i+1)
-		cp.txtValues[oppix] = fmt.Sprint("Flag%vOpp", i+1)
+		cp.txtValues[botix] = fmt.Sprintf("Flag%vBot", i+1)
+		cp.txtValues[oppix] = fmt.Sprintf("Flag%vOpp", i+1)
 	}
 	cp.HandLegal = 20
 	cp.txtValues[20] = "HandLegal"
@@ -278,6 +400,13 @@ func newCardPosAllSingleton() (cp *CardPosAllSingleton) {
 
 	return cp
 }
+
+// BotFlagsValue returns all flag positions 1-9
+func (cp *CardPosAllSingleton) BotFlagsValue() []uint8 {
+	return []uint8{1, 2, 3, 4, 5, 6, 7, 8, 9}
+}
+
+// Flagix return the flag index from position.
 func (cp *CardPosAllSingleton) Flagix(pos uint8) (ix int, ok bool) {
 	ok = false
 	if pos > 0 && pos < 11 {
@@ -290,19 +419,25 @@ func (cp *CardPosAllSingleton) Flagix(pos uint8) (ix int, ok bool) {
 	return ix, ok
 }
 
+// CardPosDom a card postion domain.
 type CardPosDom struct {
 	name   string
 	values []uint8
 }
 
+// NewCardPosDom create new card position domain.
 func NewCardPosDom(values []uint8) (cp *CardPosDom) {
 	cp = new(CardPosDom)
 	cp.values = values
 	return cp
 }
+
+// Name returns the domain name.
 func (cp *CardPosDom) Name() string {
 	return cp.name
 }
+
+// TxtToValue translates domain text to value.
 func (cp *CardPosDom) TxtToValue(txtValue string) uint8 {
 	value := CardPosAll.TxtToValue(txtValue)
 	_, ok := domValueIndex(value, cp.values)
@@ -312,6 +447,8 @@ func (cp *CardPosDom) TxtToValue(txtValue string) uint8 {
 	}
 	return value
 }
+
+// ValueToTxt translates domain value to text.
 func (cp *CardPosDom) ValueToTxt(value uint8) string {
 	_, ok := domValueIndex(value, cp.values)
 	if !ok {
@@ -319,10 +456,13 @@ func (cp *CardPosDom) ValueToTxt(value uint8) string {
 	}
 	return CardPosAll.ValueToTxt(value)
 }
+
+// DomValues returns all domain values.
 func (cp *CardPosDom) DomValues() []uint8 {
 	return cp.values
 }
 
+// ConePosSingleton all the cone positions domain.
 type ConePosSingleton struct {
 	SimpleDom
 	None uint8
@@ -344,11 +484,13 @@ func newConePosSingleton() (cp *ConePosSingleton) {
 	return cp
 }
 
+// MPosFld a machine position field.
 type MPosFld struct {
 	Fld
 	MposIx int
 }
 
+// MPosCreateFeatureFlds create feature fields.
 func MPosCreateFeatureFlds() (flds []Fld) {
 	flds = make([]Fld, 92)
 	ix := 0
@@ -376,11 +518,9 @@ func MPosCreateFeatureFlds() (flds []Fld) {
 	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &ValueFld{Name: "Opp. Hand No. Tactics", Scale: 4}}
 	ix = ix + 1
 	noScoutDomain := newCardDomain("Scout Return Cards", []uint8{uint8(cards.TCScout)})
-	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Scout Return Bot First Card",
-		Domain: noScoutDomain}}
+	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Scout Return Bot First Card", Domain: noScoutDomain}}
 	ix = ix + 1
-	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Scout Return Bot Second Card",
-		Domain: noScoutDomain}}
+	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Scout Return Bot Second Card", Domain: noScoutDomain}}
 	ix = ix + 1
 	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &ValueFld{Name: "Opp. Know Deck Tactics", Scale: 2}}
 	ix = ix + 1
@@ -394,19 +534,36 @@ func MPosCreateFeatureFlds() (flds []Fld) {
 	}
 	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &ValueFld{Name: "Pass Possible", Scale: 1}}
 
-	allCardsDomain := newCardDomain("All Cards", nil)
+	// ------------Move part--------------
 	ix = ix + 1
-	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move FirstCard", Domain: allCardsDomain}}
+	allCardDomain := newCardDomain("All cards", nil)
+	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move First Card", Domain: allCardDomain}}
 	ix = ix + 1
-	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move FirstCard Destination", Domain: MoveDestAll}}
+	firstDestDom, secondDestDom := createMoveDestDoms()
+	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move First Card Destination", Domain: firstDestDom}}
+
+	noGuileDomain := newCardDomain("No guile cards", []uint8{uint8(cards.TCScout), uint8(cards.TCTraitor), uint8(cards.TCDeserter), uint8(cards.TCRedeploy)})
 	ix = ix + 1
-	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move SecondCard", Domain: noScoutDomain}}
+	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move Second Card", Domain: noGuileDomain}}
 	ix = ix + 1
-	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move SecondCard Destination", Domain: MoveDestAll}}
+	flds[ix] = MPosFld{MposIx: ix + 1, Fld: &DomFld{Name: "Move Second Card Destination", Domain: secondDestDom}}
 
 	return flds
 }
 
+func createMoveDestDoms() (firstCardDom, secondCardDom *CardPosDom) {
+	moveDests := make([]uint8, 0, 11)
+	moveDests = append(moveDests, CardPosAll.DishBot)
+	for i := 0; i < 9; i++ {
+		moveDests = append(moveDests, CardPosAll.FlagBot[i])
+	}
+	moveDests = append(moveDests, CardPosAll.DishOpp)
+	firstCardDom = NewCardPosDom(moveDests[:10])
+	secondCardDom = NewCardPosDom(moveDests)
+	return firstCardDom, secondCardDom
+}
+
+// CardDomain a card domain a list of cards.
 type CardDomain struct {
 	removeixs []uint8
 	name      string
@@ -435,10 +592,13 @@ func newCardDomain(name string, removeixs []uint8) (cd *CardDomain) {
 	}
 	return cd
 }
+
+// Name returns the name.
 func (cd *CardDomain) Name() (name string) {
 	return cd.name
 }
 
+// TxtToValue returns the card value(index) from text.
 func (cd *CardDomain) TxtToValue(txt string) (value uint8) {
 	found := false
 	for _, v := range cd.values {
@@ -453,6 +613,8 @@ func (cd *CardDomain) TxtToValue(txt string) (value uint8) {
 	}
 	return value
 }
+
+// ValueToTxt returns the card name from value(index).
 func (cd *CardDomain) ValueToTxt(v uint8) (txt string) {
 	if v == 0 {
 		txt = "None"
@@ -470,6 +632,8 @@ func (cd *CardDomain) ValueToTxt(v uint8) (txt string) {
 	}
 	return txt
 }
+
+// DomValues return all the card values.
 func (cd *CardDomain) DomValues() (values []uint8) {
 	return cd.values
 }
@@ -485,9 +649,5 @@ var (
 	pOppKnowDeckTacsNo   = 84 //1708 1
 	pOppKnowDeckTroopsNo = 85 //1709 1
 	pOppKnowHand         = 86 //1710 2*70=140
-	pPass                = 88 //1850 1
-	//pMoveFirstCard       = 89 //1851 71 does not include special SPCClaimFlag or SPCDeck
-	//pMoveFirstCardDest   = 90 //1922 11 pos:dish,flag,deck
-	//pMoveSecondCard      = 91 //1933 70 no scout
-	//pMoveSecondCardDest  = 92 //2003 11   pos:dish,flag,deck. Features 2013
+	pPass                = 88 //1850 1 features 1850
 )

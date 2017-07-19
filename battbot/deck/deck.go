@@ -12,11 +12,16 @@ import (
 type Deck struct {
 	troops            map[int]bool
 	tacs              map[int]bool
-	scoutReturnTroops []int
-	scoutReturnTacs   []int
+	scoutReturnTroops []int //contains the returned cards until drawn
+	scoutReturnTacs   []int //contains the returned cards until drawn
 	oppHand           []int //contains opponent scout return cards until played.
 	oppTroops         int
 	oppTacs           int
+	tfSRMTroops       []int //contains the returned cards
+	tfSRMTacs         []int //contains the returned cards
+	oppKnowsCardixs   []int //The cards that the bot have drawn that the opponent have returned
+	oppKnowTroopsNo   int   //The number of cards the oppent knows in deck
+	oppKnowTacsNo     int   //The number of cards the oppent knows in deck
 }
 
 //NewDeck creates a new deck.
@@ -29,6 +34,9 @@ func NewDeck() (deck *Deck) {
 	deck.scoutReturnTacs = make([]int, 0, 2)
 	deck.scoutReturnTroops = make([]int, 0, 2)
 	deck.oppHand = make([]int, 0, 2)
+	deck.tfSRMTacs = make([]int, 0, 2)
+	deck.tfSRMTroops = make([]int, 0, 2)
+	deck.oppKnowsCardixs = make([]int, 0, 2)
 	return deck
 }
 
@@ -102,6 +110,11 @@ func (d *Deck) Reset() {
 	d.scoutReturnTacs = d.scoutReturnTacs[:0]
 	d.scoutReturnTroops = d.scoutReturnTroops[:0]
 	d.oppHand = d.oppHand[:0]
+	d.tfSRMTacs = d.tfSRMTacs[:0]
+	d.tfSRMTroops = d.tfSRMTroops[:0]
+	d.oppKnowsCardixs = d.oppKnowsCardixs[:0]
+	d.oppKnowTacsNo = 0
+	d.oppKnowTroopsNo = 0
 }
 
 //InitRemoveCard removes a cards from decks.
@@ -126,12 +139,20 @@ func (d *Deck) PlayDraw(cardix int) {
 		} else {
 			d.scoutReturnTroops = d.scoutReturnTroops[:nscout-1]
 		}
+		if d.oppKnowTroopsNo > 0 {
+			d.oppKnowsCardixs = append(d.oppKnowsCardixs, cardix)
+			d.oppKnowTroopsNo = d.oppKnowTroopsNo - 1
+		}
 	} else {
 		nscout := len(d.scoutReturnTacs)
 		if nscout == 0 {
 			delete(d.tacs, cardix)
 		} else {
 			d.scoutReturnTacs = d.scoutReturnTacs[:nscout-1]
+		}
+		if d.oppKnowTacsNo > 0 {
+			d.oppKnowsCardixs = append(d.oppKnowsCardixs, cardix)
+			d.oppKnowTacsNo = d.oppKnowTacsNo - 1
 		}
 	}
 }
@@ -163,6 +184,9 @@ func (d *Deck) OppDraw(troop bool) {
 			d.oppHand = append(d.oppHand, d.scoutReturnTroops[nscout-1])
 			d.scoutReturnTroops = d.scoutReturnTroops[:nscout-1]
 		}
+		if d.oppKnowTroopsNo > 0 {
+			d.oppKnowTroopsNo = d.oppKnowTroopsNo - 1
+		}
 	} else {
 		nscout := len(d.scoutReturnTacs)
 		if nscout == 0 {
@@ -170,6 +194,9 @@ func (d *Deck) OppDraw(troop bool) {
 		} else {
 			d.oppHand = append(d.oppHand, d.scoutReturnTacs[nscout-1])
 			d.scoutReturnTacs = d.scoutReturnTacs[:nscout-1]
+		}
+		if d.oppKnowTacsNo > 0 {
+			d.oppKnowTroopsNo = d.oppKnowTacsNo - 1
 		}
 	}
 }
@@ -186,12 +213,18 @@ func (d *Deck) OppSetInitHand(troops int, tacs int) {
 func (d *Deck) OppScoutReturn(troops int, tacs int) {
 	d.oppTroops = d.oppTroops - troops
 	d.oppTacs = d.oppTacs - tacs
+	d.oppKnowTacsNo = tacs
+	d.oppKnowTroopsNo = troops
 }
 
 //PlayScoutReturn registor a scout return move. Cards are delt from the back.
 func (d *Deck) PlayScoutReturn(troops []int, tacs []int) {
 	d.scoutReturnTroops = troops
 	d.scoutReturnTacs = tacs
+	d.tfSRMTacs = make([]int, len(tacs))
+	d.tfSRMTroops = make([]int, len(troops))
+	copy(d.tfSRMTacs, tacs)
+	copy(d.tfSRMTroops, troops)
 }
 
 //DeckTacNo returns current the tactic card deck size.
@@ -262,6 +295,9 @@ func MaxValuesUpd(troopix int, values []int) (updValues []int, max bool) {
 func (deck *Deck) OppTacNo() int {
 	return deck.oppTacs
 }
+func (deck *Deck) OppTroopNo() int {
+	return deck.oppTroops
+}
 func (deck *Deck) ScoutReturnTacPeek() int {
 	if len(deck.scoutReturnTacs) > 0 {
 		return deck.scoutReturnTacs[len(deck.scoutReturnTacs)-1]
@@ -273,4 +309,13 @@ func (deck *Deck) ScoutReturnTroopPeek() int {
 		return deck.scoutReturnTroops[len(deck.scoutReturnTroops)-1]
 	}
 	return 0
+}
+func (deck *Deck) TfScoutReturnMoveTacs() []int {
+	return deck.tfSRMTacs
+}
+func (deck *Deck) TfScoutReturnMoveTroops() []int {
+	return deck.tfSRMTroops
+}
+func (deck *Deck) OppKnowns() (noTacs, noTroops int, handCardixs []int) {
+	return deck.oppKnowTacsNo, deck.oppKnowTroopsNo, deck.oppKnowsCardixs
 }

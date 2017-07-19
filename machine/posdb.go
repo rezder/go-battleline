@@ -22,16 +22,18 @@ var (
 	keyMeta = []byte("Meta")
 )
 
+// DbPos a machine position database.
 type DbPos struct {
 	db         *bolt.DB
 	maxFetchNo int
 }
 
+// MaxFetchNo the max number of records to fetch.
 func (dbp *DbPos) MaxFetchNo() int {
 	return dbp.maxFetchNo
 }
 
-//New  create a battleline database.
+//NewDbPos  create a battleline database.
 func NewDbPos(db *bolt.DB, maxFetchNo int) *DbPos {
 	dbp := new(DbPos)
 	dbp.db = db
@@ -51,6 +53,7 @@ func (dbp *DbPos) Init() error {
 	return err
 }
 
+// AddGame adds all position from a game to the database.
 func (dbp *DbPos) AddGame(game *bat.Game, id []byte) (err error) {
 	meta, winnerMoves, loserMoves := extractMposs(game)
 	err = dbp.db.Update(func(tx *bolt.Tx) error {
@@ -97,8 +100,8 @@ func updateMpos(gameBucket *bolt.Bucket, id []byte, moves []*MPosJoin) (err erro
 }
 func createMposBuckets(bucket *bolt.Bucket, bucketNames [][]byte) (buckets []*bolt.Bucket, err error) {
 	buckets = make([]*bolt.Bucket, len(bucketNames))
-	for i, buckId := range bucketNames {
-		buckets[i], err = bucket.CreateBucket(buckId)
+	for i, buckID := range bucketNames {
+		buckets[i], err = bucket.CreateBucket(buckID)
 		if err != nil {
 			return nil, err
 		}
@@ -190,6 +193,7 @@ func extractMposs(game *bat.Game) (meta *Meta, winnerMPosJoins, loserMPosJoins [
 	meta.SetNoMoves(noMoves)
 	winnerMPosJoins = mPosJoins[winner]
 	loserMPosJoins = mPosJoins[opponent(winner)]
+
 	return meta, winnerMPosJoins, loserMPosJoins
 }
 
@@ -203,6 +207,6 @@ func opponent(playerix int) (opp int) {
 }
 func itob(v uint16) []byte {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint16(b, uint16(v))
+	binary.BigEndian.PutUint16(b, v)
 	return b
 }

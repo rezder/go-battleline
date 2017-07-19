@@ -141,7 +141,7 @@ func init() {
 	}
 	Cards[TCDeserter] = Tactic{
 		name:    "Deserter",
-		describ: "Remove any opponent troop or tactic card from unclaimed flags",
+		describ: "Remove any opponent troop or tactic card from an unclaimed flag",
 		ttype:   CTGuile,
 	}
 	Cards[TCTraitor] = Tactic{

@@ -30,11 +30,17 @@ func TestPosDb(t *testing.T) {
 	}
 	err = mdb.AddGame(game, []byte("test"))
 	if err != nil {
-		t.Errorf("Adding game %v failed with error %v", gameFile, err)
+		t.Errorf("Adding game %v failed with error: %v", gameFile, err)
 	}
 	stdWriter := bufio.NewWriter(os.Stdout)
-	PrintMachineData(OutTypeMoveCard, stdWriter, mdb, 10)
-	stdWriter.Flush()
+	err = PrintMachineData(OutTypeMoveCard, false, stdWriter, mdb, 10)
+	if err != nil {
+		t.Errorf("Error writing to std out failed: %v", err)
+	}
+	err = stdWriter.Flush()
+	if err != nil {
+		t.Errorf("Error flusing to std out failed: %v", err)
+	}
 	//TODO Load some data maybe
 }
 func testLoadGame(t *testing.T, name string) (game *bat.Game, err error) {
@@ -46,7 +52,7 @@ func testLoadGame(t *testing.T, name string) (game *bat.Game, err error) {
 	game, err = bat.Load(file)
 	if err != nil {
 		t.Errorf("Load game file error. File :%v, Error: %v", name, err.Error())
-		file.Close()
+		_ = file.Close() // ignore one error should be enough
 		return game, err
 	}
 	err = file.Close()
