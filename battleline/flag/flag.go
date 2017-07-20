@@ -618,7 +618,7 @@ func evalFormationT1LineLeader(troops []*cards.Troop, skipValue int) (leader int
 //with a leader and the 8 morale tactic card.
 //troops must be sorted biggest first.
 //vLeader is the value that leader takes."
-func evalFormationLeader8(troops []*cards.Troop, tac1, tac2 int) (formation *cards.Formation, vLeader int) {
+func evalFormationLeader8(troops []*cards.Troop) (formation *cards.Formation, vLeader int) {
 	_, color := evalFormationValueColor(troops)
 
 	if len(troops) == 1 {
@@ -689,7 +689,7 @@ func evalFormationLeader8(troops []*cards.Troop, tac1, tac2 int) (formation *car
 //troops must be sorted biggest first.
 //vLeader is the value that leader takes."
 //v123 is the value 123 takes
-func evalFormationLeader123(troops []*cards.Troop, tac1, tac2 int) (formation *cards.Formation, v123, vLeader int) {
+func evalFormationLeader123(troops []*cards.Troop) (formation *cards.Formation, v123, vLeader int) {
 	if len(troops) == 1 {
 		if troops[0].Value() < 6 {
 			formation = &cards.FWedge
@@ -781,10 +781,10 @@ func evalFormationLeader123(troops []*cards.Troop, tac1, tac2 int) (formation *c
 func evalFormationT2(troops []*cards.Troop, tac1 int, tac2 int) (formation *cards.Formation, v123 int, vLeader int) {
 	switch {
 	case (tac1 == cards.TCAlexander || tac1 == cards.TCDarius) && tac2 == cards.TC8:
-		formation, vLeader = evalFormationLeader8(troops, tac1, tac2)
+		formation, vLeader = evalFormationLeader8(troops)
 
 	case (tac1 == cards.TCAlexander || tac1 == cards.TCDarius) && tac2 == cards.TC123:
-		formation, v123, vLeader = evalFormationLeader123(troops, tac1, tac2)
+		formation, v123, vLeader = evalFormationLeader123(troops)
 	case tac1 == cards.TC8 && tac2 == cards.TC123:
 		_, color := evalFormationValueColor(troops)
 		if color {
@@ -935,7 +935,6 @@ func (flag *Flag) ClaimFlag(playerix int, unPlayCards []int) (ok bool, eks []int
 						opTroops = append(opTroops, opTroop)
 					}
 				}
-
 				if len(opTroops) > 1 {
 					ok = claimFlagOppentPlayedCard(player.Formation, player.Strenght, opTroops, mud)
 				}
@@ -1052,7 +1051,7 @@ func claimFlagSimulation(
 }
 
 //claimFlagOppentPlayedCard checks if a flag can be claimed base on caclulated max formation.
-//These calculation need on cards to be played and does no include
+//These calculation need two troop to be played and does no include
 //Host just a sum.
 func claimFlagOppentPlayedCard(
 	formation *cards.Formation,
@@ -1061,8 +1060,12 @@ func claimFlagOppentPlayedCard(
 	isMud bool) (ok bool) {
 
 	value, color := evalFormationValueColor(opTroops)
-	line, _ := evalFormationT1Line(opTroops) // could be better but for now ok. must be sorted
+	line := true
+	if !isMud {
+		line, _ = evalFormationT1Line(opTroops) // could be better but for now ok. must be sorted
+	}
 	wedge := line && color
+
 	switch formation {
 	case &cards.FWedge:
 		if !wedge {

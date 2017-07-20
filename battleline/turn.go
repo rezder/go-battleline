@@ -389,9 +389,11 @@ func getRedeployMoves(flags *[NOFlags]*flag.Flag, playerix int) (moves []Move) {
 	for outFlagix, outFlag := range flags {
 		if !outFlag.Claimed() {
 			for inFlagix, inFlag := range flags {
-				if !inFlag.Claimed() && inFlag.Free()[playerix] && outFlagix != inFlagix {
-					for _, troop := range outFlag.Troops(playerix) {
-						moves = append(moves, *NewMoveRedeploy(outFlagix, troop, inFlagix))
+				if !inFlag.Claimed() && outFlagix != inFlagix {
+					if inFlag.Free()[playerix] {
+						for _, troop := range outFlag.Troops(playerix) {
+							moves = append(moves, *NewMoveRedeploy(outFlagix, troop, inFlagix))
+						}
 					}
 					for _, tac := range outFlag.Env(playerix) {
 						moves = append(moves, *NewMoveRedeploy(outFlagix, tac, inFlagix))
@@ -409,7 +411,7 @@ func getRedeployMoves(flags *[NOFlags]*flag.Flag, playerix int) (moves []Move) {
 	return moves
 }
 
-// getDeserterMoves retunrs the possible deserter moves.
+// getDeserterMoves returns the possible deserter moves.
 func getDeserterMoves(flags *[NOFlags]*flag.Flag, opp int) (moves []Move) {
 	moves = make([]Move, 0, NOFlags*3+3)
 	for flagix, flag := range flags {

@@ -322,6 +322,14 @@ func flagClaimExpectSucces(t *testing.T, formation, unUsed, oppCards, env []int,
 		t.Errorf("Claim should have succed. but example exist: %v", eks)
 	}
 }
+func TestFlagClaimsBigSplit(t *testing.T) {
+	formation := []int{6, 5, 4, 3}
+	unUsed := []int{18, 19}
+	env := []int{cards.TCMud}
+	oppCards := []int{17, 20}
+	t.Logf("Fail claim big split player,opponent %v,%v", formation, oppCards)
+	flagClaimExpectFail(t, formation, unUsed, oppCards, env, 1)
+}
 func TestFlagClaims(t *testing.T) {
 	player1 := 0
 	player2 := opponent(player1)
@@ -360,6 +368,12 @@ func TestFlagClaims(t *testing.T) {
 	unUsed := []int{1, 11, 22, 46, 55, 56}
 	env = []int{cards.TCMud}
 	oppCards = nil
+	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
+
+	formation = []int{10, 18, 7}
+	unUsed = []int{24, 11, 22, 46, 55, 56}
+	env = []int{cards.TCFog}
+	oppCards = []int{1, 2}
 	flagClaimExpectSucces(t, formation, unUsed, oppCards, env, player1)
 
 	formation = []int{9, 8, 6, 7}

@@ -188,6 +188,11 @@ func TestGames(t *testing.T) {
 					pos, found := testPos.Pos[move]
 					if found {
 						if !game.Pos.Equal(pos) {
+							for i := range pos.Flags {
+								if !pos.Flags[i].Equal(game.Pos.Flags[i]) {
+									t.Logf("ix: %v, oldFlag %v, newflag %v", i, pos.Flags[i], game.Pos.Flags[i])
+								}
+							}
 							t.Errorf("Move: %v failed in file: %v", move, fileName)
 						}
 					}
@@ -246,11 +251,15 @@ func createGameTest(fileMap map[string]bool, newGames []string, dirName string, 
 				//	t.Logf("File: %v\nGame Pos:%v\nDeck:%v", fileName, game.Pos, game.InitDeckTroop)
 				testPos := createPos(game)
 				fileNamePos := ("pos" + fileName)
-				err = saveTestPos(t, fileNamePos, testPos)
+				err = saveTestPos(t, filepath.Join(dirName, fileNamePos), testPos)
 				if err == nil {
 					fileMap[fileNamePos] = true
 				}
+			} else {
+				t.Errorf("Error saveing game:%v", fileName)
 			}
+		} else {
+			t.Errorf("Error loading game:%v", fileName)
 		}
 	}
 }
