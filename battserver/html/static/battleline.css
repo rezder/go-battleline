@@ -57,6 +57,10 @@ svg text {
   -ms-user-select: none;
   user-select: none;
 }
+svg text::selection {
+    background: none;
+}
+
 table{
     border-collapse:collapse;
 }

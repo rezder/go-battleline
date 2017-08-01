@@ -231,6 +231,7 @@ func (bdb *Db) ScannPrefix(
 //The search stops if the max numbers of records is reach.
 func (bdb *Db) Search(
 	filterF func(game *bat.Game, key []byte) bool) (games []*bat.Game, nextKey []byte, err error) {
+
 	err = bdb.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bdb.bucket)
 		c := b.Cursor()
@@ -257,7 +258,9 @@ func (bdb *Db) Search(
 //Search the full database from the last entry.
 //The search stops if the max numbers of records is reach.
 func (bdb *Db) SearchLoop(
-	filterF func(game *bat.Game, key []byte) bool, startKey []byte) (games []*bat.Game, nextKey []byte, err error) {
+	filterF func(game *bat.Game, key []byte) bool,
+	startKey []byte) (games []*bat.Game, nextKey []byte, err error) {
+
 	err = bdb.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bdb.bucket)
 		c := b.Cursor()
@@ -302,8 +305,8 @@ func KeyPlayerIds(ids [2]int) (key []byte) {
 		copy(key, itob(ids[1]))
 		copy(key[8:], itob(ids[0]))
 	} else {
-		copy(key, itob(ids[1]))
-		copy(key[8:], itob(ids[0]))
+		copy(key, itob(ids[0]))
+		copy(key[8:], itob(ids[1]))
 	}
 	return key
 }

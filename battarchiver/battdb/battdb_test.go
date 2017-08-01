@@ -29,8 +29,8 @@ func TestSearch(t *testing.T) {
 	name := "_test/testdb.db"
 	//err := createTestDb(name) //adds 30 game
 	//if err != nil {
-	//	t.Fatalf("Create database failed: %v", err)
-	//}
+	//		t.Fatalf("Create database failed: %v", err)
+	//	}
 	db, err := bolt.Open(name, 0600, nil)
 	if err != nil {
 		t.Fatalf("Open database file failed: %v", err)
@@ -41,13 +41,23 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init database failed: %v", err)
 	}
-	ids := ([2]int{1, 2})
+	ids := [2]int{1, 2}
 	prefix := KeyPlayerIds(ids)
+	opPrefix := KeyPlayerIds([2]int{2, 1})
+	for i, _ := range prefix {
+		if prefix[i] != opPrefix[i] {
+			t.Error("The id order should not matter")
+			break
+		}
+	}
+
 	prefixGames, _, err := bdb.ScannPrefix(nil, prefix)
 	if err != nil {
 		t.Fatalf("Scann failed for prefix without function ids %v, error: %v", ids, err)
 	}
+	noSearch := 0
 	searchGames, _, err := bdb.Search(func(game *bat.Game, _ []byte) bool {
+		noSearch++
 		if game.PlayerIds[0] > 2 || game.PlayerIds[0] < 1 ||
 			game.PlayerIds[1] > 2 || game.PlayerIds[1] < 1 {
 			return false
@@ -60,13 +70,35 @@ func TestSearch(t *testing.T) {
 	if len(prefixGames) != len(searchGames) || len(prefixGames) < 10 {
 		t.Errorf("Empty condition Scann failed found %v,%v games", len(prefixGames), len(searchGames))
 	}
+	noSearchExp := 30
+	if noSearch != noSearchExp {
+		t.Errorf("Empty condition Scann failed found: %v, expected: %v games", noSearch, noSearchExp)
+	}
+	noSearchLoop := 0
+	searchLoopGames, _, err := bdb.SearchLoop(func(game *bat.Game, _ []byte) bool {
+		noSearchLoop++
+		if game.PlayerIds[0] > 2 || game.PlayerIds[0] < 1 ||
+			game.PlayerIds[1] > 2 || game.PlayerIds[1] < 1 {
+			return false
+		}
+		return true
+	}, nil)
+	if err != nil {
+		t.Fatalf("Scann failed for seach loop with function %v", err)
+	}
+	if len(searchGames) != len(searchLoopGames) {
+		t.Errorf("Search and SearchLoop deviates %v,%v games", len(searchLoopGames), len(searchGames))
+	}
+	if noSearchLoop != noSearchExp {
+		t.Errorf("Search and SearchLoop deviates %v,%v on loops", noSearch, noSearchExp)
+	}
 
 	prefixGames, _, err = bdb.ScannPrefix(testSearch, prefix)
 	if err != nil {
 		t.Fatalf("Scann failed for prefix %v with test function, error: %v", ids, err)
 	}
-	if len(prefixGames) != 8 {
-		t.Errorf("Scann failed found %v games expected %v", len(prefixGames), 8)
+	if len(prefixGames) != 7 {
+		t.Errorf("Scann failed found %v games expected %v", len(prefixGames), 7)
 	}
 }
 func testSearch(game *bat.Game, _ []byte) bool {

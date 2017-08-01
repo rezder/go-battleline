@@ -3,11 +3,10 @@ package battleline
 
 import (
 	"encoding/gob"
-	"os"
-
 	"github.com/rezder/go-battleline/battleline/cards"
 	"github.com/rezder/go-battleline/battleline/flag"
 	"github.com/rezder/go-card/deck"
+	"os"
 )
 
 const (
@@ -79,7 +78,7 @@ func (game *Game) ResetGame() (moves [][2]int) {
 
 //histMove update game with stored move.
 //#game
-func histMove(moveixs [2]int, game *Game) (move Move, moveCardix int, isPass, isGiveUp bool) {
+func histMove(moveixs [2]int, game *Game) (move Move, moveCardix, dealtix int, isPass, isGiveUp bool, claimFailExs [9][]int) {
 	switch {
 	case moveixs[1] == SMGiveUp:
 		game.Quit(game.Pos.Player)
@@ -90,16 +89,16 @@ func histMove(moveixs [2]int, game *Game) (move Move, moveCardix int, isPass, is
 	case moveixs[1] >= 0:
 		if moveixs[0] > 0 {
 			move = game.Pos.MovesHand[moveixs[0]][moveixs[1]]
-			game.MoveHand(moveixs[0], moveixs[1])
+			dealtix, _ = game.MoveHand(moveixs[0], moveixs[1])
 			moveCardix = moveixs[0]
 		} else {
 			move = game.Pos.Moves[moveixs[1]]
-			game.Move(moveixs[1])
+			dealtix, claimFailExs = game.Move(moveixs[1])
 		}
 	default:
 		panic("This should not happen. Move data is corrupt")
 	}
-	return move, moveCardix, isPass, isGiveUp
+	return move, moveCardix, dealtix, isPass, isGiveUp, claimFailExs
 }
 
 //CalcPos calculate the current posistion from the initial position and
@@ -548,11 +547,11 @@ func Load(file *os.File) (game *Game, err error) {
 
 	return game, err
 }
-func (game *Game) GameMoveLoop(posFunc func(gameMoveix int, pos *GamePos, moveCardix, moveix int, move Move, isGiveUp, isPass bool)) {
+func (game *Game) GameMoveLoop(posFunc func(gameMoveix int, pos *GamePos, moveCardix, dealtix, moveix int, move Move, isGiveUp, isPass bool, claimFailExs [9][]int)) {
 	moves := game.ResetGame()
 	for gameMoveix, moveixs := range moves {
 		prePos := game.Pos.Copy()
-		move, moveCardix, isGiveUp, isPass := histMove(moveixs, game)
-		posFunc(gameMoveix, prePos, moveCardix, moveixs[1], move, isGiveUp, isPass)
+		move, moveCardix, dealtix, isPass, isGiveUp, claimFailexs := histMove(moveixs, game)
+		posFunc(gameMoveix, prePos, moveCardix, dealtix, moveixs[1], move, isGiveUp, isPass, claimFailexs)
 	}
 }

@@ -48,7 +48,7 @@ func New(
 	s.StartGameChCl = pub.NewStartGameChCl()
 	s.doneCh = make(chan struct{})
 	//bat.GobRegistor()
-	s.saveGames, err = loadSaveGames()
+	s.saveGames, err = LoadSaveGames(SAVEGamesFile)
 	if err != nil {
 		return s, err
 	}
@@ -227,8 +227,10 @@ func (games *SaveGames) save() (err error) {
 	err = encoder.Encode(games)
 	return err
 }
-func loadSaveGames() (games *SaveGames, err error) {
-	file, err := os.Open(SAVEGamesFile)
+
+// LoadSaveGames loads the save games.
+func LoadSaveGames(filePath string) (games *SaveGames, err error) {
+	file, err := os.Open(filePath)
 	if err == nil {
 		defer file.Close()
 		decoder := gob.NewDecoder(file)

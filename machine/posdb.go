@@ -164,7 +164,16 @@ func extractMposs(game *bat.Game) (meta *Meta, winnerMPosJoins, loserMPosJoins [
 	mPosJoins := [2][]*MPosJoin{make([]*MPosJoin, 0, 90), make([]*MPosJoin, 0, 90)}
 	meta = NewMeta(game.PlayerIds, game.Starter)
 	mover := 0
-	game.GameMoveLoop(func(moveGameix int, pos *bat.GamePos, moveCardix, moveix int, move bat.Move, isGiveUp, isPass bool) {
+	game.GameMoveLoop(func(
+		moveGameix int,
+		pos *bat.GamePos,
+		moveCardix,
+		dealtix,
+		moveix int,
+		move bat.Move,
+		isGiveUp, isPass bool,
+		claimFailExs [9][]int,
+	) {
 		mover = pos.Player
 		if isGiveUp {
 			meta.GiveUp = true

@@ -127,8 +127,8 @@ func TestFlagT1NWedge(t *testing.T) {
 	//-----------Mud Middel buttom
 	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{11, 13, 14}, 34, 10, &cards.FWedge)
 
-	troops1 := []int{cards.TCMud, 10, 9, 8, cards.TC8} // Miss
-	troops2 := []int{1, 2, 3, cards.TC123}             //Miss big hole
+	troops1 := []int{cards.TCMud, 10, 9, 8, cards.TC8} // Miss double 8
+	troops2 := []int{1, 2, 3, cards.TC123}             //Miss doble 3
 	flagStd(t, troops1, troops2, 35, 9, &cards.FBattalion)
 	//------------Mud Buttom
 	flag8x123(t, []int{cards.TCMud, 7, 9, 10}, []int{14, 15, 16}, 34, 18, &cards.FWedge)

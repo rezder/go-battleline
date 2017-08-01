@@ -1079,12 +1079,12 @@ func claimFlagOppentPlayedCard(
 			if isMud {
 				m = 4
 			}
-			if value && opTroops[0].Value()*m < strenght {
+			if value && opTroops[0].Value()*m <= strenght {
 				ok = true
 			}
 		}
 	case &cards.FBattalion:
-		if !wedge && !value && !color {
+		if !value && !color {
 			ok = true
 		}
 	case &cards.FSkirmish:
