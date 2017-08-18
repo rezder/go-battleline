@@ -195,7 +195,23 @@ func coneCombiNo(flagsNo int) (no int) {
 	return no
 }
 
-//CreateMoveCone create a cone move.
+//CreateMoveGivUp creates a give up move
+func CreateMoveGivUp(conePos [10]pos.Cone, mover int) *Move {
+	move := NewMove(mover, MoveTypeAll.GiveUp)
+	for ix, cp := range conePos {
+		if !cp.IsWon() {
+			move.Moves = append(move.Moves, &BoardPieceMove{
+				BoardPiece: BoardPieceAll.Cone,
+				Index:      ix,
+				OldPos:     uint8(pos.ConeAll.None),
+				NewPos:     uint8(pos.ConeAll.Players[opp(mover)]),
+			})
+		}
+	}
+	return move
+}
+
+//CreateMoveCone creates a cone move.
 func CreateMoveCone(flagixs []int, mover int) *Move {
 	move := NewMove(mover, MoveTypeAll.Cone)
 	for _, flagix := range flagixs {

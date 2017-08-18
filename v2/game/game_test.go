@@ -3,7 +3,7 @@ package game
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
+	"encoding/json"
 	"github.com/rezder/go-battleline/v2/game/card"
 	"github.com/rezder/go-battleline/v2/game/pos"
 	"io/ioutil"
@@ -15,7 +15,6 @@ import (
 )
 
 func TestGame(t *testing.T) {
-	_ = fmt.Sprintln("TODO remove")
 	game := NewGame()
 	game.Start([2]int{1, 2}, 0)
 	testCheckCardsOnhand([2]int{7, 7}, game.Pos.CardPos, t)
@@ -60,6 +59,7 @@ func TestGame(t *testing.T) {
 		t.Errorf("Game postion should be the same!\n Pos:\n%v\nPos Load hist:\n%v\n", lastPos, game.Pos)
 	}
 	testGob(gameHist, t)
+	testJSON(gameHist, t)
 }
 func testCheckCardsOnhand(expNos [2]int, cardPos [71]pos.Card, t *testing.T) {
 	posCards := NewPosCards(cardPos)
@@ -81,6 +81,28 @@ func testGob(gameHist *Hist, t *testing.T) {
 
 	var loadGameHist Hist
 	decoder := gob.NewDecoder(buf)
+
+	// Decoding the serialized data
+	err = decoder.Decode(&loadGameHist)
+	if err != nil {
+		t.Errorf("Error decoding: %v", err)
+	} else {
+		if !gameHist.IsEqual(&loadGameHist) {
+			t.Error("Loaded history have been changed")
+		}
+	}
+}
+func testJSON(gameHist *Hist, t *testing.T) {
+	buf := new(bytes.Buffer)
+	encoder := json.NewEncoder(buf)
+	err := encoder.Encode(gameHist)
+	if err != nil {
+		t.Errorf("Error encoding: %v", err)
+		return
+	}
+
+	var loadGameHist Hist
+	decoder := json.NewDecoder(buf)
 
 	// Decoding the serialized data
 	err = decoder.Decode(&loadGameHist)
@@ -136,9 +158,9 @@ func TestSavedGame(t *testing.T) {
 		game, testPoss := testLoadPosGames(t, fileName, dirName)
 		if testPoss != nil {
 			posix := 0
-			winner := NoPlayer
 			isNext := true
-			for winner == NoPlayer {
+			winner := NoPlayer
+			for isNext {
 				winner, isNext = game.ScrollForward() //Init Move
 				if isNext || winner != NoPlayer {
 					var moves []*Move
@@ -164,8 +186,6 @@ func TestSavedGame(t *testing.T) {
 						}
 					}
 					posix = posix + 1
-				} else { //The game was paused
-					break
 				}
 			}
 		}
@@ -183,9 +203,9 @@ func testCreatePos(
 		game := testLoadGame(t, fileName, dirName)
 		if game != nil {
 			testPoss := make([]*TestPos, 0, len(game.Hist.Moves))
-			winner := NoPlayer
 			isNext := true
-			for winner == NoPlayer {
+			winner := NoPlayer
+			for isNext {
 				winner, isNext = game.ScrollForward()
 				if isNext || winner != NoPlayer {
 					var moves []*Move
@@ -197,8 +217,6 @@ func testCreatePos(
 						GamePos: &gamePos,
 						Moves:   moves,
 					})
-				} else { //pause move have ended the game
-					break
 				}
 			}
 			posFile, err := os.Create(possPath)

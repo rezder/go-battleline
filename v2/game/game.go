@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"github.com/rezder/go-battleline/v2/game/card"
 	"github.com/rezder/go-battleline/v2/game/pos"
 	"math/rand"
@@ -118,7 +117,7 @@ func (g *Game) LoadHist(hist *Hist) {
 //the game is not finished.
 func (g *Game) Resume() (ok bool) {
 	winner, okForward := g.ScrollForward()
-	for winner == NoPlayer && okForward {
+	for okForward {
 		winner, okForward = g.ScrollForward()
 	}
 
@@ -142,7 +141,9 @@ func (g *Game) ScrollForward() (winner int, ok bool) {
 	if g.Pos.LastMoveIx != len(g.Hist.Moves)-1 {
 		move := g.Hist.Moves[g.Pos.LastMoveIx+1]
 		winner = g.Pos.AddMove(move)
-		ok = true
+		if winner == NoPlayer {
+			ok = true
+		}
 	}
 	return winner, ok
 }
@@ -150,7 +151,6 @@ func (g *Game) ScrollForward() (winner int, ok bool) {
 //ScrollBackward scrolls the game position one move back.
 //returns false if at the end.
 func (g *Game) ScrollBackward() (ok bool) {
-	_ = fmt.Sprintln("TODO remove")
 	if !g.IsAtBeginningOfHist() {
 		move := g.Hist.Moves[g.Pos.LastMoveIx]
 		var before *Move
@@ -161,6 +161,18 @@ func (g *Game) ScrollBackward() (ok bool) {
 		ok = true
 	}
 	return ok
+}
+func (g *Game) GiveUp(moves []*Move) (winner int) {
+	mover := moves[0].Mover
+	move := CreateMoveGivUp(g.Pos.ConePos, mover)
+	winner, _ = g.Move(move)
+	return winner
+}
+func (g *Game) Pause(moves []*Move) (winner int) {
+	mover := moves[0].Mover
+	move := NewMove(mover, MoveTypeAll.Pause)
+	winner, _ = g.Move(move)
+	return winner
 }
 
 // Hist the history of a battleline game, every move made.

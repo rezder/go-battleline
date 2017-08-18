@@ -27,7 +27,7 @@ const testDir = "test"
 type enCoder interface {
 	Encode(v interface{}) error
 }
-type DeCoder interface {
+type deCoder interface {
 	Decode(v interface{}) error
 }
 
@@ -183,7 +183,7 @@ func testLoadFile(filePath string, ts interface{}) error {
 			err = cerr
 		}
 	}()
-	var coder DeCoder
+	var coder deCoder
 	if strings.HasSuffix(filePath, "json") {
 		coder = json.NewDecoder(file)
 	} else {

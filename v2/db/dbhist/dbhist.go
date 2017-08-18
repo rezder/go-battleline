@@ -36,6 +36,11 @@ func New(keyf func(*game.Hist) []byte, db *bolt.DB, maxFetchNo int) *Db {
 	return bdb
 }
 
+//Close the bolt database
+func (bdb *Db) Close() error {
+	return bdb.db.Close()
+}
+
 //MaxFetchNo returns the max. number of records fetched in search.
 func (bdb *Db) MaxFetchNo() int {
 	return bdb.maxFetchNo
@@ -236,8 +241,8 @@ func (bdb *Db) ScannPrefix(
 	return hists, isMaxFetch, err
 }
 
-//Search the full database from the last entry.
-//if nextkey is not empty more enteries exist.
+//Search the database from the start key
+//if next key is not empty more enteries exist,than could be loaded
 func (bdb *Db) Search(
 	filterFunc func(hist *game.Hist) bool,
 	startKey []byte) (hists []*game.Hist, nextKey []byte, err error) {

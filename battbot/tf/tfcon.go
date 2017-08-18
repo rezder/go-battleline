@@ -5,6 +5,7 @@ import "github.com/rezder/go-error/log"
 import "encoding/binary"
 import "bytes"
 import "github.com/pkg/errors"
+import "time"
 
 // Con a Zmq client connection for tensorflow.
 type Con struct {
@@ -21,6 +22,7 @@ func New(tfaddr string) (tfc *Con, err error) {
 		return tfc, err
 	}
 	tfc.socket, err = tfc.context.NewSocket(zmq4.REQ)
+	tfc.socket.SetRcvtimeo(time.Second * 10) //return error with ErrNo EAGAIN
 	if err != nil {
 		_ = tfc.context.Term()
 		tfc.context = nil
@@ -84,7 +86,7 @@ func (tfc *Con) ReqProba(data []byte, noMoves int) (proba []float64, err error) 
 		return proba, err
 	}
 	buf := bytes.NewReader(b)
-	err = binary.Read(buf, binary.LittleEndian, proba) //TODO look at: may hang here if no answer even if interupted only close context can break it from this side.
+	err = binary.Read(buf, binary.LittleEndian, proba)
 	if err != nil {
 		err = errors.Wrap(err, "Error converting bytes to probabilities")
 	}

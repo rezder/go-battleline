@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/battarchiver/battdb"
 	bold "github.com/rezder/go-battleline/battleline"
+	"github.com/rezder/go-battleline/battleline/flag"
 	"github.com/rezder/go-battleline/v2/db/dbhist"
 	"github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-battleline/v2/game/card"
@@ -41,7 +42,7 @@ func Game(oldGame *bold.Game, gameTime time.Time) (hist *game.Hist) {
 			passMove := game.NewMove(pos.Player, game.MoveTypeAll.Hand)
 			hist.AddMove(passMove)
 		} else if isGiveUp {
-			hist.AddMove(game.NewMove(pos.Player, game.MoveTypeAll.GiveUp))
+			hist.AddMove(CreateMoveGivUp(pos.Flags, pos.Player))
 		} else {
 			hist.AddMove(Move(move, pos.Player, moveCardix, dealtix, pos.Turn.State, claimFailExs))
 		}
@@ -50,6 +51,22 @@ func Game(oldGame *bold.Game, gameTime time.Time) (hist *game.Hist) {
 		hist.AddMove(game.NewMove(oldGame.Pos.Player, game.MoveTypeAll.Pause))
 	}
 	return hist
+}
+
+//CreateMoveGivUp creates a give up move
+func CreateMoveGivUp(flags [9]*flag.Flag, mover int) *game.Move {
+	move := game.NewMove(mover, game.MoveTypeAll.GiveUp)
+	for ix, f := range flags {
+		if !f.Claimed() {
+			move.Moves = append(move.Moves, &game.BoardPieceMove{
+				BoardPiece: game.BoardPieceAll.Cone,
+				Index:      ix + 1,
+				OldPos:     uint8(pos.ConeAll.None),
+				NewPos:     uint8(pos.ConeAll.Players[opp(mover)]),
+			})
+		}
+	}
+	return move
 }
 func opp(player int) int {
 	o := player + 1
@@ -220,7 +237,7 @@ func DbFile(src, dst string) (err error) {
 		err = errors.Wrapf(err, "Init database %v failed", src)
 		return err
 	}
-
+	log.Printf(log.Min, "Createing database: %v", dst)
 	newDb, err := bolt.Open(dst, 0600, nil)
 	if err != nil {
 		err = errors.Wrapf(err, "Open data base file %v failed", dst)
@@ -232,8 +249,6 @@ func DbFile(src, dst string) (err error) {
 			if err == nil {
 				err = cerr
 			}
-		} else if rerr := os.Remove(dst); rerr != nil && err == nil {
-			err = rerr
 		}
 	}()
 
@@ -256,6 +271,7 @@ func DbFile(src, dst string) (err error) {
 		for _, game := range games {
 			hists = append(hists, Game(game, time.Now()))
 		}
+		log.Printf(log.Min, "Saving %v games", len(hists))
 		err = dbHist.Puts(hists)
 		if err != nil {
 			err = errors.Wrapf(err, "Puts hist database: %v failed", dst)

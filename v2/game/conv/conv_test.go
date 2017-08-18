@@ -2,7 +2,6 @@ package conv
 
 import (
 	"encoding/gob"
-	"fmt"
 	bold "github.com/rezder/go-battleline/battleline"
 	boldFlag "github.com/rezder/go-battleline/battleline/flag"
 	"github.com/rezder/go-battleline/battserver/tables"
@@ -20,7 +19,6 @@ const (
 )
 
 func TestGameFile(t *testing.T) {
-	_ = fmt.Sprintln("TODO remove")
 	suffix := ".batt2"
 	files, err := ioutil.ReadDir(dirTestGames)
 	if err != nil {
@@ -165,6 +163,12 @@ func TestDbGameFile(t *testing.T) {
 	err := DbFile(srcFilePath, dstFilePath)
 	if err != nil {
 		t.Errorf("Converting database file: %v failed. Errot: %v", srcFilePath, err)
+		return
+	}
+	err = os.Remove(dstFilePath)
+	if err != nil {
+		t.Errorf("Deleting database file: %v failed. Errot: %v", dstFilePath, err)
+		return
 	}
 }
 func TestGamesFile(t *testing.T) {
