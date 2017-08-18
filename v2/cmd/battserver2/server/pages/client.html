@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Create Account</title>
+          <link rel="icon" type="image/png" href="/static/image/rezder.png">
+          <link rel="stylesheet" type="text/css" href="/static/pages.css">
+        </head>
+        <body>
+          <p>Create account for rezder games.</p>
+          <form  accept-charset="UTF-8" autocomplete="off"  method="POST"  action="/form/client"
+                 name="frmNewAccount"><br>
+            <table>
+                <tr>
+                  <td><label  for="Uname">User Name</label></td>
+                  <td><input autofocus pattern=".{4,20}" required title="4 to 20 characters."
+                          id="Uname"  name="txtUserName"  type="text"></td>
+                </tr>
+                <tr>
+                  <td><label  for="Pwd">Password</label></td>
+                  <td><input  pattern=".{8,20}" required title="8 to 20 characters."
+                              id="Pwd"  name="pwdPassword"  type="password"></td>
+                </tr>
+                <tr>
+                  <td><label  for="Pwd">Confirm Password</label></td>
+                  <td><input  pattern=".{4,20}" required title="4 to 20 characters."
+                              id="Pwd"  name="pwdConfirmPassword"  type="password"></td>
+                </tr>
+            </table>
+            <input  value="Submit"  type="submit">
+          </form>
+          <p>Name size 4-20. Password size 8-20.</p>
+        </body>
+      </html>
