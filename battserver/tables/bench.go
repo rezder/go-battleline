@@ -25,7 +25,7 @@ Loop:
 				if initMove != nil {
 					p.Send <- initMove
 				}
-			} else if found && !del {
+			} else if found && !del { //TODO why close ignore should be ok
 				close(p.Send)
 			}
 

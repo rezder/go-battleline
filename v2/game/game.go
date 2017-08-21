@@ -33,7 +33,7 @@ func (g *Game) Start(playerIDs [2]int, dealer int) {
 }
 
 //Move makes a move.
-func (g *Game) Move(move *Move) (winner int, failedClaimsExs [][]card.Move) {
+func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Move) {
 	if move.MoveType == MoveTypeAll.Deck {
 		cardBack := card.Back(move.Moves[0].Index)
 		if cardBack.IsTac() {
@@ -67,7 +67,7 @@ func (g *Game) Move(move *Move) (winner int, failedClaimsExs [][]card.Move) {
 func removeFailedClaim(
 	moves []*BoardPieceMove,
 	mover int,
-	oldPos *Pos) (updMoves []*BoardPieceMove, failedClaimsExs [][]card.Move) {
+	oldPos *Pos) (updMoves []*BoardPieceMove, failedClaimsExs [9][]card.Move) {
 	var deleteBPIx []int
 	for i, bpMove := range moves {
 		flagix := bpMove.Index - 1
@@ -81,7 +81,7 @@ func removeFailedClaim(
 		isClaim, exCardixs := flag.IsClaimable(mover, deckTroops)
 		if !isClaim {
 			deleteBPIx = append(deleteBPIx, i)
-			failedClaimsExs = append(failedClaimsExs, exCardixs)
+			failedClaimsExs[flagix] = exCardixs
 		}
 	}
 	if len(deleteBPIx) > 0 {
@@ -113,7 +113,7 @@ func (g *Game) LoadHist(hist *Hist) {
 }
 
 //Resume moves a game to the last postion of it history
-// and wait for now moves. Returns ok if
+// and wait for new moves. Returns ok if
 //the game is not finished.
 func (g *Game) Resume() (ok bool) {
 	winner, okForward := g.ScrollForward()

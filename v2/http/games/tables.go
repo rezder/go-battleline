@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"github.com/pkg/errors"
 	arch "github.com/rezder/go-battleline/battarchiver/client"
-	bat "github.com/rezder/go-battleline/battleline"
+	bg "github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-error/log"
 	"os"
 	"strconv"
@@ -19,12 +19,10 @@ const (
 //Keeps track of games being played. Who is playing, who is watching
 //and saved unfinished games. It here you ask to start a game.
 type TablesServer struct {
-	save          bool
-	saveDir       string
 	StartGameChCl *StartGameChCl
 	pubList       *PubList
 	doneCh        chan struct{}
-	saveGames     *SaveGames
+	savedGames    map[string]*bg.Game
 	archiver      *arch.Client
 }
 
@@ -36,8 +34,7 @@ func NewTablesServer(
 	s.pubList = pubList
 	s.StartGameChCl = NewStartGameChCl()
 	s.doneCh = make(chan struct{})
-	//bat.GobRegistor()
-	s.saveGames, err = LoadSaveGames(SAVEGamesFile)
+	s.savedGames, err = loadSavedGames(SAVEGamesFile)
 	if err != nil {
 		return s, err
 	}
@@ -47,7 +44,7 @@ func NewTablesServer(
 
 //Start starts the tables server.
 func (s *TablesServer) Start(errCh chan<- error) {
-	go startTables(s.StartGameChCl, s.pubList, s.doneCh, errCh, s.saveGames, s.archiver)
+	go startTables(s.StartGameChCl, s.pubList, s.doneCh, errCh, s.savedGames, s.archiver)
 }
 
 //Stop stops the tables server.
@@ -64,12 +61,12 @@ func startTables(
 	startGameChCl *StartGameChCl,
 	pubList *PubList, doneCh chan struct{},
 	errCh chan<- error,
-	saveGames *SaveGames,
+	savedGames map[string]*bg.Game,
 	archiver *arch.Client) {
 
 	finishTableCh := make(chan *FinishTableData)
 	startCh := startGameChCl.Channel
-	var done bool
+	var isDone bool
 	games := make(map[int]*GameData)
 	archiver.Start()
 Loop:
@@ -79,13 +76,14 @@ Loop:
 			delete(games, fin.ids[0])
 			delete(games, fin.ids[1])
 			if fin.game != nil {
-				if fin.game.Pos.Turn.State == bat.TURNQuit || fin.game.Pos.Turn.State == bat.TURNFinish {
-					archiver.Archive(fin.game)
+				if fin.game.Pos.LastMoveType.IsPause() {
+					savedGames[gameID(fin.ids)] = fin.game
 				} else {
-					saveGames.Games[gameID(fin.ids)] = fin.game
+					//TODO use archiver
+					//archiver.Archive(fin.game)
 				}
 			}
-			if done && len(games) == 0 {
+			if isDone && len(games) == 0 {
 				break Loop
 			}
 			publishTables(games, pubList)
@@ -95,12 +93,12 @@ Loop:
 				close(start.PlayerChs[0])
 				close(start.PlayerChs[1])
 			} else {
-				var game *bat.Game
-				game, start, saveGames = getOldGame(start, saveGames)
-				watch := NewWatchChCl()
-				go tableServe(start.PlayerIds, start.PlayerChs, watch, game, finishTableCh, errCh)
-				games[start.PlayerIds[0]] = NewGameData(start.PlayerIds[1], watch)
-				games[start.PlayerIds[1]] = NewGameData(start.PlayerIds[0], watch)
+				var savedGame *bg.Game
+				savedGame, start, savedGames = getOldGame(start, savedGames)
+				joinWatchCh := NewJoinWatchChCl()
+				go tableServe(start.PlayerIds, start.PlayerChs, joinWatchCh, savedGame, finishTableCh, errCh)
+				games[start.PlayerIds[0]] = NewGameData(start.PlayerIds[1], joinWatchCh)
+				games[start.PlayerIds[1]] = NewGameData(start.PlayerIds[0], joinWatchCh)
 				publishTables(games, pubList)
 			}
 
@@ -109,12 +107,11 @@ Loop:
 				break Loop
 			} else {
 				startCh = nil
-				done = true
+				isDone = true
 			}
 		}
 	} //loop
-	noPosGames := saveGames.copyClearPos()
-	err := noPosGames.save()
+	err := saveGames(savedGames)
 	if err != nil {
 		errCh <- err
 	}
@@ -122,28 +119,26 @@ Loop:
 	archiver.WaitToFinish()
 	close(doneCh)
 }
-func getOldGame(start *StartGameData, saveGames *SaveGames) (*bat.Game, *StartGameData, *SaveGames) {
-	game, old := saveGames.Games[gameID(start.PlayerIds)]
+func getOldGame(start *StartGameChData, games map[string]*bg.Game) (*bg.Game, *StartGameChData, map[string]*bg.Game) {
+	game, old := games[gameID(start.PlayerIds)]
 	if old {
-		delete(saveGames.Games, gameID(start.PlayerIds))
-		if game.PlayerIds != start.PlayerIds {
+		delete(games, gameID(start.PlayerIds))
+		if game.Hist.PlayerIDs != start.PlayerIds {
 			start.PlayerIds = [2]int{start.PlayerIds[1], start.PlayerIds[0]}
-			start.PlayerChs = [2]chan<- *MoveView{start.PlayerChs[1],
+			start.PlayerChs = [2]chan<- *PlayingChData{start.PlayerChs[1],
 				start.PlayerChs[0]}
 		}
-		if game.Pos == nil {
-			game.CalcPos()
-		}
+		_ = game.Resume() //Assume we do not save finsihed game
 	}
-	return game, start, saveGames
+	return game, start, games
 }
 func isPlaying(ids [2]int, games map[int]*GameData) bool {
-	_, found := games[ids[0]]
-	if !found {
-		_, found = games[ids[1]]
+	_, isFound := games[ids[0]]
+	if !isFound {
+		_, isFound = games[ids[1]]
 	}
 
-	return found
+	return isFound
 }
 
 // publish the current games list.
@@ -156,19 +151,19 @@ func publishTables(games map[int]*GameData, pubList *PubList) {
 }
 
 //NewGameData create a new GameData pointer.
-func NewGameData(opp int, watch *WatchChCl) (g *GameData) {
+func NewGameData(opp int, watch *JoinWatchChCl) (g *GameData) {
 	g = new(GameData)
 	g.Opp = opp
-	g.Watch = watch
+	g.JoinWatchChCl = watch
 	return g
 }
 
 //gameID makes a unique game id.
-func gameID(players [2]int) (id string) {
-	if players[0] > players[1] {
-		id = strconv.Itoa(players[0]) + strconv.Itoa(players[1])
+func gameID(playerIDs [2]int) (id string) {
+	if playerIDs[0] > playerIDs[1] {
+		id = strconv.Itoa(playerIDs[0]) + "," + strconv.Itoa(playerIDs[1])
 	} else {
-		id = strconv.Itoa(players[1]) + strconv.Itoa(players[0])
+		id = strconv.Itoa(playerIDs[1]) + "," + strconv.Itoa(playerIDs[0])
 	}
 	return id
 }
@@ -176,37 +171,10 @@ func gameID(players [2]int) (id string) {
 //FinishTableData the data structur send on the finish channel.
 type FinishTableData struct {
 	ids  [2]int
-	game *bat.Game
+	game *bg.Game
 }
 
-//SaveGames the data structur for saved games used to save as Gob.
-type SaveGames struct {
-	Games map[string]*bat.Game
-}
-
-//NewSaveGames creates a SaveGames structur.
-//To use Gob we single structur tow same multible games.
-func NewSaveGames() (sg *SaveGames) {
-	sg = new(SaveGames)
-	sg.Games = make(map[string]*bat.Game)
-	return sg
-}
-
-//copyClearPos makes a copy of the SaveGames with out the game position
-//The game is not deep copied which mean the Moves slice array is
-//still connected.
-func (games *SaveGames) copyClearPos() (c *SaveGames) {
-	c = NewSaveGames()
-	if len(games.Games) > 0 {
-		for k, v := range games.Games {
-			g := *v
-			g.Pos = nil
-			c.Games[k] = &g
-		}
-	}
-	return c
-}
-func (games *SaveGames) save() (err error) {
+func saveGames(games map[string]*bg.Game) (err error) {
 	file, err := os.Create(SAVEGamesFile)
 	if err != nil {
 		err = errors.Wrap(err, log.ErrNo(15)+"Create games file")
@@ -217,13 +185,17 @@ func (games *SaveGames) save() (err error) {
 			err = cerr
 		}
 	}()
+	hists := make(map[string]*bg.Hist)
+	for key, game := range games {
+		hists[key] = game.Hist
+	}
 	encoder := gob.NewEncoder(file)
-	err = encoder.Encode(games)
+	err = encoder.Encode(hists)
 	return err
 }
 
-// LoadSaveGames loads the save games.
-func LoadSaveGames(filePath string) (games *SaveGames, err error) {
+// loadSaveGames loads the saved games.
+func loadSavedGames(filePath string) (games map[string]*bg.Game, err error) {
 	file, err := os.Open(filePath)
 	if err == nil {
 		defer func() {
@@ -232,15 +204,20 @@ func LoadSaveGames(filePath string) (games *SaveGames, err error) {
 			}
 		}()
 		decoder := gob.NewDecoder(file)
-		lg := *NewSaveGames()
-		err = decoder.Decode(&lg)
+		hists := make(map[string]*bg.Hist)
+		err = decoder.Decode(&hists)
 		if err == nil {
-			games = &lg
+			games = make(map[string]*bg.Game)
+			for key, hist := range hists {
+				game := bg.NewGame()
+				game.LoadHist(hist)
+				games[key] = game
+			}
 		}
 	} else {
 		if os.IsNotExist(err) {
 			err = nil
-			games = NewSaveGames() //first start
+			games = make(map[string]*bg.Game) //first start
 		} else {
 			err = errors.Wrap(err, log.ErrNo(16)+"Open saved games file")
 			return games, err
@@ -249,22 +226,22 @@ func LoadSaveGames(filePath string) (games *SaveGames, err error) {
 	return games, err
 }
 
-// StartGameData is the information need to start a game.
-type StartGameData struct {
+// StartGameChData is the information need to start a game.
+type StartGameChData struct {
 	PlayerIds [2]int
-	PlayerChs [2]chan<- *MoveView
+	PlayerChs [2]chan<- *PlayingChData
 }
 
 // StartGameChCl the start game channel.
 type StartGameChCl struct {
-	Channel chan *StartGameData
+	Channel chan *StartGameChData
 	Close   chan struct{}
 }
 
 //NewStartGameChCl creates a StartGameChCl.
 func NewStartGameChCl() (sgc *StartGameChCl) {
 	sgc = new(StartGameChCl)
-	sgc.Channel = make(chan *StartGameData)
+	sgc.Channel = make(chan *StartGameChData)
 	sgc.Close = make(chan struct{})
 	return sgc
 }

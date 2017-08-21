@@ -1,7 +1,8 @@
 package games
 
 import (
-	bat "github.com/rezder/go-battleline/battleline"
+	bg "github.com/rezder/go-battleline/v2/game"
+	"github.com/rezder/go-battleline/v2/game/card"
 	"strconv"
 	"sync"
 )
@@ -60,25 +61,25 @@ func (list *PubList) Read() (publist map[string]*PubData) {
 //update updates the list with data from players and games.
 func (list *PubList) update() {
 	var data *PubData
-	var gFound bool
+	var isGameFound bool
 	var gdata *GameData
-	var oppFound bool
+	var isOppFound bool
 	var opp *PlayerData
 	publist := make(map[string]*PubData)
 	for key, v := range list.players {
 		data = new(PubData)
 		data.ID = v.ID
 		data.Name = v.Name
-		data.Invite = v.Invite
-		data.DoneCom = v.DoneCom
-		data.Message = v.Message
-		gdata, gFound = list.games[key]
-		if gFound {
-			opp, oppFound = list.players[gdata.Opp] // opponent may have left
-			if oppFound {
+		data.InviteCh = v.InviteCh
+		data.DoneComCh = v.DoneComCh
+		data.MessageCh = v.MessageCh
+		gdata, isGameFound = list.games[key]
+		if isGameFound {
+			opp, isOppFound = list.players[gdata.Opp] // opponent may have left
+			if isOppFound {
 				data.Opp = gdata.Opp
 				data.OppName = opp.Name
-				data.Watch = gdata.Watch
+				data.JoinWatchChCl = gdata.JoinWatchChCl
 			}
 		}
 		publist[strconv.Itoa(key)] = data
@@ -88,59 +89,58 @@ func (list *PubList) update() {
 
 //PubData the public list data a combination of tabel and player information.
 type PubData struct {
-	ID      int
-	Name    string
-	Invite  chan<- *Invite  `json:"-"`
-	DoneCom chan struct{}   `json:"-"` //Used by the player
-	Message chan<- *MesData `json:"-"`
-	Opp     int
-	OppName string
-	Watch   *WatchChCl `json:"-"`
+	ID            int
+	Name          string
+	InviteCh      chan<- *Invite  `json:"-"`
+	DoneComCh     chan struct{}   `json:"-"` //Used by the player
+	MessageCh     chan<- *MesData `json:"-"`
+	Opp           int
+	OppName       string
+	JoinWatchChCl *JoinWatchChCl `json:"-"`
 }
 
 //GameData is the game information in the game map.
 //Every game have two enteries one for every player.
 type GameData struct {
-	Opp   int
-	Watch *WatchChCl
+	Opp           int
+	JoinWatchChCl *JoinWatchChCl
 }
 
-//WatchData is the information send to a table to start watching a game.
-type WatchData struct {
-	ID   int               //This me
-	Send chan<- *MoveBench //Send here. Remember to close.
+//JoinWatchChData is the information send to a table to start
+//or stop watching a game.
+type JoinWatchChData struct {
+	ID     int                    //This me
+	SendCh chan<- *WatchingChData //Send here. Remember to close.
 }
 
-//WatchChCl watch channel and its close channel.
-type WatchChCl struct {
-	Channel chan *WatchData
+//JoinWatchChCl watch channel and its close channel.
+type JoinWatchChCl struct {
+	Channel chan *JoinWatchChData
 	Close   chan struct{}
 }
 
-//NewWatchChCl creates a new watch channel.
-func NewWatchChCl() (w *WatchChCl) {
-	w = new(WatchChCl)
-	w.Channel = make(chan *WatchData)
+//NewJoinWatchChCl creates a new watch channel.
+func NewJoinWatchChCl() (w *JoinWatchChCl) {
+	w = new(JoinWatchChCl)
+	w.Channel = make(chan *JoinWatchChData)
 	w.Close = make(chan struct{})
 	return w
 }
 
-//MoveBench the data send to watchers.
-type MoveBench struct {
-	Mover      int
-	Move       bat.Move
-	MoveCardix int
-	NextMover  int
+//WatchingChData the data send to watchers.
+type WatchingChData struct {
+	ViewPos    *bg.ViewPos
+	PlayingIDs [2]int
 }
 
 //PlayerData the public list player information.
 type PlayerData struct {
-	ID      int
-	Name    string
-	Invite  chan<- *Invite
-	DoneCom chan struct{}   //Used by all send to player
-	Message chan<- *MesData //never closed
-	BootCh  chan struct{}   //For server to boot player
+	ID        int
+	Name      string
+	InviteCh  chan<- *Invite
+	DoneComCh chan struct{}   //Used by all send to player
+	MessageCh chan<- *MesData //never closed
+	BootCh    chan struct{}   //For server to boot player
 }
 
 //Invite the invite data.
@@ -151,9 +151,9 @@ type Invite struct {
 	InvitorID   int
 	InvitorName string
 	ReceiverID  int
-	Rejected    bool                   //TODO MAYBE add reason
-	Response    chan<- *InviteResponse `json:"-"` //Common for all invitaion
-	Retract     chan struct{}          `json:"-"` //Per invite
+	IsRejected  bool                   //TODO MAYBE add reason
+	ResponseCh  chan<- *InviteResponse `json:"-"` //Common for all invitaion
+	RetractCh   chan struct{}          `json:"-"` //Per invite
 	DoneComCh   chan struct{}          `json:"-"`
 }
 
@@ -169,99 +169,15 @@ type MesData struct {
 type InviteResponse struct {
 	Responder int
 	Name      string
-	GameCh    chan<- *MoveView //nil when decline
+	PlayingCh chan<- *PlayingChData //nil when decline
 }
 
-//MoveView the information send from the table to the players.
-//It should contain all information to animate a player move.
-//Its is non symetrics, each player get his own.
-type MoveView struct {
-	Mover      bool
-	Move       bat.Move
-	MoveCardix int
-	DeltCardix int //This is the return card from deck moves, zero when not used.
-	*Turn
-	MoveCh chan<- [2]int `json:"-"`
-}
-
-// Turn a player turn.
-type Turn struct {
-	MyTurn    bool
-	MovesPass bool
-	State     int
-	Moves     []bat.Move
-	MovesHand map[string][]bat.Move
-}
-
-// NewTurn creates a Turn.
-func NewTurn(turn *bat.Turn, playerix int) (disp *Turn) {
-	disp = new(Turn)
-	disp.MyTurn = turn.Player == playerix
-	disp.State = turn.State
-	if turn.Moves != nil {
-		disp.Moves = make([]bat.Move, len(turn.Moves))
-		copy(disp.Moves, turn.Moves)
-	}
-	if turn.MovesHand != nil {
-		disp.MovesHand = make(map[string][]bat.Move)
-		for k, v := range turn.MovesHand {
-			m := make([]bat.Move, len(v))
-			copy(m, v)
-			disp.MovesHand[strconv.Itoa(k)] = m
-		}
-	}
-
-	disp.MovesPass = turn.MovePass
-	return disp
-}
-
-//Equal compares for equal with another Turn.
-func (t *Turn) Equal(other *Turn) (equal bool) {
-	if other == nil && t == nil {
-		equal = true
-	} else if other != nil && t != nil {
-		if t == other {
-			equal = true
-		} else if t.MyTurn == other.MyTurn && t.State == other.State && t.MovesPass == other.MovesPass {
-			mequal := false
-			if len(other.Moves) == 0 && len(t.Moves) == 0 {
-				mequal = true
-			} else if len(other.Moves) == len(t.Moves) {
-				mequal = true
-				for i, v := range other.Moves {
-					if !v.MoveEqual(t.Moves[i]) {
-						mequal = false
-						break
-					}
-				}
-			}
-			if mequal {
-				mhequal := false
-				if len(other.MovesHand) == 0 && len(t.MovesHand) == 0 {
-					mhequal = true
-				} else if len(other.MovesHand) == len(t.MovesHand) {
-					mhequal = true
-				Card:
-					for cardix, moves := range other.MovesHand {
-						turnMoves, found := t.MovesHand[cardix]
-						if found && len(moves) == len(turnMoves) {
-							for i, v := range moves {
-								if !v.MoveEqual(turnMoves[i]) {
-									mhequal = false
-									break Card
-								}
-							}
-						} else {
-							mhequal = false
-							break
-						}
-					}
-				}
-				if mhequal {
-					equal = true
-				}
-			}
-		}
-	}
-	return equal
+//PlayingChData the information send from the table to the players.
+//The players view of the game position and the move channel
+// only set ones on the first send.
+type PlayingChData struct {
+	ViewPos          *bg.ViewPos
+	PlayingIDs       [2]int
+	FailedClaimedExs [9][]card.Move
+	MoveCh           chan<- int `json:"-"`
 }

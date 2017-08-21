@@ -129,7 +129,8 @@ func calcWinner(conePos [10]pos.Cone) int {
 }
 
 //RemovePause removes a pause move.
-//Assume pause is always after initMove
+//Assume pause is always after initMove.
+//Arg: lastMoveType the new last move type.
 func (g *Pos) RemovePause(lastMoveType MoveType) {
 	g.LastMoveIx = g.LastMoveIx - 1
 	g.LastMoveType = lastMoveType
