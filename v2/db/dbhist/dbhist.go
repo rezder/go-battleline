@@ -132,6 +132,16 @@ func copyBytes(b []byte) (c []byte) {
 	return c
 }
 
+//Delete deletes a key from database.
+func (bdb *Db) Delete(key []byte) (err error) {
+	err = bdb.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(bdb.bucketID)
+		deleteErr := bucket.Delete(key)
+		return deleteErr
+	})
+	return err
+}
+
 //Get fetches a game history from the database.
 func (bdb *Db) Get(key []byte) (hist *game.Hist, err error) {
 	var cbs []byte

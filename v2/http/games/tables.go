@@ -3,7 +3,7 @@ package games
 import (
 	"encoding/gob"
 	"github.com/pkg/errors"
-	arch "github.com/rezder/go-battleline/battarchiver/client"
+	arch "github.com/rezder/go-battleline/v2/archiver/client"
 	bg "github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-error/log"
 	"os"
@@ -79,8 +79,7 @@ Loop:
 				if fin.game.Pos.LastMoveType.IsPause() {
 					savedGames[gameID(fin.ids)] = fin.game
 				} else {
-					//TODO use archiver
-					//archiver.Archive(fin.game)
+					archiver.Archive(fin.game.Hist)
 				}
 			}
 			if isDone && len(games) == 0 {
@@ -116,7 +115,6 @@ Loop:
 		errCh <- err
 	}
 	archiver.Stop()
-	archiver.WaitToFinish()
 	close(doneCh)
 }
 func getOldGame(start *StartGameChData, games map[string]*bg.Game) (*bg.Game, *StartGameChData, map[string]*bg.Game) {
