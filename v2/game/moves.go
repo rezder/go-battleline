@@ -419,7 +419,7 @@ func createMovesTraitor(dishGuileMove *BoardPieceMove, flags [9]*Flag, mover int
 					for _, troop := range outFlag.Players[opp(mover)].Troops {
 						moves = append(moves,
 							CreateMoveDouble(
-								outFlag.Positions[mover],
+								outFlag.Positions[opp(mover)],
 								inFlag.Positions[mover],
 								int(troop),
 								mover,

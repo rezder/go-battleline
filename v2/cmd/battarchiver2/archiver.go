@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	portFlag := flag.String("port", "7070", "Archiver port")
+	portFlag := flag.String("port", "7272", "Archiver port")
 	backupPortFlag := flag.String("backupport", "", "Back http server port. No port no server")
 	clientFlag := flag.String("client", "", "Url of client without protecol if specified client is poked when the server is ready")
 	myAddrFlag := flag.String("addr", "arch", "Archiver addr only used if client is specified, port is added to the address")
@@ -28,7 +28,11 @@ func main() {
 		log.PrintErr(err)
 		return
 	}
-	defer db.Close()
+	defer func() {
+		if cerr := db.Close(); cerr != nil {
+			log.PrintErr(cerr)
+		}
+	}()
 	server, err := arch.NewServer(db, *portFlag)
 	if err != nil {
 		err = errors.Wrapf(err, "Creating archiver server failed on port %v ", *portFlag)

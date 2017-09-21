@@ -11,16 +11,16 @@ import (
 
 //Client handle connection to game history archiver.
 type Client struct {
-	serverAdrr   string
+	archiverAdr  string
 	histCh       chan *bg.Hist
 	finishCh     chan struct{}
 	pokeListener net.Listener
 }
 
 //New create client that handles connection to an archiver.
-func New(port int, serverAddr string) (c *Client, err error) {
+func New(port int, achiverAdr string) (c *Client, err error) {
 	c = new(Client)
-	c.serverAdrr = serverAddr
+	c.archiverAdr = achiverAdr
 	c.histCh = make(chan *bg.Hist, 25)
 	c.finishCh = make(chan struct{})
 	c.pokeListener, err = net.Listen("tcp", ":"+strconv.Itoa(port))
@@ -31,18 +31,18 @@ func New(port int, serverAddr string) (c *Client, err error) {
 func (c *Client) Start() {
 	addServerCh := make(chan string)
 	go arnet.PokeListener(c.pokeListener, addServerCh)
-	go start(c.serverAdrr, c.histCh, addServerCh, c.finishCh)
+	go start(c.archiverAdr, c.histCh, addServerCh, c.finishCh)
 }
-func startZmqSender(serverAddrs []string) (*arnet.Sender, []string) {
+func startZmqSender(archiverAdrs []string) (*arnet.Sender, []string) {
 	var conn *arnet.Sender
 	var err error
-	for len(serverAddrs) > 0 {
-		log.Printf(log.DebugMsg, "Starting zmq sender %v", serverAddrs[0])
-		conn, err = arnet.NewSender(serverAddrs[0])
+	for len(archiverAdrs) > 0 {
+		log.Printf(log.DebugMsg, "Starting zmq sender %v", archiverAdrs[0])
+		conn, err = arnet.NewSender(archiverAdrs[0])
 		if err != nil {
-			err = errors.Wrapf(err, "Creating connection to %v failed", serverAddrs[0])
+			err = errors.Wrapf(err, "Creating connection to %v failed", archiverAdrs[0])
 			log.PrintErr(err)
-			serverAddrs = serverAddrs[1:]
+			archiverAdrs = archiverAdrs[1:]
 		} else {
 			break
 		}
@@ -50,7 +50,7 @@ func startZmqSender(serverAddrs []string) (*arnet.Sender, []string) {
 	if conn != nil {
 		conn.Start()
 	}
-	return conn, serverAddrs
+	return conn, archiverAdrs
 }
 func start(
 	serverAddr string,
@@ -60,10 +60,10 @@ func start(
 
 	var archConn *arnet.Sender
 
-	serverAddrs := make([]string, 0, 2)
+	archiverAdrs := make([]string, 0, 2)
 	if len(serverAddr) != 0 {
-		serverAddrs = append(serverAddrs, serverAddr)
-		archConn, serverAddrs = startZmqSender(serverAddrs)
+		archiverAdrs = append(archiverAdrs, serverAddr)
+		archConn, archiverAdrs = startZmqSender(archiverAdrs)
 	}
 Loop:
 	for {
@@ -77,11 +77,11 @@ Loop:
 					select {
 					case archConn.HistCh <- hist:
 					case resendHist := <-archConn.BrokenCh:
-						log.Printf(log.DebugMsg, "Zmq broken closing history channel on %v", serverAddrs[0])
+						log.Printf(log.DebugMsg, "Zmq broken closing history channel on %v", archiverAdrs[0])
 						archConn.Stop()
 						archConn = nil
-						serverAddrs = serverAddrs[1:]
-						archConn, serverAddrs = startZmqSender(serverAddrs)
+						archiverAdrs = archiverAdrs[1:]
+						archConn, archiverAdrs = startZmqSender(archiverAdrs)
 						if archConn != nil {
 							archConn.HistCh <- resendHist
 						}
@@ -90,9 +90,9 @@ Loop:
 				}
 			}
 		case server := <-addServerCh:
-			serverAddrs = append(serverAddrs, server)
-			if len(serverAddrs) == 1 {
-				archConn, serverAddrs = startZmqSender(serverAddrs)
+			archiverAdrs = append(archiverAdrs, server)
+			if len(archiverAdrs) == 1 {
+				archConn, archiverAdrs = startZmqSender(archiverAdrs)
 			}
 		}
 	}

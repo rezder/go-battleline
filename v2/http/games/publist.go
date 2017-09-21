@@ -5,6 +5,7 @@ import (
 	"github.com/rezder/go-battleline/v2/game/card"
 	"strconv"
 	"sync"
+	"time"
 )
 
 /*PubList is the structure that maintain the public data.
@@ -131,6 +132,8 @@ func NewJoinWatchChCl() (w *JoinWatchChCl) {
 type WatchingChData struct {
 	ViewPos    *bg.ViewPos
 	PlayingIDs [2]int
+	WatchingID int
+	GameTs     time.Time
 }
 
 //PlayerData the public list player information.
@@ -148,20 +151,21 @@ type PlayerData struct {
 //This make the standard select unreliable. Use a select with default to check if retracted and
 //the receiver must count on receiving retracted responses.
 type Invite struct {
-	InvitorID   int
-	InvitorName string
-	ReceiverID  int
-	IsRejected  bool                   //TODO MAYBE add reason
-	ResponseCh  chan<- *InviteResponse `json:"-"` //Common for all invitaion
-	RetractCh   chan struct{}          `json:"-"` //Per invite
-	DoneComCh   chan struct{}          `json:"-"`
+	InvitorID    int
+	InvitorName  string
+	ReceiverID   int
+	ReceiverName string
+	IsRejected   bool                   //TODO MAYBE add reason
+	ResponseCh   chan<- *InviteResponse `json:"-"` //Common for all invitaion
+	RetractCh    chan struct{}          `json:"-"` //Per invite
+	DoneComCh    chan struct{}          `json:"-"`
 }
 
 //MesData message data.
 type MesData struct {
-	Sender  int
-	Name    string
-	Message string
+	SenderID   int
+	SenderName string
+	Message    string
 }
 
 //InviteResponse the response to a invitation.
@@ -178,6 +182,7 @@ type InviteResponse struct {
 type PlayingChData struct {
 	ViewPos          *bg.ViewPos
 	PlayingIDs       [2]int
+	GameTs           time.Time
 	FailedClaimedExs [9][]card.Move
 	MoveCh           chan<- int `json:"-"`
 }

@@ -30,12 +30,8 @@ func TestGame(t *testing.T) {
 		moves = game.Pos.CalcMoves()
 		winner, _ = game.Move(testMove(moves))
 		no++
-		if no == 3 {
-			pauseMove := NewMove(game.Pos.LastMover, MoveTypeAll.Pause)
-			game.Move(pauseMove)
-			game.Resume()
-			moves = game.Pos.CalcMoves()
-			game.Move(moves[0]) //DeckTac
+		if no == 3 || no == 4 {
+			testPause(game, t)
 		}
 	}
 	lastPos := *game.Pos
@@ -60,6 +56,15 @@ func TestGame(t *testing.T) {
 	}
 	testGob(gameHist, t)
 	testJSON(gameHist, t)
+}
+func testPause(game *Game, t *testing.T) {
+	prePausePos := *game.Pos
+	pauseMove := NewMove(game.Pos.LastMover, MoveTypeAll.Pause)
+	game.Move(pauseMove)
+	game.Resume()
+	if !game.Pos.IsEqual(&prePausePos) {
+		t.Errorf("Game pos deviates after pause:\nPre: %v\nPost: %v", prePausePos, game.Pos)
+	}
 }
 func testCheckCardsOnhand(expNos [2]int, cardPos [71]pos.Card, t *testing.T) {
 	posCards := NewPosCards(cardPos)
@@ -180,7 +185,7 @@ func TestSavedGame(t *testing.T) {
 							for i, move := range moves {
 								if !move.IsEqual(oldMoves[i]) {
 									t.Errorf("File: %v moves from postion index: %v deviate move index: %v, oldMove: %v\n move: %v",
-										fileName, posix, i, oldMoves, moves)
+										fileName, posix, i, oldMoves[i], move)
 								}
 							}
 						}

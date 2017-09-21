@@ -200,7 +200,7 @@ func (mc *ModelCont) Stop() {
 func (mc *ModelCont) Request(moverView *game.ViewPos) (probs []float64, err error) {
 
 	noMoves := len(moverView.Moves)
-	//bs := make([]byte, 0, 100)//TODO convert to model data
+	//bs := make([]byte, 0, 100)//TODO convert new game ViewPos to model data. When machine is change or not
 	//probs, err = mc.con.ReqProba(bs, noMoves)
 	probs = make([]float64, noMoves)
 	for i := range probs {

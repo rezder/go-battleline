@@ -3,7 +3,6 @@ package game
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"testing"
 )
 
@@ -20,18 +19,15 @@ func TestJSON(t *testing.T) {
 		t.Errorf("Error encoding json: %v", err)
 		return
 	}
-	fmt.Println(buf)
 	printView(game.Pos, ViewAll.Players[0], t)
 	printView(game.Pos, ViewAll.Players[1], t)
 	printView(game.Pos, ViewAll.Spectator, t)
 	printView(game.Pos, ViewAll.God, t)
 }
 func printView(gamePos *Pos, view View, t *testing.T) {
-	fmt.Println("#######################")
 	buf := new(bytes.Buffer)
 	err := json.NewEncoder(buf).Encode(NewViewPos(gamePos, view, NoPlayer))
 	if err != nil {
 		t.Errorf("Error encoding json: %v", err)
 	}
-	fmt.Println(buf)
 }

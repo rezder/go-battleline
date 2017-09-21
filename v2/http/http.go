@@ -2,23 +2,15 @@
 package http
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/v2/http/games"
 	"github.com/rezder/go-error/log"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 	"golang.org/x/net/websocket"
 	"net"
 	"net/http"
 	"time"
-)
-
-const (
-	fileDown         = "server/pages/down.html"
-	fileLogIn        = "server/pages/login.html"
-	fileCreateClient = "server/pages/client.html"
 )
 
 //Server a http server.
@@ -26,28 +18,22 @@ type Server struct {
 	errServer   *ErrServer
 	netListener *net.TCPListener
 	clients     *Clients
-	doneCh      chan struct{}
 	port        string
-	pages       *Pages
+	doneCh      chan struct{}
+	rootDir     string
 }
 
 //New creates a new Server.
-func New(port string, archiverPort int) (s *Server, err error) {
+func New(port string, archiverPort int, rootDir string) (s *Server, err error) {
 	s = new(Server)
-	pages := NewPages()
-	pages.addFile(fileLogIn)
-	pages.addFile(fileCreateClient)
-	err = pages.load()
-	if err != nil {
-		return s, err
-	}
-	s.pages = pages
+	s.rootDir = rootDir
 	s.port = port
-	dport := ":80"
-	if len(port) != 0 {
-		dport = port
+	tcpPort := port
+	if len(port) == 0 {
+		tcpPort = ":80"
 	}
-	laddr, err := net.ResolveTCPAddr("tcp", dport) //TODO CHECK this look strange
+	s.port = port
+	laddr, err := net.ResolveTCPAddr("tcp", tcpPort) //TODO CHECK this look strange
 	if err != nil {
 		err = errors.Wrap(err, log.ErrNo(3)+"Resolve address")
 		return s, err
@@ -58,8 +44,6 @@ func New(port string, archiverPort int) (s *Server, err error) {
 		err = errors.Wrapf(err, "TCP listen on %v failed", laddr)
 		return s, err
 	}
-	//netListener, err = net.ListenTCP("tcp", ":8181")
-
 	s.netListener = netListener
 	var gameServer *games.Server
 	gameServer, err = games.New(archiverPort)
@@ -67,7 +51,7 @@ func New(port string, archiverPort int) (s *Server, err error) {
 		return s, err
 	}
 	var clients *Clients
-	clients, err = loadClients(gameServer)
+	clients, err = NewClients(gameServer)
 	if err != nil {
 		return s, err
 	}
@@ -78,11 +62,23 @@ func New(port string, archiverPort int) (s *Server, err error) {
 	return s, err
 }
 
+//Cancel cancels the server, if the server is created without errors
+// it must be canceled or started.
+func (s *Server) Cancel() (err error) {
+	err = s.clients.Close()
+	if err == nil {
+		err = s.clients.CancelGameServer()
+	} else {
+		_ = s.clients.CancelGameServer()
+	}
+	return err
+}
+
 //Start starts the server.
 func (s *Server) Start() {
 	s.errServer.Start()
 	s.clients.gameServer.Start(s.errServer.Ch())
-	go start(s.errServer.Ch(), s.netListener, s.clients, s.doneCh, s.port, s.pages)
+	go start(s.errServer.Ch(), s.netListener, s.clients, s.doneCh, s.port, s.rootDir)
 }
 
 //Stop stops the server.
@@ -99,10 +95,10 @@ func (s *Server) Stop() {
 	}
 	<-s.doneCh
 	log.Println(log.DebugMsg, "Recieve done from http server.")
-	s.errServer.Stop()     //Stop before saving so all errors may modify clients if need.
-	err = s.clients.save() //no lock is used.
+	s.errServer.Stop() //Stop before saving so all errors may modify clients if need.
+	err = s.clients.Close()
 	if err != nil {
-		err = errors.Wrap(err, "Saveing clients while closing down.")
+		err = errors.Wrap(err, "Closing clients failed")
 		log.PrintErr(err)
 	}
 }
@@ -114,14 +110,12 @@ func start(
 	clients *Clients,
 	doneCh chan struct{},
 	port string,
-	pages *Pages) {
-	http.Handle("/", &logInHandler{clients, fileDown, fileLogIn})
-	http.Handle("/client", &clientHandler{clients, fileDown, fileCreateClient})
-	http.Handle("/in/game", &gameHandler{clients, errCh, port, fileDown})
-	http.Handle("/form/login", &logInPostHandler{clients, pages, errCh, port, fileDown, fileLogIn})
-	http.Handle("/form/client", &clientPostHandler{clients, pages, errCh, port, fileDown, fileCreateClient})
+	rootDir string) {
+	http.Handle("/post/login", &logInPostHandler{clients, errCh})
+	http.Handle("/post/client", &clientPostHandler{clients, errCh})
 	http.Handle("/in/gamews", *createWsHandler(clients, errCh))
-	http.Handle("/static/", http.FileServer(http.Dir("./server")))
+	http.Handle("/ping", &pingHandler{clients, errCh})
+	http.Handle("/", http.FileServer(http.Dir(rootDir)))
 
 	server := &http.Server{Addr: "game.rezder.com" + port} //address is not used
 	err := server.Serve(tcpKeepAliveListener{netListener})
@@ -139,8 +133,11 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 			errCh <- err
 			return err
 		}
-		ok, down := clients.verifySid(name, sid)
+		ok, down := clients.VerifySid(name, sid)
 		if down {
+			if ok {
+				clients.LogOut(name)
+			}
 			err = errors.New("Game server down")
 		} else if !ok {
 			err = errors.New(fmt.Sprintf(log.ErrNo(6)+"Failed session id! Ip: %v", r.RemoteAddr))
@@ -149,25 +146,25 @@ func createWsHandler(clients *Clients, errCh chan<- error) (server *websocket.Se
 		return err
 	}
 	wsHandler := func(ws *websocket.Conn) {
-		joinCh := make(chan *games.Player)
+		joinedCh := make(chan *games.Player)
 		name, sid, err := getCookies(ws.Request())
-		ok, _, joined := clients.joinGameServer(name, sid, ws, errCh, joinCh)
+		ok, isJoined := clients.JoinGameServer(name, sid, ws, errCh, joinedCh)
 		if ok {
-			player := <-joinCh
-			player.Start()
+			player := <-joinedCh
+			player.Serve()
 			err = ws.Close()
-			clients.logOut(name)
+			clients.LogOut(name)
 			if err != nil {
 				err = errors.Wrap(err, log.ErrNo(8)+"Player is finish closing websocket")
 				errCh <- err
 			}
 		} else {
-			if !joined {
-				clients.logOut(name)
+			if !isJoined {
+				clients.LogOut(name)
 			}
 			err = ws.Close()
 			if err != nil {
-				err = errors.Wrap(err, log.ErrNo(9)+"Player failed to join closing websocket")
+				err = errors.Wrap(err, log.ErrNo(9)+"Player failed to join closing websocket failed")
 				errCh <- err
 			}
 		}
@@ -193,55 +190,62 @@ func getCookies(r *http.Request) (name string, sid string, err error) {
 	return name, sid, err
 }
 
-//logInHandler the login page handler.
-type logInHandler struct {
-	clients   *Clients
-	fileDown  string
-	fileLogIn string
+//pingHandler handle check for game server is running.
+type pingHandler struct {
+	clients *Clients
+	errCh   chan<- error
 }
 
-func serveFile(clients *Clients, file, fileDown string, w http.ResponseWriter, r *http.Request) {
-	clients.mu.RLock()
-	down := clients.gameServer == nil // not atomic
-	clients.mu.RUnlock()
-	if !down {
-		http.ServeFile(w, r, file)
-	} else {
-		http.ServeFile(w, r, fileDown)
+func (p *pingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	isUp := true
+	if p.clients.IsGameServerDown() {
+		isUp = false
 	}
-}
-func (l *logInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	serveFile(l.clients, l.fileLogIn, l.fileDown, w, r)
+	err := httpWrite(struct{ IsUp bool }{IsUp: isUp}, w)
+	p.errCh <- err
 }
 
 //logInPostHandler the login post handler.
 type logInPostHandler struct {
-	clients   *Clients
-	pages     *Pages
-	errCh     chan<- error
-	port      string
-	fileDown  string
-	fileLogIn string
+	clients *Clients
+	errCh   chan<- error
 }
 
 func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("txtUserName")
 	pw := r.FormValue("pwdPassword")
-	sid, err := g.clients.logIn(name, pw)
+	status, sid, err := g.clients.LogIn(name, pw)
 	if err != nil {
-		_, ok := err.(*ErrDown)
-		if ok {
-			http.ServeFile(w, r, g.fileDown)
-		} else {
-			txt := fmt.Sprintf("Login failed! %v", err.Error())
-			addToForm(txt, g.fileLogIn, g.pages, w)
-			err = errors.New(fmt.Sprintf(log.ErrNo(10)+"Login failed! %v Ip: %v", err.Error(), r.RemoteAddr))
-			g.errCh <- err
-		}
-	} else {
+		g.errCh <- err
+		status = LogInStatusAll.Err
+	} else if status.IsOk() {
 		setCookies(w, name, sid)
-		http.Redirect(w, r, "/in/game", 303)
+	} else if status.IsInValid() {
+		err = errors.New(fmt.Sprintf(log.ErrNo(10)+"Login failed! %v Ip: %v", status, r.RemoteAddr))
+		g.errCh <- err
 	}
+	err = httpWrite(struct{ LogInStatus LogInStatus }{LogInStatus: status}, w)
+	if err != nil {
+		g.errCh <- err
+	}
+}
+func httpWrite(v interface{}, w http.ResponseWriter) (err error) {
+	js, err := json.Marshal(v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(js)
+	if err != nil {
+		return err
+	}
+	cap := 0
+	if len(js) > 100 {
+		cap = len(js) - 100
+	}
+	log.Printf(log.DebugMsg, "Respond example: %v", string(js[cap:]))
+	return err
 }
 
 //setCookies set the name and session id cookies.
@@ -258,127 +262,36 @@ func setCookies(w http.ResponseWriter, name string, sid string) {
 	http.SetCookie(w, nameC)
 }
 
-//gameHandler the game handler this handler return our game page.
-type gameHandler struct {
-	clients  *Clients
-	errCh    chan<- error
-	port     string
-	fileDown string
-}
-
-func (g *gameHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	name, sid, err := getCookies(r)
-	if err != nil {
-		http.Redirect(w, r, "/", 303)
-		g.errCh <- errors.Wrap(err, log.ErrNo(11)+"Serving game html file")
-		return
-	}
-	ok, down := g.clients.verifySid(name, sid)
-	if ok {
-		http.ServeFile(w, r, "server/pages/game.html")
-	} else if down {
-		http.ServeFile(w, r, g.fileDown)
-	} else {
-		http.Redirect(w, r, "/", 303)
-		err = errors.New(fmt.Sprintf("Failed session id! Ip: %v", r.RemoteAddr))
-		g.errCh <- err
-	}
-}
-
-//clientHandler The create new client page handler.
-type clientHandler struct {
-	clients          *Clients
-	fileDown         string
-	fileCreateClient string
-}
-
-func (c *clientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	serveFile(c.clients, c.fileCreateClient, c.fileDown, w, r)
-}
-
 //clientPostHandler the new client post handler.
 type clientPostHandler struct {
-	clients          *Clients
-	pages            *Pages
-	errCh            chan<- error
-	port             string
-	fileDown         string
-	fileCreateClient string
+	clients *Clients
+	errCh   chan<- error
 }
 
 func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("txtUserName")
 	pw := r.FormValue("pwdPassword")
-	sid, err := handler.clients.addNew(name, pw)
+	status, sid, err := handler.clients.AddNew(name, pw)
 	if err != nil {
-		switch err := err.(type) {
-		case *ErrDown:
-			http.ServeFile(w, r, handler.fileDown)
-		case *ErrExist:
-			addToForm(err.Error(), handler.fileCreateClient, handler.pages, w)
-		case *ErrSize:
-			w.WriteHeader(http.StatusBadRequest)
+		status = LogInStatusAll.Err
+		handler.errCh <- errors.WithMessage(err, fmt.Sprintf("Failed to add client: %v", name))
+	} else {
+		if status.IsInValid() {
 			errTxt := fmt.Sprintf("Data was submited with out our page validation! Ip: %v", r.RemoteAddr)
 			errSize := errors.New(log.ErrNo(13) + errTxt)
 			handler.errCh <- errSize
-		default:
-			addToForm("Unexpected error.", handler.fileCreateClient, handler.pages, w)
-			handler.errCh <- errors.Wrap(err, log.ErrNo(14)+"Serve new client")
+		} else if status.IsOk() {
+			setCookies(w, name, sid)
 		}
-	} else {
-		setCookies(w, name, sid)
-		http.Redirect(w, r, "/in/game", 303)
 	}
-}
-
-//addToForm add a paragraph with a text message to a page.
-func addToForm(txt string, fileName string, pages *Pages, w http.ResponseWriter) {
-	body := pages.readPage(fileName)
-	reader := bytes.NewReader(body)
-	startNode, err := html.Parse(reader)
+	err = httpWrite(struct{ LogInStatus LogInStatus }{LogInStatus: status}, w)
 	if err != nil {
-		panic(err.Error())
+		handler.errCh <- err
 	}
-	found := addPTextNode(startNode, createPTextNode(txt))
-	if !found {
-		panic("html file do not have a body")
-	} else {
-		err = html.Render(w, startNode)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-}
-
-// createPTextNode create a paragraph with a child text node.
-func createPTextNode(txt string) (node *html.Node) {
-	nodeTxt := new(html.Node)
-	nodeTxt.Type = html.TextNode
-	nodeTxt.Data = txt
-	node = new(html.Node)
-	node.Type = html.ElementNode
-	node.Data = "p"
-	node.DataAtom = atom.P
-	node.AppendChild(nodeTxt)
-	return node
-}
-
-// addPTextNode add a node as the last child.
-func addPTextNode(node *html.Node, addNode *html.Node) (found bool) {
-	if node.Type == html.ElementNode && node.DataAtom == atom.Body {
-		found = true
-		node.AppendChild(addNode)
-	}
-	if !found {
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			found = addPTextNode(c, addNode)
-		}
-	}
-	return found
 }
 
 //Add keep a live for 3 minute to a tcp handler.
-//This is deafult but id do not know how good an idea this is.
+//TODO CHECK why this is deafult but id do not know how good an idea this is.
 type tcpKeepAliveListener struct {
 	*net.TCPListener
 }
@@ -388,7 +301,10 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	if err != nil {
 		return c, err
 	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
+	err = tc.SetKeepAlive(true)
+	if err != nil {
+		return c, err
+	}
+	err = tc.SetKeepAlivePeriod(3 * time.Minute)
 	return tc, nil
 }

@@ -54,6 +54,6 @@ func main() {
 		err = conv.GameFile(src, dest)
 	}
 	if err != nil {
-		fmt.Println(err)
+		log.PrintErr(err)
 	}
 }

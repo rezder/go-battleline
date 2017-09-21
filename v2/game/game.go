@@ -34,26 +34,31 @@ func (g *Game) Start(playerIDs [2]int, dealer int) {
 
 //Move makes a move.
 func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Move) {
-	if move.MoveType == MoveTypeAll.Deck {
-		cardBack := card.Back(move.Moves[0].Index)
-		if cardBack.IsTac() {
-			deck := make([]int, 0, 10)
-			for tacix := card.NOTroop + 1; tacix < len(g.Pos.CardPos)-1; tacix++ {
-				cardPos := g.Pos.CardPos[tacix]
-				if cardPos == pos.CardAll.DeckTac {
-					deck = append(deck, tacix)
+	if move.MoveType == MoveTypeAll.Deck || move.MoveType.IsScout() {
+		for _, bpMove := range move.Moves {
+			cardMove := card.Move(bpMove.Index)
+			if cardMove.IsBack() {
+				cardBack := card.Back(cardMove)
+				if cardBack.IsTac() {
+					deck := make([]int, 0, 10)
+					for tacix := card.NOTroop + 1; tacix < len(g.Pos.CardPos); tacix++ {
+						cardPos := g.Pos.CardPos[tacix]
+						if cardPos == pos.CardAll.DeckTac {
+							deck = append(deck, tacix)
+						}
+					}
+					bpMove.Index = deck[rand.Intn(len(deck))]
+				} else {
+					deck := make([]int, 0, 46)
+					for troopix := 1; troopix <= card.NOTroop; troopix++ {
+						cardPos := g.Pos.CardPos[troopix]
+						if cardPos == pos.CardAll.DeckTroop {
+							deck = append(deck, troopix)
+						}
+					}
+					bpMove.Index = deck[rand.Intn(len(deck))]
 				}
 			}
-			move.Moves[0].Index = deck[rand.Intn(len(deck))]
-		} else {
-			deck := make([]int, 0, 10)
-			for troopix := 1; troopix <= card.NOTroop; troopix++ {
-				cardPos := g.Pos.CardPos[troopix]
-				if cardPos == pos.CardAll.DeckTroop {
-					deck = append(deck, troopix)
-				}
-			}
-			move.Moves[0].Index = deck[rand.Intn(len(deck))]
 		}
 	} else if move.MoveType == MoveTypeAll.Cone {
 		if len(move.Moves) > 0 {
@@ -69,15 +74,11 @@ func removeFailedClaim(
 	mover int,
 	oldPos *Pos) (updMoves []*BoardPieceMove, failedClaimsExs [9][]card.Move) {
 	var deleteBPIx []int
+	posCards := NewPosCards(oldPos.CardPos)
+	deckTroops := posCards.SimDeckTroops()
 	for i, bpMove := range moves {
 		flagix := bpMove.Index - 1
-		posCards := NewPosCards(oldPos.CardPos)
 		flag := NewFlag(flagix, posCards, oldPos.ConePos)
-		deckCards := posCards.Cards(pos.CardAll.DeckTroop)
-		deckTroops := make([]card.Troop, len(deckCards))
-		for i, cardix := range deckCards {
-			deckTroops[i] = card.Troop(cardix)
-		}
 		isClaim, exCardixs := flag.IsClaimable(mover, deckTroops)
 		if !isClaim {
 			deleteBPIx = append(deleteBPIx, i)
@@ -89,13 +90,10 @@ func removeFailedClaim(
 		if noUpdMoves > 0 {
 			updMoves = make([]*BoardPieceMove, 0, noUpdMoves)
 			for i, bpMove := range moves {
-				if i != deleteBPIx[0] {
+				if len(deleteBPIx) == 0 || i != deleteBPIx[0] {
 					updMoves = append(updMoves, bpMove)
 				} else {
 					deleteBPIx = deleteBPIx[1:]
-					if len(deleteBPIx) == 0 {
-						break
-					}
 				}
 			}
 		}
@@ -123,7 +121,7 @@ func (g *Game) Resume() (ok bool) {
 
 	if g.Hist.RemovePause() {
 		lastMove := g.Hist.LastMove()
-		g.Pos.RemovePause(lastMove.MoveType)
+		g.Pos.RemovePause(lastMove.MoveType, lastMove.Mover)
 	}
 	return okForward && winner == NoPlayer
 }
@@ -162,12 +160,16 @@ func (g *Game) ScrollBackward() (ok bool) {
 	}
 	return ok
 }
+
+//GiveUp gives up the game.
 func (g *Game) GiveUp(moves []*Move) (winner int) {
 	mover := moves[0].Mover
 	move := CreateMoveGivUp(g.Pos.ConePos, mover)
 	winner, _ = g.Move(move)
 	return winner
 }
+
+//Pause pauses the game.
 func (g *Game) Pause(moves []*Move) (winner int) {
 	mover := moves[0].Mover
 	move := NewMove(mover, MoveTypeAll.Pause)

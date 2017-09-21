@@ -156,14 +156,14 @@ func estimateFormation(
 				strenght = strenght + troop.Strenght()
 			}
 			isLine := false
-			lineStrenght := strenght
+			missLineStrenght := strenght
 			if !isUniqStrenght {
-				isLine, lineStrenght = estimateLine(troops, noMissing, strenght)
+				isLine, missLineStrenght = estimateLine(troops, noMissing, strenght)
 			}
 			if isUnigColor {
 				if isLine {
 					form = &card.FWedge
-					strenght = lineStrenght
+					strenght = strenght + missLineStrenght
 				} else {
 					form = &card.FBattalion
 					strenght = strenght + 10*noMissing
@@ -173,7 +173,7 @@ func estimateFormation(
 				strenght = strenght + noMissing*troops[0].Strenght()
 			} else if isLine {
 				form = &card.FSkirmish
-				strenght = lineStrenght
+				strenght = strenght + missLineStrenght
 			} else {
 				form, strenght = estimateFormationFog(troops, noMissing)
 			}
@@ -189,7 +189,7 @@ func topFormation(formSize int) (form *card.Formation, strenght int) {
 	}
 	return form, strenght
 }
-func estimateLine(troops []card.Troop, noMissing int, troopsStrenght int) (isLine bool, lineStrenght int) {
+func estimateLine(troops []card.Troop, noMissing int, troopsStrenght int) (isLine bool, missStrenght int) {
 	isLine = true
 	steps := noMissing
 	for i, troop := range troops {
@@ -205,10 +205,10 @@ func estimateLine(troops []card.Troop, noMissing int, troopsStrenght int) (isLin
 	}
 	if isLine {
 		for i := 0; i < noMissing; i++ {
-			lineStrenght = lineStrenght + 10 - i
+			missStrenght = missStrenght + 10 - i
 		}
 	}
-	return isLine, lineStrenght
+	return isLine, missStrenght
 }
 func estimateFormationFog(
 	troops []card.Troop,
@@ -254,7 +254,7 @@ func sim1Card(
 	noMissing := 1
 	isClaim = true
 	for _, simTroop := range deckTroops {
-		simTroops := make([]card.Troop, 0, len(troops)+noMissing)
+		simTroops := make([]card.Troop, len(troops), len(troops)+noMissing)
 		copy(simTroops, troops)
 		simTroops = appendSortedTroop(simTroops, simTroop)
 		simFormation, simStrenght := eval(simTroops, morales, isMud, isFog)
@@ -301,7 +301,7 @@ func sim3Cards(
 	noMissing := 3
 	isClaim = true
 	math.Perm3(len(deckTroops), func(v [3]int) bool {
-		simTroops := make([]card.Troop, 0, len(troops)+noMissing)
+		simTroops := make([]card.Troop, len(troops), len(troops)+noMissing)
 		copy(simTroops, troops)
 		simTroops = appendSortedTroop(simTroops, deckTroops[v[0]])
 		simTroops = appendSortedTroop(simTroops, deckTroops[v[1]])
@@ -326,8 +326,7 @@ func sim4Cards(
 	noMissing := 4
 	isClaim = true
 	math.Perm4(len(deckTroops), func(v [4]int) bool {
-		simTroops := make([]card.Troop, 0, len(troops)+noMissing)
-		copy(simTroops, troops)
+		simTroops := make([]card.Troop, 0, noMissing)
 		simTroops = appendSortedTroop(simTroops, deckTroops[v[0]])
 		simTroops = appendSortedTroop(simTroops, deckTroops[v[1]])
 		simTroops = appendSortedTroop(simTroops, deckTroops[v[2]])

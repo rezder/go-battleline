@@ -5,6 +5,8 @@ package games
 // relaying the game information.
 func benchServe(joinWatchChCl *JoinWatchChCl, watchingCh <-chan *WatchingChData) {
 	watchers := make(map[int]chan<- *WatchingChData)
+	var watchingChData *WatchingChData
+	var isOpen bool
 Loop:
 	for {
 		select {
@@ -15,11 +17,16 @@ Loop:
 				delete(watchers, p.ID)
 			} else if !isFound && !isDelete {
 				watchers[p.ID] = p.SendCh
+				if watchingChData != nil {
+					p.SendCh <- watchingChData
+				}
+			} else { //if the player try to join twice
+				close(p.SendCh)
 			}
 
-		case watchingChData, isOpen := <-watchingCh:
+		case watchingChData, isOpen = <-watchingCh:
 			if !isOpen {
-				close(joinWatchChCl.Close) //stope join and leave
+				close(joinWatchChCl.Close) //stop join and leave
 				if len(watchers) > 0 {
 					for _, ch := range watchers {
 						close(ch)

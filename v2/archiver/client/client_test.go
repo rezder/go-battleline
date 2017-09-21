@@ -9,18 +9,18 @@ import (
 
 func TestMq(t *testing.T) {
 
-	client, err := New(7171, "")
+	client, err := New(7373, "")
 	if err != nil {
 		t.Fatalf("Create poke listener failed: %v", err)
 	}
 	client.Start()
-	nzr, err := arnet.NewReceiver("7070")
+	nzr, err := arnet.NewReceiver("7272")
 	if err != nil {
 		client.Stop()
 		t.Fatalf("Creating net reciever failed %v", err)
 	}
 	nzr.Start()
-	arnet.PokeClient("localhost:7171", "localhost:7070")
+	arnet.PokeClient("localhost:7373", "localhost:7272")
 	t.Log("sleep 1")
 	time.Sleep(time.Second)
 

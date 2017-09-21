@@ -7,12 +7,11 @@ import (
 	"github.com/rezder/go-battleline/v2/db/dbhist"
 	bg "github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-error/log"
-	"strconv"
 )
 
 const (
-	//SAVEGamesDbFile  unfinished games hitory data base file.
-	SAVEGamesDbFile = "server/data/savegames.db"
+	//histsDbFile  unfinished games hitory data base file.
+	histDbFILE = "server/data/savegames.db"
 )
 
 //TablesServer the battleline tables server
@@ -34,21 +33,29 @@ func NewTablesServer(
 	s.pubList = pubList
 	s.StartGameChCl = NewStartGameChCl()
 	s.doneCh = make(chan struct{})
-	db, err := bolt.Open(SAVEGamesDbFile, 0600, nil)
+	db, err := bolt.Open(histDbFILE, 0600, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "Open data base file %v failed", SAVEGamesDbFile)
+		err = errors.Wrapf(err, "Open data base file %v failed", histDbFILE)
 		return s, err
 	}
 	s.savedGamesDb = dbhist.New(dbhist.KeyPlayers, db, 500)
 	err = s.savedGamesDb.Init()
 	if err != nil {
+		_ = db.Close()
 		return s, err
 	}
 	if err != nil {
+		_ = db.Close()
 		return s, err
 	}
 	s.archiver, err = arch.New(archiverPort, "")
 	return s, err
+}
+
+//CloseDb closes the database, stop close the database but
+// if not starting the server after init the database must be closed.
+func (s *TablesServer) CloseDb() error {
+	return s.savedGamesDb.Close()
 }
 
 //Start starts the tables server.
@@ -73,7 +80,7 @@ func startTables(
 	savedGamesDb *dbhist.Db,
 	archiver *arch.Client) {
 
-	finishTableCh := make(chan *FinishTableData)
+	finishTableCh := make(chan *bg.Game)
 	startCh := startGameChCl.Channel
 	var isDone bool
 	games := make(map[int]*GameData)
@@ -81,27 +88,27 @@ func startTables(
 Loop:
 	for {
 		select {
-		case fin := <-finishTableCh:
-			delete(games, fin.ids[0])
-			delete(games, fin.ids[1])
-			if fin.game != nil {
-				if fin.game.Pos.LastMoveType.IsPause() {
-					err := savedGamesDb.Put(fin.game.Hist)
-					if err != nil {
-						errTxt := "Save game player ids: %v failed."
-						err = errors.Wrapf(err, errTxt, fin.game.Hist.PlayerIDs)
-						errCh <- err
-					}
-				} else {
-					archiver.Archive(fin.game.Hist)
+		case game := <-finishTableCh:
+			delete(games, game.Hist.PlayerIDs[0])
+			delete(games, game.Hist.PlayerIDs[1])
+			if game.Pos.LastMoveType.IsPause() {
+				log.Printf(log.DebugMsg, "Saving stopped game: %v,%v", game.Hist.PlayerIDs, game.Hist.Time)
+				err := savedGamesDb.Put(game.Hist)
+				if err != nil {
+					errTxt := "Save game player ids: %v failed."
+					err = errors.Wrapf(err, errTxt, game.Hist.PlayerIDs)
+					errCh <- err
 				}
+			} else {
+				log.Printf(log.DebugMsg, "Archiving game: %v,%v", game.Hist.PlayerIDs, game.Hist.Time)
+				archiver.Archive(game.Hist)
 			}
+
 			if isDone && len(games) == 0 {
 				break Loop
 			}
 			publishTables(games, pubList)
 		case start := <-startCh:
-
 			if isPlaying(start.PlayerIds, games) {
 				close(start.PlayerChs[0])
 				close(start.PlayerChs[1])
@@ -149,7 +156,7 @@ func getOldGame(
 			err = errors.Wrapf(err, "Failed deleting history for %v", start.PlayerIds)
 			errCh <- err
 		}
-		game := bg.NewGame()
+		game = bg.NewGame()
 		game.LoadHist(hist)
 		_ = game.Resume() //Assumes we do not save finsihed game
 		if game.Hist.PlayerIDs != start.PlayerIds {
@@ -184,22 +191,6 @@ func NewGameData(opp int, watch *JoinWatchChCl) (g *GameData) {
 	g.Opp = opp
 	g.JoinWatchChCl = watch
 	return g
-}
-
-//gameID makes a unique game id.
-func gameID(playerIDs [2]int) (id string) {
-	if playerIDs[0] > playerIDs[1] {
-		id = strconv.Itoa(playerIDs[0]) + "," + strconv.Itoa(playerIDs[1])
-	} else {
-		id = strconv.Itoa(playerIDs[1]) + "," + strconv.Itoa(playerIDs[0])
-	}
-	return id
-}
-
-//FinishTableData the data structur send on the finish channel.
-type FinishTableData struct {
-	ids  [2]int
-	game *bg.Game
 }
 
 // StartGameChData is the information need to start a game.

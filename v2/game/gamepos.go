@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/v2/game/card"
 	"github.com/rezder/go-battleline/v2/game/pos"
 )
@@ -31,6 +32,10 @@ type Pos struct {
 	LastMoveType MoveType
 	LastMover    int
 	LastMoveIx   int
+}
+
+func (g *Pos) String() string {
+	return fmt.Sprintf("Pos{CardPos:%v,ConePos:%v,PlayerReturned:%v,CardsReturned:%v,LastMoveType:%v,LastMover:%v,LastMoveIx:%v}", g.CardPos, g.ConePos, g.PlayerReturned, g.CardsReturned, g.LastMoveType, g.LastMover, g.LastMoveIx)
 }
 
 //IsEqual check if two postion is equal.
@@ -131,9 +136,11 @@ func calcWinner(conePos [10]pos.Cone) int {
 //RemovePause removes a pause move.
 //Assume pause is always after initMove.
 //Arg: lastMoveType the new last move type.
-func (g *Pos) RemovePause(lastMoveType MoveType) {
+//Arg: lastMover the new last mover.
+func (g *Pos) RemovePause(lastMoveType MoveType, lastMover int) {
 	g.LastMoveIx = g.LastMoveIx - 1
 	g.LastMoveType = lastMoveType
+	g.LastMover = lastMover
 }
 
 //RemoveMove removes a move from postion.
@@ -227,7 +234,8 @@ func NewViewPos(gamePos *Pos, view View, winner int) (v *ViewPos) {
 
 	if winner == NoPlayer {
 		moves := gamePos.CalcMoves()
-		if view.IsViewSeePlayer(moves[0].Mover) {
+
+		if len(moves) > 0 && view.IsViewSeePlayer(moves[0].Mover) {
 			v.Moves = moves
 		}
 	}
@@ -404,4 +412,23 @@ func (posCards PosCards) SortedCards(posCard pos.Card) (
 		}
 	}
 	return troops, morales, guiles, envs
+}
+
+//SimDeckTroops returns the cards in the deck used to evalue flag claim.
+//deck plus the cards on the hands.
+func (posCards PosCards) SimDeckTroops() (deckTroops []card.Troop) {
+	deckCards := posCards.Cards(pos.CardAll.DeckTroop)
+	deckTroops = make([]card.Troop, len(deckCards), len(deckCards)+18)
+	for i, cardix := range deckCards {
+		deckTroops[i] = card.Troop(cardix)
+	}
+	for playerix := 0; playerix < 2; playerix++ {
+		handCards := posCards.Cards(pos.CardAll.Players[playerix].Hand)
+		for _, cardix := range handCards {
+			if cardix.IsTroop() {
+				deckTroops = append(deckTroops, card.Troop(cardix))
+			}
+		}
+	}
+	return deckTroops
 }

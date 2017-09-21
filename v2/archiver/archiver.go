@@ -71,7 +71,7 @@ Loop:
 			if open {
 				hist, err := arnet.HistDecoder(histBytes)
 				if err != nil {
-					err = errors.Wrap(err, "Decoding hist msg failed") //TODO do not need stack remove with new interface
+					err = errors.WithMessage(err, "Decoding hist msg failed")
 					log.PrintErr(err)
 				} else {
 					hists = append(hists, hist)

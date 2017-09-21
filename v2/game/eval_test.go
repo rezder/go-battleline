@@ -94,7 +94,8 @@ func testFlagsPrint(player int, flag *Flag, deckTroops []card.Troop, tf *testFla
 		isClaim, _ = flag.IsClaimable(player, deckTroops)
 	}
 	if isClaim != tf.IsClaimables[player] {
-		t.Errorf("Test element %v failed. Expect claim: %v got %v.", testix, tf.IsClaimables[player], isClaim)
+		t.Logf("flag: %v\n,deck: %v", flag, deckTroops)
+		t.Errorf("Test element: %v testing :%v failed. Expect claim: %v got %v.", testix, tf.Info, tf.IsClaimables[player], isClaim)
 	}
 }
 
@@ -191,4 +192,18 @@ func testLoadFile(filePath string, ts interface{}) error {
 	}
 	err = coder.Decode(ts)
 	return err
+}
+func TestConeMoves(t *testing.T) {
+	moves := coneCombiMoves([]int{0, 1, 2, 3, 4, 5, 6, 7, 8}, 0)
+	for moveix, move := range moves {
+		noBpMove := len(move.Moves)
+		for i, bpmove := range move.Moves {
+			if i < noBpMove-1 {
+				if bpmove.Index > move.Moves[i+1].Index {
+					t.Errorf("Flag index must be in increasing order moveix: %v", moveix)
+					//This is to get consisten moves and easy to replica a move
+				}
+			}
+		}
+	}
 }

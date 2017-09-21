@@ -81,7 +81,7 @@ func playersServe(
 	list := make(map[int]*PlayerData)
 	done := false
 	// disPlayers is need because is possible for a player to be logged in but
-	// not join the players server when he is booted out. Unlikely but possibel.
+	// not join the players server when he is booted out. Unlikely but possible.
 	disPlayers := make(map[int]bool)
 Loop:
 	for {
@@ -190,10 +190,10 @@ func (player *Player) joinServer(inviteCh <-chan *Invite, messCh <-chan *MesData
 	player.tableStChCl = startGameChCl
 }
 
-// Start a player server.
+// Serve serves a player.
 // The server will not wait for its started go routine to finsh but it will send
 // the kill signal to them.
-func (player *Player) Start() {
+func (player *Player) Serve() {
 	sendCh := make(chan interface{}, wrtBuffSIZE)
 	wrtBrookCh := make(chan struct{})
 	wrtDoneCh := make(chan struct{})
@@ -215,9 +215,9 @@ func (player *Player) Start() {
 	gameState := new(GameState)
 
 	watchGameCh := make(chan *playerWatchGameData)
-	var watchGames map[int]*JoinWatchChCl
+	watchGames := make(map[int]*JoinWatchChCl)
 	sendCh <- readList
-	sendSysMess(sendCh, "Welcome to Battleline!\nWill you play a game?")
+	sendSysMess(sendCh, "Welcome back to Battleline!")
 Loop:
 	for {
 		select {
@@ -226,6 +226,7 @@ Loop:
 				receivedInvites, sendInvites, sendCh, wrtDoneCh, false)
 			break Loop
 		case <-wrtBrookCh:
+			log.Printf(log.DebugMsg, "Player %v received write broken.", player.id)
 			handleCloseDown(player.doneComCh, gameState, watchGames, player.id,
 				receivedInvites, sendInvites, sendCh, wrtDoneCh, false)
 			break Loop
@@ -250,6 +251,8 @@ Loop:
 		case wgd := <-watchGameCh:
 			if wgd.joinWatchChCl == nil { //set chan to nil for done
 				delete(watchGames, wgd.watchingPlayerID)
+				readList = player.pubList.Read()
+				sendCh <- readList
 			} else {
 				watchGames[wgd.watchingPlayerID] = wgd.joinWatchChCl
 				sendCh <- wgd.watchingChData
@@ -273,8 +276,8 @@ Loop:
 				}
 			}
 		case message := <-player.messCh:
-			readList = playerExist(player.pubList, readList, message.Sender, sendCh)
-			_, found := readList[strconv.Itoa(message.Sender)]
+			readList = playerExist(player.pubList, readList, message.SenderID, sendCh)
+			_, found := readList[strconv.Itoa(message.SenderID)]
 			if found {
 				sendCh <- message
 			}
@@ -308,7 +311,7 @@ func handlePlayerAction(
 	case actIDInvRetract:
 		actRetractInvite(sendInvites, act)
 	case actIDMove:
-		log.Printf(log.DebugMsg, "handle move for player id: %v Name: %v\n Move: %v", player.id, player.name, act)
+		log.Printf(log.DebugMsg, "handle move for player id: %v Name: %v, Move: %v", player.id, player.name, act)
 		actMove(act, gameState, sendCh, player.errCh, player.id)
 	case actIDSave:
 		if gameState.waitingForClient() || gameState.waitingForServer() {
@@ -469,16 +472,20 @@ func handleGameReceive(
 	updReadList = readList
 	if playingChData == nil {
 		gameState.removeGame()
+		updReadList = pubList.Read()
+		sendCh <- updReadList
 	} else {
 		if !gameState.hasGame() { //Init data
 			gameState.addGame(playingChData)
 			clearInvites(receivedInvites, sendInvites, playerID)
 			sendCh <- ClearInvites("All invites was clear as game starts.")
-			sendCh <- playingChData
 			updReadList = pubList.Read()
 			sendCh <- updReadList
+			sendCh <- playingChData
 		} else {
-			gameState.receiveNewViewPos(playingChData.ViewPos)
+			if len(playingChData.ViewPos.Moves) > 0 {
+				gameState.receiveNewViewPos(playingChData.ViewPos)
+			}
 			sendCh <- playingChData
 		}
 	}
@@ -492,18 +499,24 @@ func handleGameReceive(
 func handleCloseDown(playerDoneComCh chan struct{}, gameState *GameState,
 	watchGames map[int]*JoinWatchChCl, playerID int, receivedInvites map[int]*Invite,
 	sendInvites map[int]*Invite, sendCh chan<- interface{}, wrtDoneCh chan struct{}, isPlayerCloseConn bool) {
-
+	log.Printf(log.DebugMsg, "Closing player id: %v done comunication channel.", playerID)
 	close(playerDoneComCh)
-	gameState.closeChannel()
+	if gameState != nil {
+		log.Printf(log.DebugMsg, "Player id: %v closing game.", playerID)
+		gameState.closeChannel()
+	}
 	if len(watchGames) > 0 {
-		for _, ch := range watchGames {
+		for watchingID, ch := range watchGames {
+			log.Printf(log.DebugMsg, "Player id: %v stops watching player is: %v", playerID, watchingID)
 			stopWatch(ch, playerID)
 		}
 	}
 	clearInvites(receivedInvites, sendInvites, playerID)
-
+	log.Printf(log.DebugMsg, "Player id: %v sending close connetion with is player %v", playerID, isPlayerCloseConn)
 	sendCh <- CloseCon{isPlayerCloseConn, "Server close the connection"}
+	log.Printf(log.DebugMsg, "Player id: %v Waiting for write done.", playerID)
 	<-wrtDoneCh
+	log.Printf(log.DebugMsg, "Player id: %v received write done.", playerID)
 }
 
 //actWatch handle client action watch a game.
@@ -565,6 +578,7 @@ func watchGameListen(
 
 	initWatchingChData, initOpen := <-watchingCh
 	if initOpen {
+		initWatchingChData.WatchingID = watchID
 		isDoneCom := sendToPlayerStartWatch(watchID, initWatchingChData, joinWatchChCl, playerWatchGameCh, playerDoneComCh)
 		if isDoneCom {
 			stopWatch(joinWatchChCl, playerID)
@@ -575,6 +589,7 @@ func watchGameListen(
 			watchingData, open := <-watchingCh
 			if !writeStop {
 				if open {
+					watchingData.WatchingID = watchID
 					select {
 					case <-playerDoneComCh:
 						writeStop = true
@@ -640,7 +655,7 @@ func actWatchStop(watchGames map[int]*JoinWatchChCl, act *Action,
 	joinWatchChCl, found := watchGames[act.ID]
 	if found {
 		stopWatch(joinWatchChCl, playerID)
-		delete(watchGames, act.ID)
+		delete(watchGames, act.ID) //TODO maybe send stop to the player
 	} else {
 		txt := fmt.Sprintf("Stop watching player %v failed", act.ID)
 		sendSysMess(sendCh, txt)
@@ -733,11 +748,7 @@ func gameListen(playerGameCh chan<- *PlayingChData, playerDoneComCh chan struct{
 			playingChData, open := <-playingRecCh
 			if !isWriteStop {
 				if open {
-					if len(playingChData.ViewPos.Moves) > 0 {
-						isWriteStop = sendToPlayerGameCh(playerGameCh, playerDoneComCh, playingChData)
-					} else {
-						isWriteStop = sendToClientPlayingData(sendCh, playerDoneComCh, playingChData)
-					}
+					isWriteStop = sendToPlayerGameCh(playerGameCh, playerDoneComCh, playingChData)
 				} else {
 					sendToPlayerGameCh(playerGameCh, playerDoneComCh, nil)
 					break Loop
@@ -753,7 +764,9 @@ func gameListen(playerGameCh chan<- *PlayingChData, playerDoneComCh chan struct{
 		sendCh <- invite
 	}
 }
-func sendToClientPlayingData(
+
+//Use to send pos view directly when the player do not need to take action, but the the views got out of order.
+/*func sendToClientPlayingData(
 	sendCh chan<- interface{},
 	playerDoneComCh chan struct{},
 	playingChData *PlayingChData) (isDone bool) {
@@ -768,7 +781,7 @@ func sendToClientPlayingData(
 		}
 	}
 	return isDone
-}
+}*/
 func sendToPlayerGameCh(
 	playerGameCh chan<- *PlayingChData,
 	playerDoneComCh chan struct{},
@@ -792,6 +805,7 @@ func actSendInvite(invites map[int]*Invite, respCh chan<- *InviteResponse, playe
 	p, found := readList[strconv.Itoa(act.ID)]
 	if found {
 		invite.ReceiverID = p.ID
+		invite.ReceiverName = p.Name
 		if !gameState.hasGame() {
 			invite.ResponseCh = respCh
 			invite.RetractCh = make(chan struct{})
@@ -828,8 +842,8 @@ func actMessage(act *Action, readList map[string]*PubData, sendCh chan<- interfa
 	p, found := readList[strconv.Itoa(act.ID)]
 	if found {
 		mess := new(MesData)
-		mess.Sender = id
-		mess.Name = name
+		mess.SenderID = id
+		mess.SenderName = name
 		mess.Message = act.Mess
 		select {
 		case p.MessageCh <- mess:
@@ -890,8 +904,8 @@ func playerExist(pubList *PubList, readList map[string]*PubData, id int,
 // it is assumed to be open. Use go instead if not sure.
 func sendSysMess(ch chan<- interface{}, txt string) {
 	mess := new(MesData)
-	mess.Sender = -1
-	mess.Name = "System"
+	mess.SenderID = -1
+	mess.SenderName = "System"
 	mess.Message = txt
 	ch <- mess
 }
@@ -899,8 +913,8 @@ func sendSysMess(ch chan<- interface{}, txt string) {
 // sendSysMessGo send a system message if possible.
 func sendSysMessGo(sendCh chan<- interface{}, playerDoneComCh chan struct{}, txt string) {
 	mess := new(MesData)
-	mess.Sender = -1
-	mess.Name = "System"
+	mess.SenderID = -1
+	mess.SenderName = "System"
 	mess.Message = txt
 	select {
 	case sendCh <- mess:
@@ -980,6 +994,7 @@ Loop:
 				}
 			}
 			if broke && !serverStop {
+				log.Print(log.DebugMsg, "closing write broken channel")
 				close(brokenConn)
 			}
 		}
@@ -987,6 +1002,7 @@ Loop:
 			break Loop
 		}
 	}
+	log.Print(log.DebugMsg, "Closing write done")
 	close(doneCh)
 }
 
@@ -1048,6 +1064,7 @@ Loop:
 			}
 		}
 	}
+	log.Print(log.DebugMsg, "Closing action channel")
 	close(accCh)
 }
 

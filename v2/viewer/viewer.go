@@ -106,6 +106,8 @@ func (server *Server) UpdateModel(modelDir string) (err error) {
 	}
 	return err
 }
+
+//UpdateStdOut reads the stdOut from a model.
 func (server *Server) UpdateStdOut(modelDir string) (stdOut string) {
 	server.Lock()
 	defer server.Unlock()
@@ -232,7 +234,6 @@ func parseGamesFormValues(r *http.Request) (dbFilePath string, noGames int, play
 		p1No, perr = formValueToInt("player1id", r)
 		if perr == nil {
 			tsText := r.FormValue("ts")
-			fmt.Println(tsText)
 			if len(tsText) > 0 {
 				ts, err = time.Parse(time.RFC3339Nano, tsText)
 				if err != nil {

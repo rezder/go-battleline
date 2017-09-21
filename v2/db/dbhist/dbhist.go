@@ -124,13 +124,6 @@ func (bdb *Db) Puts(hists []*game.Hist) (err error) {
 	})
 	return err
 }
-func copyBytes(b []byte) (c []byte) {
-	if b != nil {
-		c = make([]byte, len(b))
-		copy(c, b)
-	}
-	return c
-}
 
 //Delete deletes a key from database.
 func (bdb *Db) Delete(key []byte) (err error) {
@@ -147,8 +140,7 @@ func (bdb *Db) Get(key []byte) (hist *game.Hist, err error) {
 	var cbs []byte
 	err = bdb.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(bdb.bucketID)
-		bs := bucket.Get(key)
-		cbs = copyBytes(bs)
+		cbs = bucket.Get(key)
 		return nil
 	})
 	if err != nil {
@@ -167,7 +159,7 @@ func (bdb *Db) Gets(keys [][]byte) (hists []*game.Hist, err error) {
 	err = bdb.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(bdb.bucketID)
 		for i, key := range keys {
-			bss[i] = copyBytes(bucket.Get(key))
+			bss[i] = bucket.Get(key)
 		}
 		return nil
 	})

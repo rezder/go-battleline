@@ -2,6 +2,10 @@
 //the games server consist of the tables server and players server.
 package games
 
+import (
+	"golang.org/x/net/websocket"
+)
+
 //Server the game server structur.
 type Server struct {
 	tables  *TablesServer
@@ -21,6 +25,11 @@ func New(archiverPort int) (g *Server, err error) {
 	return g, err
 }
 
+//Cancel the server, must be called if not starting the server.
+func (g *Server) Cancel() error {
+	return g.tables.CloseDb()
+}
+
 //Start starts the game server.
 func (g *Server) Start(errCh chan<- error) {
 	g.tables.Start(errCh)
@@ -33,13 +42,23 @@ func (g *Server) Stop() {
 	g.tables.Stop()
 }
 
-//PlayersJoinCh returns the channel player join the players server.
-func (g *Server) PlayersJoinCh() chan<- *Player {
-	return g.players.JoinCh
+//JoinClient asks the server to add player to the game server.
+func (g *Server) JoinClient(
+	id int,
+	name string,
+	ws *websocket.Conn,
+	errCh chan<- error,
+	joinedCh chan<- *Player) {
+	player := NewPlayer(id, name, ws, errCh, joinedCh)
+	g.players.JoinCh <- player
 }
 
-//PlayersDisableCh returns the channel to disable or enable player on
-//the players server.
-func (g *Server) PlayersDisableCh() chan<- *PlayersDisData {
-	return g.players.DisableCh
+//BootPlayer asks the server to boot a player
+func (g *Server) BootPlayer(playerID int) {
+	g.players.DisableCh <- &PlayersDisData{Disable: true, PlayerID: playerID}
+}
+
+//BootPlayerStop asks the server to stop booting a player
+func (g *Server) BootPlayerStop(playerID int) {
+	g.players.DisableCh <- &PlayersDisData{Disable: false, PlayerID: playerID}
 }

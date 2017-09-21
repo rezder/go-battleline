@@ -23,6 +23,12 @@ func (m MoveType) IsPause() bool {
 	return m == MoveTypeAll.Pause
 }
 
+//IsScout returns true if the move is part of the scout move.
+//play scout and draw one card, draw second card and draw 3 card.
+func (m MoveType) IsScout() bool {
+	return m == MoveTypeAll.Scout1 || m == MoveTypeAll.Scout2 || m == MoveTypeAll.Scout3
+}
+
 //IsChangePlayer returns true if the next move is by a new player.
 func (m MoveType) isChangePlayer() bool {
 	return m == MoveTypeAll.Init ||

@@ -19,9 +19,11 @@ import (
 // and will create a directory data with two gob files.
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	portFlag := flag.Int("port", 8181, "tcp port")
-	archiverPortFlag := flag.Int("archport", 7171, "Arciver tcp port")
+	portFlag := flag.Int("port", 8282, "tcp port")
+	archiverPortFlag := flag.Int("archport", 7373, "Arciver tcp port")
 	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 3 highest")
+	//TODO change rootDirFlag default to ./server/htmlroot
+	rootDirFlag := flag.String("rootdir", "/home/rho/js/batt-game-app/build/", "The server files root directory")
 	flag.Parse()
 	log.InitLog(*logFlag)
 	//defer profile.Start(profile.MemProfile, profile.NoShutdownHook).Stop()
@@ -31,7 +33,7 @@ func main() {
 	} else {
 		port = ":" + strconv.Itoa(*portFlag)
 	}
-	httpServer, err := http.New(port, *archiverPortFlag)
+	httpServer, err := http.New(port, *archiverPortFlag, *rootDirFlag)
 	if err != nil {
 		log.PrintErr(err)
 		return

@@ -8,7 +8,7 @@ import (
 )
 
 func TestPoke(t *testing.T) {
-	clientAdr := ":7171"
+	clientAdr := ":7373"
 	myAddr := "peter:8080"
 	go pokeListner(clientAdr, myAddr, t)
 	PokeClient("localhost"+clientAdr, myAddr)
