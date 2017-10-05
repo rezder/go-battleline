@@ -335,6 +335,10 @@ Loop:
 				}
 
 			} else { //closed messCh
+				err := tfcon.Close()
+				if err != nil {
+					errors.Wrap(err, "Closing tensorflow connection failed")
+				}
 				break Loop
 			}
 		}

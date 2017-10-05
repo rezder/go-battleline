@@ -1,6 +1,7 @@
 package combi
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/battleline/cards"
 	"testing"
 )
@@ -135,7 +136,7 @@ func TestAnaBad(t *testing.T) {
 }
 
 func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies []int) {
-	flagCards := combination[:1]
+	flagCards := []int{combination[0]}
 	handCards := make([]int, 7)
 	copy(handCards, dummies[:7])
 	combiTest(t, combiNo3, flagCards, handCards, dummies[7:], 3)
@@ -180,6 +181,7 @@ func combiTest(t *testing.T, combiNo int, flagCards, handCards, dummies []int, f
 	ana := Ana(combi[combiNo], flagCards, handCards, drawSet, drawNo, formationSize == 4)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[combiNo], flagCards, handCards, drawNo, ana)
+	fmt.Println(ana.Valid, ana.Prop, flagCards)
 	return ana.Prop
 }
 

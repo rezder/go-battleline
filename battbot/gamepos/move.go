@@ -398,7 +398,7 @@ func lostFlagTacticMove(
 					break
 				}
 			}
-			if cardix != 0 && len(handTacixs) == 2 && deck.DeckTroopNo() > 1 &&
+			if cardix == 0 && len(handTacixs) == 2 && deck.DeckTroopNo() > 1 &&
 				slice.Contain(handTacixs, cards.TCScout) &&
 				slice.Contain(handTacixs, cards.TCTraitor) {
 				cardix = cards.TCScout
@@ -698,10 +698,10 @@ func findMaxSum(cardSumProp map[int]float64) (troopix int) {
 		if sumProp > maxSumProp {
 			troopix = cix
 			maxSumProp = sumProp
-			troop, _ := cards.DrTroop(troopix)
+			troop, _ := cards.DrTroop(cix)
 			troopValue = troop.Value()
 		} else if sumProp == maxSumProp {
-			troop, _ := cards.DrTroop(troopix)
+			troop, _ := cards.DrTroop(cix)
 			if troop.Value() > troopValue {
 				troopix = cix
 				troopValue = troop.Value()

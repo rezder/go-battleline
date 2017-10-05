@@ -386,17 +386,17 @@ Loop:
 	return rank
 }
 func sortTroopValue(troopixs []int) (m map[int][]int) {
-	return sortTroopsValueOrColor(troopixs, true)
+	return sortTroopsValueOrColor(troopixs, false)
 }
-func sortTroopsValueOrColor(troopixs []int, isColor bool) (m map[int][]int) {
-	valueTroops := make(map[int][]int)
+func sortTroopsValueOrColor(troopixs []int, isColor bool) (valueTroops map[int][]int) {
+	valueTroops = make(map[int][]int)
 	for _, troopix := range troopixs {
 		troop, _ := cards.DrTroop(troopix)
 		value := 0
 		if isColor {
-			value = troop.Value()
-		} else {
 			value = troop.Color()
+		} else {
+			value = troop.Value()
 		}
 		m, ok := valueTroops[value]
 		if ok {
@@ -407,7 +407,7 @@ func sortTroopsValueOrColor(troopixs []int, isColor bool) (m map[int][]int) {
 		}
 		valueTroops[value] = m
 	}
-	return m
+	return valueTroops
 }
 func calcMaxRankNewFlagOneMoral(
 	moralix int,

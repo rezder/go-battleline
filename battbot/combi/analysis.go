@@ -296,7 +296,7 @@ func anaBattalionHandMax(maxix, elementNo, sum int, factors [][]int, values, han
 	updSum = sum - values[maxix]
 	maxCardix := handTroops[maxix]
 	updHandTroops, updDrawTroops = anaBattalionReduce(maxFactors, handTroops, drawTroops)
-	updHandTroops = slice.Remove(handTroops, maxCardix)
+	updHandTroops = slice.Remove(updHandTroops, maxCardix)
 
 	return updElementNo, updSum, updHandTroops, updDrawTroops, handCardixs
 }
