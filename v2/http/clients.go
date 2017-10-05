@@ -1,9 +1,9 @@
 package http
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/v2/http/games"
+	"github.com/rezder/go-battleline/v2/http/login"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/websocket"
 	"math/rand"
@@ -23,13 +23,7 @@ var (
 	//PWSIZE the password size limit.
 	pwSIZE        = 8
 	dbClientsFILE = "server/data/clients.db" // can be change for test
-	//LogInStatusAll is the log in status domain.
-	LogInStatusAll LogInStatusAllST
 )
-
-func init() {
-	LogInStatusAll = newLoginStatusAllST()
-}
 
 //Client the login object. Hold information of the user including
 //loged-in information.
@@ -198,25 +192,25 @@ func (clients *Clients) VerifySid(name, sid string) (ok, isDown bool) {
 }
 
 //LogIn log-in a client.
-func (clients *Clients) LogIn(name string, pw string) (status LogInStatus, sid string, err error) {
+func (clients *Clients) LogIn(name string, pw string) (status login.Status, sid string, err error) {
 	client, isFound, err := clients.cdb.GetName(name)
 	if err != nil {
 		err = errors.Wrapf(err, "Failed loading client %v from database", name)
 		return status, sid, err
 	}
 	if !isFound {
-		status = LogInStatusAll.InValid
+		status = login.StatusAll.InValid
 	} else {
 		cerr := bcrypt.CompareHashAndPassword(client.Pw, []byte(pw))
 		if cerr == bcrypt.ErrMismatchedHashAndPassword {
-			status = LogInStatusAll.InValid
+			status = login.StatusAll.InValid
 		} else if cerr != nil {
 			return status, sid, cerr
 		} else {
 			clients.mu.Lock()
 			defer clients.mu.Unlock()
 			if clients.gameServer == nil {
-				status = LogInStatusAll.Down
+				status = login.StatusAll.Down
 			} else {
 				client, isFound, err = clients.cdb.GetID(client.ID)
 				if err != nil {
@@ -229,19 +223,19 @@ func (clients *Clients) LogIn(name string, pw string) (status LogInStatus, sid s
 				}
 				inClient, isIn := clients.logIns[name]
 				if isIn && inClient.ws != nil || isIn && time.Since(inClient.sidTime) < time.Minute*3 {
-					status = LogInStatusAll.Exist
+					status = login.StatusAll.Exist
 				} else {
 					if isIn {
 						delete(clients.logIns, name)
 					}
 					if client.IsDisable {
-						status = LogInStatusAll.Disabled
+						status = login.StatusAll.Disabled
 					} else {
 						client.sid = sessionID()
 						client.sidTime = time.Now()
 						sid = client.sid
 						clients.logIns[name] = client
-						status = LogInStatusAll.Ok
+						status = login.StatusAll.Ok
 					}
 				}
 			}
@@ -277,7 +271,7 @@ func (clients *Clients) IsGameServerDown() bool {
 }
 
 //AddNew create and log-in a new client.
-func (clients *Clients) AddNew(name string, pwTxt string) (status LogInStatus, sid string, err error) {
+func (clients *Clients) AddNew(name string, pwTxt string) (status login.Status, sid string, err error) {
 	if checkNamePwSize(name, pwTxt) {
 		var pw []byte
 		pw, err = bcrypt.GenerateFromPassword([]byte(pwTxt), pwCOST) //TODO we need salt some day, so player with same password does not have same hash.
@@ -294,7 +288,7 @@ func (clients *Clients) AddNew(name string, pwTxt string) (status LogInStatus, s
 			clients.mu.Lock()
 			defer clients.mu.Unlock()
 			if clients.gameServer == nil {
-				status = LogInStatusAll.Down
+				status = login.StatusAll.Down
 			} else {
 				var isFound bool
 				client, isFound, err = clients.cdb.GetID(client.ID)
@@ -310,13 +304,13 @@ func (clients *Clients) AddNew(name string, pwTxt string) (status LogInStatus, s
 				client.sidTime = time.Now()
 				sid = client.sid
 				clients.logIns[name] = client
-				status = LogInStatusAll.Ok
+				status = login.StatusAll.Ok
 			}
 		} else {
-			status = LogInStatusAll.Exist
+			status = login.StatusAll.Exist
 		}
 	} else {
-		status = LogInStatusAll.InValid
+		status = login.StatusAll.InValid
 	}
 	return status, sid, err
 }
@@ -337,64 +331,4 @@ func checkNamePwSize(name string, pw string) (ok bool) {
 		ok = true
 	}
 	return ok
-}
-
-//LogInStatusAllST is the log in status singleton.
-type LogInStatusAllST struct {
-	None     LogInStatus
-	Ok       LogInStatus
-	Down     LogInStatus
-	InValid  LogInStatus
-	Exist    LogInStatus
-	Disabled LogInStatus
-	Err      LogInStatus
-}
-
-func newLoginStatusAllST() (l LogInStatusAllST) {
-	l.None = 0
-	l.Ok = 1
-	l.Down = 2
-	l.InValid = 3
-	l.Disabled = 4
-	l.Exist = 5
-	l.Err = 6
-	return l
-}
-
-//LogInStatus the log in status domain value.
-type LogInStatus int
-
-func (l LogInStatus) String() (txt string) {
-	switch l {
-	case LogInStatusAll.None:
-		txt = "None"
-	case LogInStatusAll.Ok:
-		txt = "OK"
-	case LogInStatusAll.Down:
-		txt = "Games server is down."
-	case LogInStatusAll.InValid:
-		txt = "Crediential is invalid"
-	case LogInStatusAll.Disabled:
-		txt = "Account disabled"
-	case LogInStatusAll.Exist:
-		txt = "Double access"
-	default:
-		panic(fmt.Sprintf("Login status: %v does not exist ", int(l)))
-	}
-	return txt
-}
-func (l LogInStatus) IsOk() bool {
-	return l == LogInStatusAll.Ok
-}
-func (l LogInStatus) IsDown() bool {
-	return l == LogInStatusAll.Down
-}
-func (l LogInStatus) IsInValid() bool {
-	return l == LogInStatusAll.InValid
-}
-func (l LogInStatus) IsExist() bool {
-	return l == LogInStatusAll.Exist
-}
-func (l LogInStatus) IsDisable() bool {
-	return l == LogInStatusAll.Disabled
 }

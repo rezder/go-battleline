@@ -47,7 +47,7 @@ func tableServe(
 	winner := bg.NoPlayer
 
 	for winner == bg.NoPlayer {
-		var failedClaimedExs [9][]card.Move
+		var failedClaimedExs [9][]card.Card
 		mover = moves[0].Mover
 		log.Printf(log.DebugMsg, "Waiting for mover ix: %v id: %v", mover, ids[mover])
 		moveix, isOpen = <-moveixChs[mover]
@@ -85,7 +85,7 @@ func createChData(
 	ids [2]int,
 	gameTs time.Time,
 	winner int,
-	failedClaimedExs [9][]card.Move) (playingChDatas [2]*PlayingChData, watchingChData *WatchingChData, moves []*bg.Move) {
+	failedClaimedExs [9][]card.Card) (playingChDatas [2]*PlayingChData, watchingChData *WatchingChData, moves []*bg.Move) {
 	for i := range ids {
 		playingChDatas[i] = &PlayingChData{
 			ViewPos:          bg.NewViewPos(pos, bg.ViewAll.Players[i], winner),
@@ -114,7 +114,7 @@ func initChData(
 	gameTs time.Time,
 	moveChs [2]chan int) (playingChDatas [2]*PlayingChData, watchingChData *WatchingChData, moves []*bg.Move) {
 
-	var failedClaimedExs [9][]card.Move
+	var failedClaimedExs [9][]card.Card
 	playingChDatas, watchingChData, moves = createChData(pos, ids, gameTs, bg.NoPlayer, failedClaimedExs)
 	for i, data := range playingChDatas {
 		data.MoveCh = moveChs[i]

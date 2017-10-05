@@ -115,10 +115,10 @@ func (t *testFlag) createFlag() (flag *Flag) {
 	flag.IsMud = t.IsMud
 	for player := 0; player < 2; player++ {
 		for _, cardix := range t.FlagCardixs[player] {
-			cardMove := card.Move(cardix)
+			cardMove := card.Card(cardix)
 			switch {
 			case cardMove.IsTroop():
-				flag.Players[player].Troops = appendSortedTroop(flag.Players[player].Troops, card.Troop(cardMove))
+				flag.Players[player].Troops = card.Troop(cardMove).AppendStrSorted(flag.Players[player].Troops)
 			case cardMove.IsMorale():
 				flag.Players[player].Morales = append(flag.Players[player].Morales, card.Morale(cardMove))
 			}

@@ -102,6 +102,16 @@ func (c Card) IsOnTable() bool {
 	return !c.IsOnHand() && !c.IsInDeck()
 }
 
+//Flagix returns the flag index or -1 if not a flag position
+func (c Card) Flagix() (flagix int) {
+	flagix = -1
+	if c > 0 && c < 20 && c != 10 {
+		flagix = int(c%10 - 1)
+	}
+
+	return flagix
+}
+
 //Cone the cone position.
 type Cone uint8
 
@@ -133,7 +143,7 @@ func (c Cone) Winner() int {
 	} else if c == ConeAll.Players[1] {
 		return 1
 	}
-	return 2
+	return NoPlayer
 }
 
 // ConeAllST All cone postions singleton.

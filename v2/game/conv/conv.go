@@ -157,7 +157,7 @@ func Move(oldMove bold.Move, mover, cardix, dealtix, turnState int, claimFailExs
 func createMoveDeck(cardix, mover int) (move *game.Move) {
 	move = game.NewMove(mover, game.MoveTypeAll.Deck)
 	oldPos := pos.CardAll.DeckTroop
-	if card.Move(cardix).IsTac() {
+	if card.Card(cardix).IsTac() {
 		oldPos = pos.CardAll.DeckTac
 	}
 	move.Moves = append(move.Moves, &game.BoardPieceMove{

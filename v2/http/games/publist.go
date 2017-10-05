@@ -183,6 +183,6 @@ type PlayingChData struct {
 	ViewPos          *bg.ViewPos
 	PlayingIDs       [2]int
 	GameTs           time.Time
-	FailedClaimedExs [9][]card.Move
+	FailedClaimedExs [9][]card.Card
 	MoveCh           chan<- int `json:"-"`
 }

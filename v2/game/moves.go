@@ -224,7 +224,7 @@ func CreateMoveCone(flagixs []int, mover int) *Move {
 	}
 	return move
 }
-func flagsCreate(posCards PosCards, conePos [10]pos.Cone) (flags [9]*Flag) {
+func FlagsCreate(posCards PosCards, conePos [10]pos.Cone) (flags [9]*Flag) {
 	for i := 0; i < 9; i++ {
 		flags[i] = NewFlag(i, posCards, conePos)
 	}
@@ -268,22 +268,22 @@ func createMovesHand(cardPos [71]pos.Card, conePos [10]pos.Cone, posCards PosCar
 		posCards = NewPosCards(cardPos)
 	}
 	moves = make([]*Move, 0, 0)
-	flags := flagsCreate(posCards, conePos)
+	flags := FlagsCreate(posCards, conePos)
 
-	handTroops, handMorales, handGuiles, handEnvs := posCards.SortedCards(pos.CardAll.Players[mover].Hand)
+	hand := posCards.SortedCards(pos.CardAll.Players[mover].Hand)
 	isTacPlayable, isLeaderPlayable := anaPlayTacs(cardPos[card.NOTroop+1:], mover)
 	noTroopMoves := 0
 	for flagix, flag := range flags {
-		troopMoves := createMovesHandFlagTroops(flagix, flag, handTroops, mover)
+		troopMoves := createMovesHandFlagTroops(flagix, flag, hand.Troops, mover)
 		noTroopMoves = noTroopMoves + len(troopMoves)
 		moves = append(moves, troopMoves...)
 		if isTacPlayable {
-			moves = append(moves, createMovesHandFlagMorales(flagix, flag, handMorales, mover, isLeaderPlayable)...)
-			moves = append(moves, createMovesHandFlagEnvs(flagix, flag, handEnvs, mover)...)
+			moves = append(moves, createMovesHandFlagMorales(flagix, flag, hand.Morales, mover, isLeaderPlayable)...)
+			moves = append(moves, createMovesHandFlagEnvs(flagix, flag, hand.Envs, mover)...)
 		}
 	}
-	if len(handGuiles) > 0 && isTacPlayable {
-		moves = append(moves, createMovesGuile(handGuiles, cardPos, flags, mover)...)
+	if len(hand.Guiles) > 0 && isTacPlayable {
+		moves = append(moves, createMovesGuile(hand.Guiles, cardPos, flags, mover)...)
 	}
 	if len(moves) > 0 && noTroopMoves == 0 { //Pass move
 		moves = append(moves, NewMove(mover, MoveTypeAll.Hand))
@@ -498,7 +498,7 @@ func anaPlayTacs(tacPos []pos.Card, player int) (isTacPlayable, isLeaderPlayable
 	for i, oldPos := range tacPos {
 		if oldPos.IsOnTable() {
 			morale := card.Morale(tacix + i)
-			cardMove := card.Move(tacix + i)
+			cardMove := card.Card(tacix + i)
 			p := oldPos.Player()
 			played[p] = played[p] + 1
 			if cardMove.IsMorale() && morale.IsLeader() {
@@ -520,7 +520,7 @@ func createHand(player int, cardPos [71]pos.Card) (handTroops, handTacs []int) {
 	for cardix, oldPos := range cardPos {
 		if cardix > 0 {
 			if oldPos == pos.CardAll.Players[player].Hand {
-				if card.Move(cardix).IsTroop() {
+				if card.Card(cardix).IsTroop() {
 					handTroops = append(handTroops, cardix)
 				} else {
 					handTacs = append(handTacs, cardix)

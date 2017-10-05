@@ -27,7 +27,7 @@ type Pos struct {
 	ConePos [10]pos.Cone
 
 	PlayerReturned int
-	CardsReturned  [2]card.Move
+	CardsReturned  [2]card.Card
 
 	LastMoveType MoveType
 	LastMover    int
@@ -84,7 +84,7 @@ func (g *Pos) AddMove(gameMove *Move) (winner int) {
 			if move.IsCard() {
 				g.CardPos[move.Index] = pos.Card(move.NewPos)
 				if gameMove.MoveType == MoveTypeAll.ScoutReturn {
-					g.CardsReturned[i] = card.Move(move.Index)
+					g.CardsReturned[i] = card.Card(move.Index)
 					g.PlayerReturned = gameMove.Mover
 				}
 			} else {
@@ -240,7 +240,7 @@ func NewViewPos(gamePos *Pos, view View, winner int) (v *ViewPos) {
 		}
 	}
 	for cardix := 1; cardix < len(v.Pos.CardPos); cardix++ {
-		cardMove := card.Move(cardix)
+		cardMove := card.Card(cardix)
 		cardMoveReturnedix := -1
 		if cardMove == v.CardsReturned[0] {
 			cardMoveReturnedix = 0
@@ -347,71 +347,50 @@ func newViewAllST() (v ViewAllST) {
 }
 
 //PosCards cards sorted according to their current position
-type PosCards [][]card.Move
+type PosCards [][]card.Card
 
 //NewPosCards creates a list of cards for every postion.
 func NewPosCards(cardPos [71]pos.Card) (posCards PosCards) {
-	posCards = make([][]card.Move, pos.CardAll.Size)
+	posCards = make([][]card.Card, pos.CardAll.Size)
 	for i := range posCards {
 		if i == 0 {
-			posCards[i] = make([]card.Move, 0, 60)
+			posCards[i] = make([]card.Card, 0, 60)
 		} else {
-			posCards[i] = make([]card.Move, 0, 10)
+			posCards[i] = make([]card.Card, 0, 10)
 		}
 	}
 	for cardix, cardPos := range cardPos {
 		if cardix > 0 {
-			posCards[int(cardPos)] = append(posCards[int(cardPos)], card.Move(cardix))
+			posCards[int(cardPos)] = append(posCards[int(cardPos)], card.Card(cardix))
 		}
 	}
 	return posCards
 }
 
 //Cards return the cards belong to a position.
-func (posCards PosCards) Cards(posCard pos.Card) []card.Move {
+func (posCards PosCards) Cards(posCard pos.Card) []card.Card {
 	return posCards[int(posCard)]
-}
-
-func appendSortedTroop(troops []card.Troop, troop card.Troop) []card.Troop {
-	no := len(troops)
-	troops = append(troops, 0)
-	for i, t := range troops {
-		if i == no {
-			troops[i] = troop
-		} else {
-			if !(troop.Strenght() < t.Strenght()) {
-				copy(troops[i+1:], troops[i:])
-				troops[i] = troop
-				break
-			}
-		}
-	}
-	return troops
 }
 
 //SortedCards returns the cards belonging to a postion
 // sorted after type and the troops is sorted after strenght
 // strongest first.
-func (posCards PosCards) SortedCards(posCard pos.Card) (
-	troops []card.Troop,
-	morales []card.Morale,
-	guiles []card.Guile,
-	envs []card.Env) {
-
+func (posCards PosCards) SortedCards(posCard pos.Card) (sortedCards *card.Cards) {
+	sortedCards = new(card.Cards)
 	cards := posCards[int(posCard)]
 	for _, cardMove := range cards {
 		switch {
 		case cardMove.IsTroop():
-			troops = appendSortedTroop(troops, card.Troop(cardMove))
+			sortedCards.Troops = card.Troop(cardMove).AppendStrSorted(sortedCards.Troops)
 		case cardMove.IsEnv():
-			envs = append(envs, card.Env(cardMove))
+			sortedCards.Envs = append(sortedCards.Envs, card.Env(cardMove))
 		case cardMove.IsGuile():
-			guiles = append(guiles, card.Guile(cardMove))
+			sortedCards.Guiles = append(sortedCards.Guiles, card.Guile(cardMove))
 		case cardMove.IsMorale():
-			morales = append(morales, card.Morale(cardMove))
+			sortedCards.Morales = append(sortedCards.Morales, card.Morale(cardMove))
 		}
 	}
-	return troops, morales, guiles, envs
+	return sortedCards
 }
 
 //SimDeckTroops returns the cards in the deck used to evalue flag claim.

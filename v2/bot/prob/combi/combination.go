@@ -2,35 +2,45 @@ package combi
 
 import (
 	"fmt"
-	"github.com/rezder/go-battleline/battleline/cards"
+	"github.com/rezder/go-battleline/v2/game/card"
 )
 
-var Combinations3, Combinations4 []*Combination
+const (
+	//COLNone none color
+	COLNone = 0
+)
+
+var combinations3, combinations4 []*Combination
 
 func init() {
-	Combinations3 = createCombi(3)
-	Combinations4 = createCombi(4)
+	combinations3 = createCombi(3)
+	combinations4 = createCombi(4)
 }
+
+//Combinations returns the all the possible combinations.
 func Combinations(size int) []*Combination {
 	if size == 4 {
-		return Combinations4
+		return combinations4
 	}
-	return Combinations3
+	return combinations3
 }
+
+//CombinationsMud returns the all the possible combinations.
 func CombinationsMud(isMud bool) []*Combination {
 	if isMud {
-		return Combinations4
+		return combinations4
 	}
-	return Combinations3
+	return combinations3
 }
 
 //Combination a battleline formation and strength
 type Combination struct {
 	Rank      int
-	Formation cards.Formation
+	Formation card.Formation
 	Strength  int
 	//Troops is all the cards that can be used to create the formation.
-	Troops map[int][]int
+	//per color
+	Troops map[int][]card.Troop
 }
 
 func (c *Combination) String() string {
@@ -56,16 +66,16 @@ func createCombi(cardsNo int) (combis []*Combination) {
 }
 func createCombiWedge(cardsNo int) []*Combination {
 	combis := make([]*Combination, 0, 10+1-cardsNo)
-	for value := 10; value >= cardsNo; value-- {
+	for strenght := 10; strenght >= cardsNo; strenght-- {
 		combi := Combination{
-			Formation: cards.FWedge,
-			Troops:    make(map[int][]int),
+			Formation: card.FWedge,
+			Troops:    make(map[int][]card.Troop),
 		}
 
 		for color := 1; color < 7; color++ {
-			cardixs := make([]int, 0, cardsNo)
-			for i := value; i > value-cardsNo; i-- {
-				cardixs = append(cardixs, (color-1)*10+i)
+			cardixs := make([]card.Troop, 0, cardsNo)
+			for i := strenght; i > strenght-cardsNo; i-- {
+				cardixs = append(cardixs, card.Troop((color-1)*10+i))
 				if color == 1 {
 					combi.Strength = combi.Strength + i
 				}
@@ -80,17 +90,17 @@ func createCombiWedge(cardsNo int) []*Combination {
 func createCombiPhalanx(cardsNo int) []*Combination {
 	combis := make([]*Combination, 0, 10)
 	//Phalanx
-	for value := 10; value > 0; value-- {
+	for str := 10; str > 0; str-- {
 		combi := Combination{
-			Formation: cards.FPhalanx,
-			Strength:  value * cardsNo,
-			Troops:    make(map[int][]int),
+			Formation: card.FPhalanx,
+			Strength:  str * cardsNo,
+			Troops:    make(map[int][]card.Troop),
 		}
-		cardixs := make([]int, 0, 6)
+		troops := make([]card.Troop, 0, 6)
 		for color := 1; color < 7; color++ {
-			cardixs = append(cardixs, (color-1)*10+value)
+			troops = append(troops, card.Troop((color-1)*10+str))
 		}
-		combi.Troops[cards.COLNone] = cardixs
+		combi.Troops[COLNone] = troops
 		combis = append(combis, &combi)
 	}
 	return combis
@@ -98,7 +108,7 @@ func createCombiPhalanx(cardsNo int) []*Combination {
 func createCombiBattalion(cardsNo int) (combis []*Combination) {
 
 	//Battalion Order
-	allCards := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	allStrenghts := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	var maxsum int
 	if cardsNo == 3 {
 		maxsum = 27 //J10+10+7 higest no straight flush
@@ -112,22 +122,23 @@ func createCombiBattalion(cardsNo int) (combis []*Combination) {
 	combis = make([]*Combination, 0, maxsum-minsum)
 	for sum := maxsum; sum > minsum; sum-- {
 		combi := Combination{
-			Formation: cards.FBattalion,
+			Formation: card.FBattalion,
 			Strength:  sum,
-			Troops:    make(map[int][]int),
+			Troops:    make(map[int][]card.Troop),
 		}
+		//TODO I do not know why I did this?
 		/*fac := math.FactorSum(allCards, sum, cardsNo, true)
-		valueSet := make(map[int]bool)
+		strSet := make(map[int]bool)
 		for _, ixs := range fac {
 			for _, ix := range ixs {
-				valueSet[allCards[ix]] = true
+				strSet[allStrenghts[ix]] = true
 			}
 		}
 		*/
 		for color := 1; color < 7; color++ {
-			cardixs := make([]int, 0, 10)
-			for _, value := range allCards {
-				cardixs = append(cardixs, (color-1)*10+value)
+			cardixs := make([]card.Troop, 0, 10)
+			for _, str := range allStrenghts {
+				cardixs = append(cardixs, card.Troop((color-1)*10+str))
 			}
 			combi.Troops[color] = cardixs
 		}
@@ -138,34 +149,36 @@ func createCombiBattalion(cardsNo int) (combis []*Combination) {
 func createCombiSkirmish(cardsNo int) (combis []*Combination) {
 	combis = make([]*Combination, 0, 10+1-cardsNo)
 
-	for value := 10; value >= cardsNo; value-- {
+	for str := 10; str >= cardsNo; str-- {
 		combi := Combination{
-			Formation: cards.FSkirmish,
-			Troops:    make(map[int][]int),
+			Formation: card.FSkirmish,
+			Troops:    make(map[int][]card.Troop),
 		}
 		baseixs := make([]int, 0, cardsNo)
 		strenght := 0
-		for i := value; i > value-cardsNo; i-- {
+		for i := str; i > str-cardsNo; i-- {
 			baseixs = append(baseixs, i)
 			strenght = strenght + i
 		}
 		combi.Strength = strenght
-		cardixs := make([]int, 0, cardsNo*6)
+		cardixs := make([]card.Troop, 0, cardsNo*6)
 		for color := 1; color < 7; color++ {
 			for _, baseix := range baseixs {
-				cardixs = append(cardixs, (color-1)*10+baseix)
+				cardixs = append(cardixs, card.Troop((color-1)*10+baseix))
 			}
 		}
-		combi.Troops[cards.COLNone] = cardixs
+		combi.Troops[COLNone] = cardixs
 
 		combis = append(combis, &combi)
 	}
 	return combis
 }
-func LastFormationRank(formation cards.Formation, formationSize int) (rank int) {
-	combinations := Combinations3
+
+//LastFormationRank returns last rank for a formation.
+func LastFormationRank(formation card.Formation, formationSize int) (rank int) {
+	combinations := combinations3
 	if formationSize == 4 {
-		combinations = Combinations4
+		combinations = combinations4
 	}
 	for _, c := range combinations {
 		if c.Formation.Value < formation.Value {

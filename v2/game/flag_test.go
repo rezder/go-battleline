@@ -10,7 +10,7 @@ func TestFlagFailedClaimed(t *testing.T) {
 	conePos := [10]pos.Cone{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	posCards := NewPosCards(cardPos)
 	deckTroops := posCards.SimDeckTroops()
-	flags := flagsCreate(posCards, conePos)
+	flags := FlagsCreate(posCards, conePos)
 	for flagix, flag := range flags {
 		t.Logf("Flagix:%v, Flag:%v", flagix, flag)
 		for playerix := 0; playerix < 2; playerix++ {
@@ -110,7 +110,6 @@ func TestRemoveFailedClaimed2(t *testing.T) {
 }
 func TestRemoveFailedClaimed3(t *testing.T) {
 	cardPos := [71]pos.Card{0, 22, 15, 8, 12, 12, 0, 0, 0, 18, 0, 21, 0, 0, 1, 21, 0, 17, 21, 0, 14, 0, 11, 9, 11, 22, 0, 7, 0, 7, 0, 4, 15, 21, 21, 0, 0, 8, 0, 18, 6, 19, 19, 9, 0, 0, 2, 17, 5, 5, 22, 22, 15, 9, 22, 22, 2, 8, 21, 18, 0, 21, 23, 23, 23, 23, 23, 23, 23, 22, 23}
-
 	conePos := [10]pos.Cone{0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
 	pos := NewPos()
 	pos.CardPos = cardPos
@@ -122,7 +121,7 @@ func TestRemoveFailedClaimed3(t *testing.T) {
 	move := pos.CalcMoves()[1]
 	updMoves, failedClaimExs := removeFailedClaim(move.Moves, move.Mover, pos)
 	for flagix, exs := range failedClaimExs {
-		if flagix == 4 || flagix == 7 {
+		if flagix == 4 {
 			if len(exs) == 0 {
 				t.Errorf("Claim should fail for move: %v flagix: %v", move, flagix)
 			}

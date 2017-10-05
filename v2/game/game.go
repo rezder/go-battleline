@@ -33,10 +33,10 @@ func (g *Game) Start(playerIDs [2]int, dealer int) {
 }
 
 //Move makes a move.
-func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Move) {
+func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Card) {
 	if move.MoveType == MoveTypeAll.Deck || move.MoveType.IsScout() {
 		for _, bpMove := range move.Moves {
-			cardMove := card.Move(bpMove.Index)
+			cardMove := card.Card(bpMove.Index)
 			if cardMove.IsBack() {
 				cardBack := card.Back(cardMove)
 				if cardBack.IsTac() {
@@ -72,7 +72,7 @@ func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Move) {
 func removeFailedClaim(
 	moves []*BoardPieceMove,
 	mover int,
-	oldPos *Pos) (updMoves []*BoardPieceMove, failedClaimsExs [9][]card.Move) {
+	oldPos *Pos) (updMoves []*BoardPieceMove, failedClaimsExs [9][]card.Card) {
 	var deleteBPIx []int
 	posCards := NewPosCards(oldPos.CardPos)
 	deckTroops := posCards.SimDeckTroops()

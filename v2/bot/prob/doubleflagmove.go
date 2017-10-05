@@ -1,125 +1,83 @@
-package gamepos
+package prob
 
 import (
 	"fmt"
-	botdeck "github.com/rezder/go-battleline/battbot/deck"
-	"github.com/rezder/go-battleline/battbot/flag"
-	bat "github.com/rezder/go-battleline/battleline"
-	"github.com/rezder/go-battleline/battleline/cards"
+	fa "github.com/rezder/go-battleline/v2/bot/prob/flag"
+	"github.com/rezder/go-battleline/v2/game"
+	"github.com/rezder/go-battleline/v2/game/card"
+	"github.com/rezder/go-battleline/v2/game/pos"
 	"github.com/rezder/go-error/log"
 	"sort"
-	"strconv"
 )
 
-//lostFlagTacticDbFlagMove makes a traitor or redeploy move.
+//lostFlagTacDbFlag makes a traitor or redeploy move.
 //Simulate all possible moves for a lost flag. Prioritize them
 //and play the best if it is a win win move or if it is a prevent loss.
-func lostFlagTacticDbFlagMove(
-	flagsAna map[int]*flag.Analysis,
-	handTroopixs []int,
-	deck *botdeck.Deck,
-	deckMaxValues []int,
-	tacix int,
-	handMoves map[string][]bat.Move) (cardix int, move bat.Move) {
-	dbMoves := handMoves[strconv.Itoa(tacix)]
+func lostFlagTacDbFlag(
+	flagsAna map[int]*fa.Analysis,
+	guile card.Guile,
+	sim *Sim,
+) (moveix int) {
+	moveix = -1
+	dbMoves, dbMoveixs := sim.FindDoubleFlags(guile)
 	if len(dbMoves) > 0 {
-		simHandTroopixs := make([]int, len(handTroopixs)+1)
-		copy(simHandTroopixs, handTroopixs)
 		for flagix, flagAna := range flagsAna {
 			if flagAna.IsLost {
-				dbFlagAnas := dbFlagSimulateMoves(dbMoves, tacix, flagix, flagsAna, handTroopixs, deck, deckMaxValues)
+				dbFlagAnas := dbFlagSimulateMoves(dbMoves, dbMoveixs, flagix, flagsAna, sim)
 				if dbFlagAnas.Len() > 0 {
-					sort.Sort(dbFlagAnas)
-					bestFlagAna := dbFlagAnas[dbFlagAnas.Len()-1]
-					tac, _ := cards.DrTactic(tacix)
+					bestFlagAna := dbFlagAnas.BestAna()
 					logtxt := "Double flag. Lost flag: %v, Tactic: %v, Analysis simulated Moves: %+v\n"
-					log.Printf(log.Debug, logtxt, flagix, tac.Name(), bestFlagAna)
+					log.Printf(log.Debug, logtxt, flagix, guile, bestFlagAna)
 					if bestFlagAna.isWinWin() || flagAna.IsLoosingGame {
-						move = bestFlagAna.move
-						cardix = tacix
+						moveix = bestFlagAna.moveix
 					}
 				}
-
 			}
-
 		}
 	}
-	return cardix, move
+	return moveix
 }
 func dbFlagSimulateMoves(
-	moves []bat.Move,
-	tacix int,
+	moves []*game.Move,
+	moveixs []int,
 	lostFlagix int,
-	flagsAna map[int]*flag.Analysis,
-	handTroopixs []int,
-	deck *botdeck.Deck,
-	deckMaxValues []int) (ta dbFlagAnas) {
+	flagsAna map[int]*fa.Analysis,
+	sim *Sim,
+) (ta dbFlagAnas) {
 
 	ta = make([]*dbFlagAna, 0, 0)
-	for _, move := range moves {
-		var outFlagix, inFlagix, cardix int
-		switch dbMove := move.(type) {
-		case bat.MoveTraitor:
-			outFlagix = dbMove.OutFlag
-			inFlagix = dbMove.InFlag
-			cardix = dbMove.OutCard
-		case bat.MoveRedeploy:
-			outFlagix = dbMove.OutFlag
-			inFlagix = dbMove.InFlag
-			cardix = dbMove.OutCard
-		default:
-			panic("Ilegal move")
-		}
-		if outFlagix == lostFlagix || inFlagix == lostFlagix {
-			lostSimAna, collateralSimAna := dbFlagSimMove(outFlagix, inFlagix, lostFlagix, cardix, tacix, flagsAna, handTroopixs, deck, deckMaxValues)
-			var oldCollateralSimAna *flag.Analysis
-			if collateralSimAna != nil { //Redeploy to dish
+	for ix, move := range moves {
+		if pos.Card(move.Moves[1].NewPos).Flagix() == lostFlagix || pos.Card(move.Moves[1].OldPos).Flagix() == lostFlagix {
+			lostSimAna, collateralSimAna := dbFlagSimMove(lostFlagix, move, sim)
+			var oldCollateralSimAna *fa.Analysis
+			if collateralSimAna != nil {
 				oldCollateralSimAna = flagsAna[collateralSimAna.Flagix]
 			}
-			ta = append(ta, newDbFlagAna(move, lostSimAna, flagsAna[lostFlagix], collateralSimAna, oldCollateralSimAna))
+			ta = append(ta, newDbFlagAna(moveixs[ix], lostSimAna, flagsAna[lostFlagix], collateralSimAna, oldCollateralSimAna))
 		}
 	}
 	return ta
 }
-func dbFlagSimMove(
-	outFlagix, inFlagix, lostFlagix, cardix, tacix int,
-	flagsAna map[int]*flag.Analysis,
-	handTroopixs []int,
-	deck *botdeck.Deck,
-	deckMaxValues []int) (lostFlagSimAna, collFlagSimAna *flag.Analysis) {
+func dbFlagSimMove(lostFlagix int, move *game.Move, sim *Sim,
+) (lostFlagSimAna, collFlagSimAna *fa.Analysis) {
+	inFlagAna, outFlagAna := sim.Move(move)
 
-	lostFlagSim := flagsAna[lostFlagix].Flag.Copy()
-	dbFlagSimFlagUpd(outFlagix == lostFlagix, cardix, tacix, lostFlagSim)
-	tac, _ := cards.DrTactic(tacix)
-	log.Printf(log.Debug, "Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, lostFlagSim, flagsAna[lostFlagix].Flag)
-	lostFlagSimAna = flag.NewAnalysis(lostFlagSim, handTroopixs, deckMaxValues, deck, lostFlagix, true)
+	outFlagix := pos.Card(move.Moves[1].OldPos).Flagix()
+	inFlagix := pos.Card(move.Moves[1].NewPos).Flagix()
 
-	if inFlagix != bat.REDeployDishix {
-		collix := inFlagix
-		if outFlagix != lostFlagix {
-			collix = outFlagix
-		}
-		collFlagSim := flagsAna[collix].Flag.Copy()
-		dbFlagSimFlagUpd(outFlagix != lostFlagix, cardix, tacix, collFlagSim)
-		tac, _ := cards.DrTactic(tacix)
-		log.Printf(log.Debug, "Tactic move %v\nSim Flag %+v\nOld Flag %+v", tac, collFlagSim, flagsAna[collix].Flag)
-		collFlagSimAna = flag.NewAnalysis(collFlagSim, handTroopixs, deckMaxValues, deck, collix, true)
-	}
-	return lostFlagSimAna, collFlagSimAna
-}
-func dbFlagSimFlagUpd(isOutFlag bool, cardix, tacix int, simFlag *flag.Flag) {
-	if isOutFlag {
-		if tacix == cards.TCRedeploy {
-			if cardix == cards.TCMud {
-				simFlag = simMudTrimFlag(simFlag, cardix)
-			}
-			simFlag.PlayRemoveCardix(cardix)
-		} else {
-			simFlag.OppRemoveCardix(cardix)
-		}
+	if outFlagix == inFlagix {
+		lostFlagSimAna = outFlagAna
 	} else {
-		simFlag.PlayAddCardix(cardix)
+		if lostFlagix == outFlagix {
+			lostFlagSimAna = outFlagAna
+			collFlagSimAna = inFlagAna
+		} else {
+			lostFlagSimAna = inFlagAna
+			collFlagSimAna = outFlagAna
+		}
 	}
+
+	return lostFlagSimAna, collFlagSimAna
 }
 
 type dbFlagAnas []*dbFlagAna
@@ -140,18 +98,23 @@ func (ta dbFlagAnas) Swap(i, j int) {
 	ta[j] = ta[i]
 	ta[i] = tj
 }
+func (ta dbFlagAnas) BestAna() (bestAna *dbFlagAna) {
+	sort.Sort(ta)
+	bestFlagAna := ta[ta.Len()-1]
+	return bestFlagAna
+}
 
 type dbFlagAna struct {
-	move bat.Move
-	lost *dbFlagAnaSim
-	coll *dbFlagAnaSim
+	moveix int
+	lost   *dbFlagAnaSim
+	coll   *dbFlagAnaSim
 }
 
 func (dba *dbFlagAna) String() string {
 	if dba == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("{Move:%v lost:%v coll:%v}", dba.move, dba.lost, dba.coll)
+	return fmt.Sprintf("{Move:%v lost:%v coll:%v}", dba.moveix, dba.lost, dba.coll)
 }
 
 type dbFlagAnaSim struct {
@@ -159,8 +122,8 @@ type dbFlagAnaSim struct {
 	isWin        bool
 	winProb      float64
 	phalanxProb  float64
-	oldAna       *flag.Analysis
-	ana          *flag.Analysis
+	oldAna       *fa.Analysis
+	ana          *fa.Analysis
 	flagValue    int
 	botTroopNo   int
 }
@@ -172,29 +135,29 @@ func (dba *dbFlagAnaSim) String() string {
 	return fmt.Sprintf("{Flag:%v Win:%v LoseGame:%v WinProb:%v PhalanxWin: %v FlagValue:%v}",
 		dba.oldAna.Flagix, dba.isWin, dba.isLosingGame, dba.winProb, dba.phalanxProb, dba.flagValue)
 }
-func newDbFlagAnaSim(oldAna, ana *flag.Analysis) (dba *dbFlagAnaSim) {
+func newDbFlagAnaSim(oldAna, ana *fa.Analysis) (dba *dbFlagAnaSim) {
 	dba = new(dbFlagAnaSim)
 	dba.oldAna = oldAna
 	dba.ana = ana
 	dba.isWin = ana.IsWin()
 	dba.winProb, dba.phalanxProb = dbFlagCalcImprovProb(oldAna, ana)
-	dba.botTroopNo = len(ana.Flag.PlayTroops)
+	dba.botTroopNo = ana.Flag.PlayerFormationSize(ana.Playix)
 	dba.flagValue = oldAna.FlagValue
 	dba.isLosingGame = oldAna.IsLoosingGame
 	return dba
 }
-func (dbas *dbFlagAnaSim) equal(other *dbFlagAnaSim) (equal bool) {
-	if other == nil && dbas == nil {
+func (dba *dbFlagAnaSim) equal(other *dbFlagAnaSim) (equal bool) {
+	if other == nil && dba == nil {
 		equal = true
-	} else if other != nil && dbas != nil {
-		if other == dbas {
+	} else if other != nil && dba != nil {
+		if other == dba {
 			equal = true
-		} else if other.isLosingGame == dbas.isLosingGame &&
-			other.isWin == dbas.isWin &&
-			other.winProb == dbas.winProb &&
-			other.phalanxProb == dbas.phalanxProb &&
-			other.flagValue == dbas.flagValue &&
-			other.botTroopNo == dbas.botTroopNo {
+		} else if other.isLosingGame == dba.isLosingGame &&
+			other.isWin == dba.isWin &&
+			other.winProb == dba.winProb &&
+			other.phalanxProb == dba.phalanxProb &&
+			other.flagValue == dba.flagValue &&
+			other.botTroopNo == dba.botTroopNo {
 			equal = true
 
 		}
@@ -202,9 +165,9 @@ func (dbas *dbFlagAnaSim) equal(other *dbFlagAnaSim) (equal bool) {
 	return equal
 }
 
-func newDbFlagAna(move bat.Move, lost, oldLost, collateral, oldCollateral *flag.Analysis) (ta *dbFlagAna) {
+func newDbFlagAna(moveix int, lost, oldLost, collateral, oldCollateral *fa.Analysis) (ta *dbFlagAna) {
 	ta = new(dbFlagAna)
-	ta.move = move
+	ta.moveix = moveix
 	ta.lost = newDbFlagAnaSim(oldLost, lost)
 	if collateral != nil {
 		ta.coll = newDbFlagAnaSim(oldCollateral, collateral)
@@ -341,14 +304,14 @@ func (dba *dbFlagAna) isCollLoseGame() bool {
 	return dba.coll != nil && dba.coll.ana.IsLost && dba.coll.isLosingGame
 }
 
-func dbFlagCalcImprovProb(oldAna, ana *flag.Analysis) (diffWinProb, diffPhalanxProb float64) {
+func dbFlagCalcImprovProb(oldAna, ana *fa.Analysis) (diffWinProb, diffPhalanxProb float64) {
 	oldWinProb, oldPhalanxprob := flagAnaProb(oldAna)
 	winProb, phalanxprob := flagAnaProb(ana)
 	diffWinProb = winProb - oldWinProb
 	diffPhalanxProb = phalanxprob - oldPhalanxprob
 	return diffWinProb, diffPhalanxProb
 }
-func flagAnaProb(flagAna *flag.Analysis) (win, phalanx float64) {
+func flagAnaProb(flagAna *fa.Analysis) (win, phalanx float64) {
 	if flagAna.Analysis != nil && !flagAna.IsFog && !flagAna.IsNewFlag {
 		targetRank := flagAna.TargetRank
 		if flagAna.IsTargetMade {
@@ -366,7 +329,7 @@ func flagAnaProb(flagAna *flag.Analysis) (win, phalanx float64) {
 			if combiAna == nil {
 				break
 			}
-			if combiAna.Comb.Formation.Value >= cards.FPhalanx.Value && combiAna.Prop > 0 {
+			if combiAna.Comb.Formation.Value >= card.FPhalanx.Value && combiAna.Prop > 0 {
 				phalanx = phalanx + combiAna.Prop
 			}
 		}

@@ -12,25 +12,25 @@ import (
 )
 
 const (
-	actIDMess       = 1
-	actIDInvite     = 2
-	actIDInvAccept  = 3
-	actIDInvDecline = 4
-	actIDInvRetract = 5
-	actIDMove       = 6
-	actIDQuit       = 7
-	actIDWatch      = 8
-	actIDWatchStop  = 9
-	actIDList       = 10
-	actIDSave       = 11
+	ACTIDMess       = 1
+	ACTIDInvite     = 2
+	ACTIDInvAccept  = 3
+	ACTIDInvDecline = 4
+	ACTIDInvRetract = 5
+	ACTIDMove       = 6
+	ACTIDQuit       = 7
+	ACTIDWatch      = 8
+	ACTIDWatchStop  = 9
+	ACTIDList       = 10
+	ACTIDSave       = 11
 
-	jtMess         = 1
-	jtInvite       = 2
-	jtPlaying      = 3
-	jtWatching     = 4
-	jtList         = 5
-	jtCloseCon     = 6
-	jtClearInvites = 7
+	JTMess         = 1
+	JTInvite       = 2
+	JTPlaying      = 3
+	JTWatching     = 4
+	JTList         = 5
+	JTCloseCon     = 6
+	JTClearInvites = 7
 
 	wrtBuffSIZE  = 10
 	wrtBuffLIMIT = 8
@@ -298,22 +298,22 @@ func handlePlayerAction(
 	watchGameCh chan<- *playerWatchGameData) (isUpd bool) {
 
 	switch act.ActType {
-	case actIDMess:
+	case ACTIDMess:
 		isUpd = actMessage(act, readList, sendCh, player.id, player.name)
-	case actIDInvite:
+	case ACTIDInvite:
 		isUpd = actSendInvite(sendInvites, inviteResponseCh, player.doneComCh,
 			act, readList, sendCh, player.id, player.name, gameState)
-	case actIDInvAccept:
+	case ACTIDInvAccept:
 		isUpd = actAccInvite(recievedInvites, act, sendCh, playerGameCh, player.doneComCh,
 			player.id, gameState)
-	case actIDInvDecline:
+	case ACTIDInvDecline:
 		isUpd = actDeclineInvite(recievedInvites, act, player.id)
-	case actIDInvRetract:
+	case ACTIDInvRetract:
 		actRetractInvite(sendInvites, act)
-	case actIDMove:
+	case ACTIDMove:
 		log.Printf(log.DebugMsg, "handle move for player id: %v Name: %v, Move: %v", player.id, player.name, act)
 		actMove(act, gameState, sendCh, player.errCh, player.id)
-	case actIDSave:
+	case ACTIDSave:
 		if gameState.waitingForClient() || gameState.waitingForServer() {
 			gameState.closeChannel()
 		} else {
@@ -321,19 +321,19 @@ func handlePlayerAction(
 			sendSysMess(sendCh, errTxt)
 			player.errCh <- errors.Wrap(NewPlayerErr(errTxt, player.id), log.ErrNo(19))
 		}
-	case actIDQuit:
+	case ACTIDQuit:
 		if gameState.waitingForClient() {
 			gameState.respCh <- SMQuit
 		} else {
 			sendSysMess(sendCh, "Quitting game out of turn is not possible.")
 			player.errCh <- errors.Wrap(NewPlayerErr("Quitting game out of turn", player.id), log.ErrNo(20))
 		}
-	case actIDWatch:
+	case ACTIDWatch:
 		isUpd = actWatch(watchGames, act, watchGameCh, player.doneComCh, readList,
 			sendCh, player.id)
-	case actIDWatchStop:
+	case ACTIDWatchStop:
 		actWatchStop(watchGames, act, sendCh, player.id)
-	case actIDList:
+	case ACTIDList:
 		isUpd = true
 	default:
 		player.errCh <- errors.Wrap(NewPlayerErr("Action do not exist", player.id), log.ErrNo(21))
@@ -655,7 +655,7 @@ func actWatchStop(watchGames map[int]*JoinWatchChCl, act *Action,
 	joinWatchChCl, found := watchGames[act.ID]
 	if found {
 		stopWatch(joinWatchChCl, playerID)
-		delete(watchGames, act.ID) //TODO maybe send stop to the player
+		delete(watchGames, act.ID) //TODO MAYBE send stop to the player
 	} else {
 		txt := fmt.Sprintf("Stop watching player %v failed", act.ID)
 		sendSysMess(sendCh, txt)
@@ -1012,19 +1012,19 @@ func netWriteAddJSONType(data interface{}) (jdata *JsonData) {
 	jdata.Data = data
 	switch data.(type) {
 	case map[string]*PubData:
-		jdata.JsonType = jtList
+		jdata.JsonType = JTList
 	case *Invite:
-		jdata.JsonType = jtInvite
+		jdata.JsonType = JTInvite
 	case *MesData:
-		jdata.JsonType = jtMess
+		jdata.JsonType = JTMess
 	case *PlayingChData:
-		jdata.JsonType = jtPlaying
+		jdata.JsonType = JTPlaying
 	case *WatchingChData:
-		jdata.JsonType = jtWatching
+		jdata.JsonType = JTWatching
 	case CloseCon:
-		jdata.JsonType = jtCloseCon
+		jdata.JsonType = JTCloseCon
 	case ClearInvites:
-		jdata.JsonType = jtClearInvites
+		jdata.JsonType = JTClearInvites
 	default:
 		txt := fmt.Sprintf("Message not implemented yet: %v\n", data)
 		panic(txt)

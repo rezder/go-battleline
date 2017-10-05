@@ -11,6 +11,7 @@ import (
 type Flag struct {
 	Players   [2]FlagPlayer
 	Positions [2]pos.Card
+	ConePos   pos.Cone
 	IsWon     bool
 	IsMud     bool
 	IsFog     bool
@@ -20,6 +21,19 @@ func (f *Flag) String() string {
 	return fmt.Sprintf("Flag{Players:%v,Positions:%v,IsWon:%v,IsMud:%v,IsFog:%v}",
 		f.Players, f.Positions, f.IsWon, f.IsMud, f.IsFog)
 }
+func (f *Flag) Copy() (c *Flag) {
+	if f != nil {
+		c = new(Flag)
+		c.ConePos = f.ConePos
+		c.IsWon = f.IsWon
+		c.IsMud = f.IsMud
+		c.IsFog = f.IsFog
+		for i, player := range f.Players {
+			c.Players[i] = player.Copy()
+		}
+	}
+	return c
+}
 
 // FlagPlayer the player in a flag.
 type FlagPlayer struct {
@@ -28,15 +42,38 @@ type FlagPlayer struct {
 	Envs    []card.Env
 }
 
+func (f FlagPlayer) Copy() (c FlagPlayer) {
+	if f.Troops != nil {
+		c.Troops = make([]card.Troop, len(f.Troops))
+		copy(c.Troops, f.Troops)
+	}
+	if f.Morales != nil {
+		c.Morales = make([]card.Morale, len(f.Morales))
+		copy(c.Morales, f.Morales)
+	}
+	if f.Envs != nil {
+		c.Envs = make([]card.Env, len(f.Envs))
+		copy(c.Envs, f.Envs)
+	}
+	return c
+}
+
 // NewFlag creates a flag.
 func NewFlag(ix int, posCards PosCards, conePos [10]pos.Cone) (f *Flag) {
 	f = new(Flag)
-	f.IsWon = conePos[ix+1].IsWon()
+	f.ConePos = conePos[ix+1]
+	f.IsWon = f.ConePos.IsWon()
 	f.Positions[0] = pos.CardAll.Players[0].Flags[ix]
 	f.Positions[1] = pos.CardAll.Players[1].Flags[ix]
 	if !f.IsWon {
-		f.Players[0].Troops, f.Players[0].Morales, _, f.Players[0].Envs = posCards.SortedCards(f.Positions[0])
-		f.Players[1].Troops, f.Players[1].Morales, _, f.Players[1].Envs = posCards.SortedCards(f.Positions[1])
+		cards := posCards.SortedCards(f.Positions[0])
+		f.Players[0].Troops = cards.Troops
+		f.Players[0].Morales = cards.Morales
+		f.Players[0].Envs = cards.Envs
+		cards = posCards.SortedCards(f.Positions[1])
+		f.Players[1].Troops = cards.Troops
+		f.Players[1].Morales = cards.Morales
+		f.Players[1].Envs = cards.Envs
 		envs := make([]card.Env, len(f.Players[0].Envs)+len(f.Players[1].Envs))
 		if len(envs) > 0 {
 			copy(envs, f.Players[0].Envs)
@@ -89,8 +126,16 @@ func (f *Flag) HasFormation(player int) bool {
 	return false
 }
 
+// FormationSize the size of formation 3 or 4.
+func (f *Flag) FormationSize() (size int) {
+	return formationSize(f.IsMud)
+}
+func (f *Flag) PlayerFormationSize(playerix int) int {
+	return len(f.Players[playerix].Troops) + len(f.Players[playerix].Morales)
+}
+
 //IsClaimable return true it the player can succesfully claim the flag.
-func (f *Flag) IsClaimable(player int, deckTroops []card.Troop) (isClaim bool, exCardixs []card.Move) {
+func (f *Flag) IsClaimable(player int, deckTroops []card.Troop) (isClaim bool, exCardixs []card.Card) {
 	if f.HasFormation(player) {
 		formation, strenght := eval(f.Players[player].Troops, f.Players[player].Morales, f.IsMud, f.IsFog)
 		if formation == &card.FWedge && (strenght == 27 && !f.IsMud || strenght == 34 && f.IsMud) {
@@ -121,12 +166,12 @@ func (f *Flag) IsClaimable(player int, deckTroops []card.Troop) (isClaim bool, e
 				}
 			}
 			if !isClaim {
-				exCardixs = make([]card.Move, 0, 4)
+				exCardixs = make([]card.Card, 0, 4)
 				for _, troop := range exTroops {
-					exCardixs = append(exCardixs, card.Move(troop))
+					exCardixs = append(exCardixs, card.Card(troop))
 				}
 				for _, morale := range f.Players[opponent].Morales {
-					exCardixs = append(exCardixs, card.Move(morale))
+					exCardixs = append(exCardixs, card.Card(morale))
 				}
 			}
 		}
@@ -256,7 +301,7 @@ func sim1Card(
 	for _, simTroop := range deckTroops {
 		simTroops := make([]card.Troop, len(troops), len(troops)+noMissing)
 		copy(simTroops, troops)
-		simTroops = appendSortedTroop(simTroops, simTroop)
+		simTroops = simTroop.AppendStrSorted(simTroops)
 		simFormation, simStrenght := eval(simTroops, morales, isMud, isFog)
 		if simFormation.Value > targetFormation.Value ||
 			(simFormation.Value == targetFormation.Value && simStrenght > targetStrenght) {
@@ -278,8 +323,8 @@ func sim2Cards(
 	math.Perm2(len(deckTroops), func(v [2]int) bool {
 		simTroops := make([]card.Troop, len(troops), len(troops)+noMissing)
 		copy(simTroops, troops)
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[0]])
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[1]])
+		simTroops = deckTroops[v[0]].AppendStrSorted(simTroops)
+		simTroops = deckTroops[v[1]].AppendStrSorted(simTroops)
 		simFormation, simStrenght := eval(simTroops, morales, isMud, isFog)
 		if simFormation.Value > targetFormation.Value ||
 			(simFormation.Value == targetFormation.Value && simStrenght > targetStrenght) {
@@ -303,9 +348,9 @@ func sim3Cards(
 	math.Perm3(len(deckTroops), func(v [3]int) bool {
 		simTroops := make([]card.Troop, len(troops), len(troops)+noMissing)
 		copy(simTroops, troops)
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[0]])
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[1]])
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[2]])
+		simTroops = deckTroops[v[0]].AppendStrSorted(simTroops)
+		simTroops = deckTroops[v[1]].AppendStrSorted(simTroops)
+		simTroops = deckTroops[v[2]].AppendStrSorted(simTroops)
 		simFormation, simStrenght := eval(simTroops, morales, isMud, isFog)
 		if simFormation.Value > targetFormation.Value ||
 			(simFormation.Value == targetFormation.Value && simStrenght > targetStrenght) {
@@ -327,10 +372,10 @@ func sim4Cards(
 	isClaim = true
 	math.Perm4(len(deckTroops), func(v [4]int) bool {
 		simTroops := make([]card.Troop, 0, noMissing)
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[0]])
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[1]])
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[2]])
-		simTroops = appendSortedTroop(simTroops, deckTroops[v[3]])
+		simTroops = deckTroops[v[0]].AppendStrSorted(simTroops)
+		simTroops = deckTroops[v[1]].AppendStrSorted(simTroops)
+		simTroops = deckTroops[v[2]].AppendStrSorted(simTroops)
+		simTroops = deckTroops[v[3]].AppendStrSorted(simTroops)
 		simFormation, simStrenght := eval(simTroops, morales, isMud, isFog)
 		if simFormation.Value > targetFormation.Value ||
 			(simFormation.Value == targetFormation.Value && simStrenght > targetStrenght) {

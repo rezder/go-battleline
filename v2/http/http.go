@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/v2/http/games"
+	"github.com/rezder/go-battleline/v2/http/login"
 	"github.com/rezder/go-error/log"
 	"golang.org/x/net/websocket"
 	"net"
@@ -217,14 +218,14 @@ func (g *logInPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status, sid, err := g.clients.LogIn(name, pw)
 	if err != nil {
 		g.errCh <- err
-		status = LogInStatusAll.Err
+		status = login.StatusAll.Err
 	} else if status.IsOk() {
 		setCookies(w, name, sid)
 	} else if status.IsInValid() {
 		err = errors.New(fmt.Sprintf(log.ErrNo(10)+"Login failed! %v Ip: %v", status, r.RemoteAddr))
 		g.errCh <- err
 	}
-	err = httpWrite(struct{ LogInStatus LogInStatus }{LogInStatus: status}, w)
+	err = httpWrite(struct{ LogInStatus login.Status }{LogInStatus: status}, w)
 	if err != nil {
 		g.errCh <- err
 	}
@@ -273,7 +274,7 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	pw := r.FormValue("pwdPassword")
 	status, sid, err := handler.clients.AddNew(name, pw)
 	if err != nil {
-		status = LogInStatusAll.Err
+		status = login.StatusAll.Err
 		handler.errCh <- errors.WithMessage(err, fmt.Sprintf("Failed to add client: %v", name))
 	} else {
 		if status.IsInValid() {
@@ -284,7 +285,7 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 			setCookies(w, name, sid)
 		}
 	}
-	err = httpWrite(struct{ LogInStatus LogInStatus }{LogInStatus: status}, w)
+	err = httpWrite(struct{ LogInStatus login.Status }{LogInStatus: status}, w)
 	if err != nil {
 		handler.errCh <- err
 	}

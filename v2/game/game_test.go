@@ -345,25 +345,25 @@ func TestView(t *testing.T) {
 	gamePos.CardPos[31] = pos.CardAll.Players[1].Hand
 	gamePos.LastMover = 0
 	gamePos.PlayerReturned = 1
-	testViews([2]card.Move{62, 1}, gamePos, t)
-	testViews([2]card.Move{62, 2}, gamePos, t)
-	testViews([2]card.Move{62, 13}, gamePos, t)
-	testViews([2]card.Move{62, 28}, gamePos, t)
+	testViews([2]card.Card{62, 1}, gamePos, t)
+	testViews([2]card.Card{62, 2}, gamePos, t)
+	testViews([2]card.Card{62, 13}, gamePos, t)
+	testViews([2]card.Card{62, 28}, gamePos, t)
 }
-func testViews(returned [2]card.Move, gamePos *Pos, t *testing.T) {
+func testViews(returned [2]card.Card, gamePos *Pos, t *testing.T) {
 	gamePos.CardsReturned = returned
 	returner := gamePos.PlayerReturned
 	posCards := NewPosCards(gamePos.CardPos)
-	hand0Troops, hand0Morales, hand0Guiles, hand0Envs := posCards.SortedCards(pos.CardAll.Players[0].Hand)
-	hand1Troops, hand1Morales, hand1Guiles, hand1Envs := posCards.SortedCards(pos.CardAll.Players[1].Hand)
-	handNoTroops := [2]int{len(hand0Troops), len(hand1Troops)}
-	handNoTacs := [2]int{len(hand0Morales) + len(hand0Guiles) + len(hand0Envs), len(hand1Morales) + len(hand1Guiles) + len(hand1Envs)}
+	hand0 := posCards.SortedCards(pos.CardAll.Players[0].Hand)
+	hand1 := posCards.SortedCards(pos.CardAll.Players[1].Hand)
+	handNoTroops := [2]int{len(hand0.Troops), len(hand1.Troops)}
+	handNoTacs := [2]int{hand0.NoTacs(), hand1.NoTacs()}
 
 	t.Logf("Returned postions: %v,%v", gamePos.CardPos[returned[0]], gamePos.CardPos[returned[1]])
 	for _, v := range ViewAll.All() {
 		var noExpTacs [2]int
 		var noExpTroops [2]int
-		var expReturned [2]card.Move
+		var expReturned [2]card.Card
 		switch v {
 		case ViewAll.God:
 			expReturned = returned
@@ -411,14 +411,14 @@ func testViews(returned [2]card.Move, gamePos *Pos, t *testing.T) {
 		testCheckView(NewViewPos(gamePos, v, NoPlayer), noExpTacs, noExpTroops, expReturned, t)
 	}
 }
-func getBack(cardMove card.Move) card.Move {
+func getBack(cardMove card.Card) card.Card {
 	if cardMove.IsTac() {
 		return card.BACKTac
 	}
 	return card.BACKTroop
 }
 
-func testCheckView(viewPos *ViewPos, noTacs, noTroops [2]int, returned [2]card.Move, t *testing.T) {
+func testCheckView(viewPos *ViewPos, noTacs, noTroops [2]int, returned [2]card.Card, t *testing.T) {
 	if noTacs != viewPos.NoTacs || noTroops != viewPos.NoTroops || returned != viewPos.CardsReturned {
 		t.Errorf("View:%v deviates expected %v,%v,%v got %v,%v,%v", viewPos.View, noTroops, noTacs, returned, viewPos.NoTroops, viewPos.NoTacs, viewPos.CardsReturned)
 	}
