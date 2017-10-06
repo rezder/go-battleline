@@ -460,14 +460,17 @@ func simMudTrimFlag(simFlag *flag.Flag, cardix int) *flag.Flag {
 	}
 	return simFlag
 }
+
+//mudAutoDish finds the card that gives the best formation after
+//it is removed.
 func mudAutoDish(cardixs []int) (ix int) {
-	lowestRank := 1
-	lowestSum := 0
+	sumRank := 200
+	lowestRank := sumRank + 1
+	higestSum := 0
 	handCards := make([]int, 0, 0)
 	drawSet := make(map[int]bool)
 	drawNo := 0
 	mud := false
-	sumRank := 200
 	for _, outix := range cardixs {
 		simCardixs := slice.WithOutNew(cardixs, []int{outix})
 		rank := flag.CalcMaxRank(simCardixs, handCards, drawSet, drawNo, mud)
@@ -476,14 +479,14 @@ func mudAutoDish(cardixs []int) (ix int) {
 			rank = sumRank
 			sum = flag.MoraleTroopsSum(simCardixs)
 		}
-		if rank > lowestRank {
+		if rank < lowestRank {
 			lowestRank = rank
 			ix = outix
-			lowestSum = sum
+			higestSum = sum
 		} else if rank == sumRank && lowestRank == sumRank {
-			if sum < lowestSum {
+			if sum > higestSum {
 				ix = outix
-				lowestSum = sum
+				higestSum = sum
 			}
 		}
 
