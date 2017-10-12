@@ -36,7 +36,6 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 	var deltCardix int
 	var isClaim bool
 	var claim bat.MoveClaim
-	var claimView *MoveClaimView
 	var mudDishixs []int
 	var isSaveMove = false
 	for {
@@ -71,19 +70,16 @@ func table(ids [2]int, playerChs [2]chan<- *pub.MoveView, watchChCl *pub.WatchCh
 			}
 		} else {
 			move = game.Pos.Moves[moveix[1]]
+			deltCardix, claimsFailExs = game.Move(moveix[1])
 			scout, isScout := move.(bat.MoveScoutReturn)
 			if isScout {
 				move = *NewMoveScoutReturnView(scout)
 			} else {
 				claim, isClaim = move.(bat.MoveClaim)
 				if isClaim {
-					claimView = NewMoveClaimView(claim)
+					move = *NewMoveClaimView(claim, game.Pos, claimsFailExs)
 				}
 			}
-			deltCardix, claimsFailExs = game.Move(moveix[1])
-		}
-		if isClaim {
-			move = updateClaim(game.Pos, claimsFailExs, claimView)
 		}
 		move1, move2, moveBench := creaMove(mover, move, moveix[0], deltCardix, game.Pos, ids)
 		log.Printf(log.DebugMsg, "Sending move to playerid: %v\n%v\n", ids[0], move1)
@@ -124,26 +120,6 @@ func saveGame(ids [2]int, game *bat.Game, errCh chan<- error, saveDir string) {
 		err = errors.Wrap(err, log.ErrNo(18)+"Create server games file")
 		errCh <- err
 	}
-}
-
-//updateClaim update the MoveClaimView with the succesfully claim flags and the win
-//indicator. The updated view is casted and returned as the move.
-func updateClaim(
-	pos *bat.GamePos,
-	claimsFailExs [9][]int,
-	claimView *MoveClaimView) (move bat.Move) {
-
-	for _, v := range claimView.Claim {
-		if pos.Flags[v].Claimed() {
-			claimView.Claimed = append(claimView.Claimed, v)
-		}
-	}
-	claimView.FailsExs = claimsFailExs
-	if pos.State == bat.TURNFinish {
-		claimView.Win = true
-	}
-	move = *claimView
-	return move
 }
 
 //creaMove Create a player move.
@@ -474,6 +450,23 @@ type MoveClaimView struct {
 	JsonType string
 }
 
+func NewMoveClaimView(move bat.MoveClaim, pos *bat.GamePos, claimFailExs [9][]int) (m *MoveClaimView) {
+	m = new(MoveClaimView)
+	m.Claim = make([]int, len(move.Flags))
+	m.Claimed = make([]int, 0, len(move.Flags))
+	copy(m.Claim, move.Flags)
+	m.JsonType = "MoveClaimView"
+	for _, v := range move.Flags {
+		if pos.Flags[v].Claimed() {
+			m.Claimed = append(m.Claimed, v)
+		}
+	}
+	m.FailsExs = claimFailExs
+	if pos.State == bat.TURNFinish {
+		m.Win = true
+	}
+	return m
+}
 func (m MoveClaimView) Equal(other MoveClaimView) (equal bool) {
 	if m.Win == other.Win && slice.Equal(m.Claim, other.Claim) &&
 		slice.Equal(m.Claimed, other.Claimed) {
@@ -500,15 +493,6 @@ func (m MoveClaimView) MoveEqual(other bat.Move) (equal bool) {
 func (m MoveClaimView) Copy() (c bat.Move) {
 	c = m //no deep copy
 	return c
-}
-
-func NewMoveClaimView(claim bat.MoveClaim) (m *MoveClaimView) {
-	m = new(MoveClaimView)
-	m.Claim = make([]int, len(claim.Flags))
-	m.Claimed = make([]int, 0, len(claim.Flags))
-	copy(m.Claim, claim.Flags)
-	m.JsonType = "MoveClaimView"
-	return m
 }
 
 //MoveInit the initial move in a new game.

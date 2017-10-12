@@ -166,20 +166,19 @@ func extractMposs(game *bat.Game) (meta *Meta, winnerMPosJoins, loserMPosJoins [
 	mover := 0
 	game.GameMoveLoop(func(
 		moveGameix int,
-		pos *bat.GamePos,
-		moveCardix,
-		dealtix,
-		moveix int,
+		prePos, postPos *bat.GamePos,
+		moveCardix, dealtix, moveix int,
 		move bat.Move,
 		isGiveUp, isPass bool,
 		claimFailExs [9][]int,
+		mudDishixs []int,
 	) {
-		mover = pos.Player
+		mover = prePos.Player
 		if isGiveUp {
 			meta.GiveUp = true
 		} else {
-			mPos := CreatePos(pos, move, scoutReturnMove, isPass, moveCardix, mover, scoutReturnMover, moveGameix)
-			mPosJoin := NewMPosJoin(mPos, pos.MovesHand, pos.MovePass, moveCardix, moveix, isPass)
+			mPos := CreatePos(prePos, move, scoutReturnMove, isPass, moveCardix, mover, scoutReturnMover, moveGameix)
+			mPosJoin := NewMPosJoin(mPos, prePos.MovesHand, prePos.MovePass, moveCardix, moveix, isPass)
 			mPosJoins[mover] = append(mPosJoins[mover], mPosJoin)
 			if moveCardix != 0 {
 				meta.Players[mover].AddHandMove(move)

@@ -122,7 +122,7 @@ func (pos *Pos) UpdMove(moveView *pub.MoveView) (done bool) {
 				pos.Deck.OppDraw(move.Deck == bat.DECKTroop)
 				if moveView.MoveCardix == cards.TCScout {
 					pos.Deck.OppPlay(cards.TCScout)
-					pos.PlayDish.DishCard(cards.TCScout)
+					pos.OppDish.DishCard(cards.TCScout)
 				}
 			}
 		case tables.MoveClaimView:

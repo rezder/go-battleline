@@ -264,7 +264,7 @@ func (dba *dbFlagAna) compare(other *dbFlagAna) (comp int) {
 	if !dba.lost.equal(other.lost) {
 		taIsNotLost := !dba.lost.ana.IsLost && !dba.isCollLoseGame()
 		otIsNotLost := !other.lost.ana.IsLost && !other.isCollLoseGame()
-		comp = dbFlagLessCompare(!taIsNotLost, otIsNotLost, func() bool {
+		comp = dbFlagLessCompare(taIsNotLost, otIsNotLost, func() bool {
 			return dbFlagLessCompareProb(dba.lost, other.lost)
 		})
 	} else {

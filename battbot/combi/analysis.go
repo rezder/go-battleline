@@ -84,8 +84,17 @@ func Ana(comb *Combination, flagCards []int, handCards []int, drawSet map[int]bo
 
 			} //end switch
 		} else { //Only tacs
-			//Should not bee needed
-			panic("Illegal argument flag most have troops, this have only moral tactic troops")
+			// we can handle only one special case, this is need for sim kill mud but dont call this function with only morales
+			if len(flagMorales) == 3 && formationNo == 3 {
+				battalion21 := Combinations3[24]
+				if ana.Comb != battalion21 {
+					ana.Prop = 0
+				} else {
+					ana.Prop = 1
+				}
+			} else {
+				panic(fmt.Sprintf("Illegal argument flag most have troops, this have only moral tactic cards: %v,formationNo: %v", flagCards, formationNo))
+			}
 		}
 	}
 	return ana

@@ -78,7 +78,7 @@ func (game *Game) ResetGame() (moves [][2]int) {
 
 //histMove update game with stored move.
 //#game
-func histMove(moveixs [2]int, game *Game) (move Move, moveCardix, dealtix int, isPass, isGiveUp bool, claimFailExs [9][]int) {
+func histMove(moveixs [2]int, game *Game) (move Move, moveCardix, dealtix int, isPass, isGiveUp bool, claimFailExs [9][]int, mudDishixs []int) {
 	switch {
 	case moveixs[1] == SMGiveUp:
 		game.Quit(game.Pos.Player)
@@ -89,7 +89,7 @@ func histMove(moveixs [2]int, game *Game) (move Move, moveCardix, dealtix int, i
 	case moveixs[1] >= 0:
 		if moveixs[0] > 0 {
 			move = game.Pos.MovesHand[moveixs[0]][moveixs[1]]
-			dealtix, _ = game.MoveHand(moveixs[0], moveixs[1])
+			dealtix, mudDishixs = game.MoveHand(moveixs[0], moveixs[1])
 			moveCardix = moveixs[0]
 		} else {
 			move = game.Pos.Moves[moveixs[1]]
@@ -98,7 +98,7 @@ func histMove(moveixs [2]int, game *Game) (move Move, moveCardix, dealtix int, i
 	default:
 		panic("This should not happen. Move data is corrupt")
 	}
-	return move, moveCardix, dealtix, isPass, isGiveUp, claimFailExs
+	return move, moveCardix, dealtix, isPass, isGiveUp, claimFailExs, mudDishixs
 }
 
 //CalcPos calculate the current posistion from the initial position and
@@ -547,11 +547,19 @@ func Load(file *os.File) (game *Game, err error) {
 
 	return game, err
 }
-func (game *Game) GameMoveLoop(posFunc func(gameMoveix int, pos *GamePos, moveCardix, dealtix, moveix int, move Move, isGiveUp, isPass bool, claimFailExs [9][]int)) {
+func (game *Game) GameMoveLoop(posFunc func(
+	gameMoveix int,
+	prePos, postPos *GamePos,
+	moveCardix, dealtix, moveix int,
+	move Move,
+	isGiveUp, isPass bool,
+	claimFailExs [9][]int,
+	mudDishixs []int,
+)) {
 	moves := game.ResetGame()
 	for gameMoveix, moveixs := range moves {
 		prePos := game.Pos.Copy()
-		move, moveCardix, dealtix, isPass, isGiveUp, claimFailexs := histMove(moveixs, game)
-		posFunc(gameMoveix, prePos, moveCardix, dealtix, moveixs[1], move, isGiveUp, isPass, claimFailexs)
+		move, moveCardix, dealtix, isPass, isGiveUp, claimFailexs, mudDishixs := histMove(moveixs, game)
+		posFunc(gameMoveix, prePos, game.Pos, moveCardix, dealtix, moveixs[1], move, isGiveUp, isPass, claimFailexs, mudDishixs)
 	}
 }

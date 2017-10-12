@@ -134,7 +134,19 @@ func TestAnaBad(t *testing.T) {
 	combiTest(t, 48, flagCards, handCards, dummies, 4)
 	//t.Error("Forced error")
 }
-
+func TestAllMorales(t *testing.T) {
+	flagCards := []int{69, 68, 67}
+	handCards := []int{5, 6, 7, 18, 25, 37, 58}
+	dummies := []int{29, 36}
+	prop := combiTest(t, 24, flagCards, handCards, dummies, 3)
+	if prop != 1 {
+		t.Error("All morale cards should be battalion strenght 21")
+	}
+	prop = combiTest(t, 23, flagCards, handCards, dummies, 3)
+	if prop == 1 {
+		t.Error("All morale cards should be battalion strenght 21")
+	}
+}
 func combiMultiTest(t *testing.T, combiNo3, combiNo4 int, combination, dummies []int) {
 	flagCards := []int{combination[0]}
 	handCards := make([]int, 7)

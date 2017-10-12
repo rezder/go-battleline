@@ -266,7 +266,7 @@ func countFlags(
 	return no
 }
 func isFlagWonOrClaimed(flagAna *flag.Analysis) bool {
-	return flagAna.IsWin() || flagAna.Flag.Claimed == flag.CLAIMPlay
+	return (!flagAna.IsClaimed && flagAna.IsWin()) || flagAna.Flag.Claimed == flag.CLAIMPlay
 }
 func isOffenceTac(tac int) bool {
 	return tac == cards.TC123 || tac == cards.TCDarius || tac == cards.TCAlexander || tac == cards.TC8

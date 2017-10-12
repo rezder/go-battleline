@@ -371,7 +371,6 @@ func lostFlagTacticMove(
 	deck *botdeck.Deck,
 	deckMaxValues []int,
 	handMoves map[string][]bat.Move) (cardix int, move bat.Move) {
-
 	if playTacAna.botNo > 0 {
 		if len(handTacixs) > 2 && deck.DeckTroopNo() > 1 && slice.Contain(handTacixs, cards.TCScout) {
 			if slice.Contain(handTacixs, cards.TCTraitor) || len(handTacixs) == 4 {
@@ -1050,12 +1049,12 @@ Loop:
 		if cards.IsMorale(tac) {
 			isLeader := cards.IsLeader(tac)
 			if (isLeader && playTacAna.botLeader) || !isLeader {
-				for i := 0; i < len(priFlagixs); i++ {
-					if !flagsAna[i].IsNewFlag && flagsAna[i].IsPlayable {
-						isWin, _ := tacticMoveSim(flagsAna[i].Flagix, flagsAna[i].Flag, tac, hand.Troops, deck, deckMaxValues)
+				for _, flagix := range priFlagixs {
+					if !flagsAna[flagix].IsNewFlag {
+						isWin, _ := tacticMoveSim(flagix, flagsAna[flagix].Flag, tac, hand.Troops, deck, deckMaxValues)
 						if isWin {
 							tacix = tac
-							move = *bat.NewMoveCardFlag(flagsAna[i].Flagix)
+							move = *bat.NewMoveCardFlag(flagix)
 							break Loop
 						}
 					}
