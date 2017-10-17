@@ -868,7 +868,7 @@ func clearInvites(receivedInvites map[int]*pub.Invite, sendInvites map[int]*pub.
 			close(invite.Retract)
 		}
 		for id := range sendInvites {
-			delete(receivedInvites, id)
+			delete(sendInvites, id)
 		}
 	}
 }
