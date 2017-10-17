@@ -26,25 +26,23 @@ func Game(oldGame *bold.Game, gameTime time.Time) (hist *game.Hist) {
 	}
 	oldGame.GameMoveLoop(func(
 		gameMoveix int,
-		pos *bold.GamePos,
-		moveCardix int,
-		dealtix int,
-		moveix int,
+		prePos, postPos *bold.GamePos,
+		moveCardix, dealtix, moveix int,
 		move bold.Move,
-		isGiveUp bool,
-		isPass bool,
+		isGiveUp, isPass bool,
 		claimFailExs [9][]int,
+		mudDishixs []int,
 	) {
 		if gameMoveix == 0 {
-			hist.AddMove(createInitMove(pos))
+			hist.AddMove(createInitMove(prePos))
 		}
 		if isPass {
-			passMove := game.NewMove(pos.Player, game.MoveTypeAll.Hand)
+			passMove := game.NewMove(prePos.Player, game.MoveTypeAll.Hand)
 			hist.AddMove(passMove)
 		} else if isGiveUp {
-			hist.AddMove(CreateMoveGivUp(pos.Flags, pos.Player))
+			hist.AddMove(CreateMoveGivUp(prePos.Flags, prePos.Player))
 		} else {
-			hist.AddMove(Move(move, pos.Player, moveCardix, dealtix, pos.Turn.State, claimFailExs))
+			hist.AddMove(Move(move, prePos.Player, moveCardix, dealtix, prePos.Turn.State, claimFailExs))
 		}
 	})
 	if oldGame.Pos.State != bold.TURNFinish && oldGame.Pos.State != bold.TURNQuit {

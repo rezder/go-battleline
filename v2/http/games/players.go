@@ -113,6 +113,7 @@ Loop:
 				done = true
 				if len(list) > 0 {
 					for _, player := range list {
+						log.Printf(log.DebugMsg, "Booting(closing boot channel) player: %v,%v", player.Name, player.ID)
 						close(player.BootCh)
 					}
 					joinCh = nil // do not listen any more
@@ -198,10 +199,10 @@ func (player *Player) Serve() {
 	wrtBrookCh := make(chan struct{})
 	wrtDoneCh := make(chan struct{})
 	readList := player.pubList.Read()
-	go netWrite(player.ws, sendCh, player.errCh, wrtBrookCh, wrtDoneCh)
+	go netWrite(player.ws, sendCh, player.errCh, wrtBrookCh, wrtDoneCh, player.id)
 
 	c := make(chan *Action, 1)
-	go netRead(player.ws, c, player.doneComCh, player.errCh)
+	go netRead(player.ws, c, player.doneComCh, player.errCh, player.id)
 	var actChan <-chan *Action
 	actChan = c
 
@@ -222,6 +223,7 @@ Loop:
 	for {
 		select {
 		case <-player.bootCh:
+			log.Printf(log.DebugMsg, "Player %v boot.", player.id)
 			handleCloseDown(player.doneComCh, gameState, watchGames, player.id,
 				receivedInvites, sendInvites, sendCh, wrtDoneCh, false)
 			break Loop
@@ -234,7 +236,6 @@ Loop:
 			if open {
 				upd := handlePlayerAction(act, readList, sendCh, player, sendInvites,
 					receivedInvites, inviteResponseCh, gameState, playerGameCh, watchGames, watchGameCh)
-
 				if upd {
 					readList = player.pubList.Read()
 					sendCh <- readList
@@ -248,6 +249,7 @@ Loop:
 		case playingChData := <-playerGameCh:
 			readList = handleGameReceive(playingChData, sendCh, player.pubList, readList, gameState,
 				receivedInvites, sendInvites, player.id)
+
 		case wgd := <-watchGameCh:
 			if wgd.joinWatchChCl == nil { //set chan to nil for done
 				delete(watchGames, wgd.watchingPlayerID)
@@ -261,7 +263,7 @@ Loop:
 			readList = playerExist(player.pubList, readList, invite.InvitorID, sendCh)
 			_, found := readList[strconv.Itoa(invite.InvitorID)]
 			if found {
-				receivedInvites[invite.InvitorID] = invite
+				receivedInvites[invite.InvitorID] = invite //Two invite from the same player should not happen.
 				sendCh <- invite
 			}
 
@@ -435,8 +437,8 @@ func handleInviteResponse(
 
 	_, found := sendInvites[response.Responder] //if not found we rejected but he did not get the msg yet
 	if found {
-		delete(sendInvites, response.Responder)
 		if response.PlayingCh == nil {
+			delete(sendInvites, response.Responder)
 			invite.IsRejected = true
 			sendCh <- invite
 		} else {
@@ -467,10 +469,12 @@ func handleGameReceive(
 	readList map[string]*PubData,
 	gameState *GameState,
 	receivedInvites map[int]*Invite,
-	sendInvites map[int]*Invite, playerID int) (updReadList map[string]*PubData) {
+	sendInvites map[int]*Invite,
+	playerID int) (updReadList map[string]*PubData) {
 
 	updReadList = readList
 	if playingChData == nil {
+		log.Printf(log.DebugMsg, "Game done player:%v", playerID)
 		gameState.removeGame()
 		updReadList = pubList.Read()
 		sendCh <- updReadList
@@ -711,6 +715,7 @@ func actAccInvite(recInvites map[int]*Invite, act *Action, sendCh chan<- interfa
 			default:
 				select {
 				case invite.ResponseCh <- resp:
+					log.Printf(log.DebugMsg, "Player:%v send accept responds:%v to invite: %v start game listen", id, resp, invite)
 					go gameListen(playerGameCh, playerDoneComCh, playingRecCh, sendCh, invite)
 				case <-invite.DoneComCh:
 					txt := fmt.Sprintf("Accepting invite from %v failed player done", invite.InvitorName)
@@ -802,29 +807,34 @@ func actSendInvite(invites map[int]*Invite, respCh chan<- *InviteResponse, playe
 	invite := new(Invite)
 	invite.InvitorID = id
 	invite.InvitorName = name
-	p, found := readList[strconv.Itoa(act.ID)]
-	if found {
-		invite.ReceiverID = p.ID
-		invite.ReceiverName = p.Name
-		if !gameState.hasGame() {
-			invite.ResponseCh = respCh
-			invite.RetractCh = make(chan struct{})
-			invite.DoneComCh = playerDoneComCh
-			select {
-			case p.InviteCh <- invite:
-				invites[p.ID] = invite
-			case <-p.DoneComCh:
+	p, isFound := readList[strconv.Itoa(act.ID)]
+	if isFound {
+		_, isFound = invites[p.ID]
+		if !isFound {
+			invite.ReceiverID = p.ID
+			invite.ReceiverName = p.Name
+			if !gameState.hasGame() {
+				invite.ResponseCh = respCh
+				invite.RetractCh = make(chan struct{})
+				invite.DoneComCh = playerDoneComCh
+				select {
+				case p.InviteCh <- invite:
+					invites[p.ID] = invite
+				case <-p.DoneComCh:
+					invite.IsRejected = true
+					sendCh <- invite
+					m := fmt.Sprintf("Invite to %v failed player done", p.Name)
+					sendSysMess(sendCh, m)
+					isUpd = true
+				}
+			} else {
 				invite.IsRejected = true
 				sendCh <- invite
-				m := fmt.Sprintf("Invite to %v failed player done", p.Name)
+				m := fmt.Sprintf("Invite to %v cannot be extended while playing", p.Name)
 				sendSysMess(sendCh, m)
-				isUpd = true
 			}
 		} else {
-			invite.IsRejected = true
-			sendCh <- invite
-			m := fmt.Sprintf("Invite to %v cannot be extended while playing", p.Name)
-			sendSysMess(sendCh, m)
+			log.Printf(log.DebugMsg, "Player: %v ignore to send invite again", id)
 		}
 	} else {
 		invite.IsRejected = true
@@ -944,7 +954,7 @@ func clearInvites(receivedInvites map[int]*Invite, sendInvites map[int]*Invite,
 			close(invite.RetractCh)
 		}
 		for id := range sendInvites {
-			delete(receivedInvites, id)
+			delete(sendInvites, id)
 		}
 	}
 }
@@ -965,7 +975,8 @@ func netWrite(
 	dataCh <-chan interface{},
 	errCh chan<- error,
 	brokenConn chan struct{},
-	doneCh chan struct{}) {
+	doneCh chan struct{},
+	playerID int) {
 
 	broke := false
 	serverStop := false
@@ -984,7 +995,9 @@ Loop:
 			}
 		}
 		if !broke && !playerStop {
-			err := websocket.JSON.Send(ws, netWriteAddJSONType(data))
+			sendData := netWriteAddJSONType(data)
+			log.Printf(log.DebugMsg, "Sends: %v to Player: %v ", sendData, playerID)
+			err := websocket.JSON.Send(ws, sendData)
 			if err != nil {
 				errCh <- errors.Wrap(err, log.ErrNo(24)+"Websocket send")
 				broke = true
@@ -1036,7 +1049,12 @@ func netWriteAddJSONType(data interface{}) (jdata *JsonData) {
 //Keep reading until eof,an error or done. Done can not breake the read stream
 //so to make sure to end loop websocket must be closed.
 //It always close the channel before leaving.
-func netRead(ws *websocket.Conn, accCh chan<- *Action, playerDoneComCh chan struct{}, errCh chan<- error) {
+func netRead(
+	ws *websocket.Conn,
+	accCh chan<- *Action,
+	playerDoneComCh chan struct{},
+	errCh chan<- error,
+	playerID int) {
 
 Loop:
 	for {
@@ -1045,7 +1063,7 @@ Loop:
 		err := ws.SetReadDeadline(ts)
 		if err == nil {
 			err = websocket.JSON.Receive(ws, &act)
-			log.Printf(log.DebugMsg, "Action received: %v, Error: %v\n", act, err)
+			log.Printf(log.DebugMsg, "Player: %v receive action: %v, Error: %v\n", playerID, act, err)
 		}
 		if err == io.EOF {
 			break Loop

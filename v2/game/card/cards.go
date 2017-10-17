@@ -70,6 +70,7 @@ var (
 //and None. It just used to detect the different types of cards.
 type Card uint8
 
+//Format creates a nice string for print formated.
 func (m Card) Format(f fmt.State, c rune) {
 	if c == 'v' && f.Flag('+') {
 		switch {
@@ -196,7 +197,7 @@ func (t Troop) Color() int {
 	return ((int(t) - 1) / 10) + 1
 }
 
-//TroopAppendSorted add troops in order of strenght.
+//AppendStrSorted add troops in order of strenght.
 func (t Troop) AppendStrSorted(troops []Troop) []Troop {
 	no := len(troops)
 	troops = append(troops, 0)
@@ -329,7 +330,7 @@ func (e Env) String() string {
 	switch e {
 	case TCMud:
 		return "Mud"
-	case TCDeserter:
+	case TCFog:
 		return "Fog"
 	default:
 		panic("Not a envirioment card.")
@@ -433,6 +434,11 @@ func (c *Cards) No() int {
 	return c.NoTacs() + len(c.Troops)
 }
 
+//NoFormation the number of troops and morales
+func (c *Cards) NoFormation() int {
+	return len(c.Morales) + len(c.Troops)
+}
+
 //Tacs mashes the tactic cards together
 func (c *Cards) Tacs() (tacs []Card) {
 	tacs = make([]Card, 0, c.NoTacs())
@@ -447,6 +453,8 @@ func (c *Cards) Tacs() (tacs []Card) {
 	}
 	return tacs
 }
+
+//Contain checks if a card is cards.
 func (c *Cards) Contain(srcCard Card) bool {
 	switch {
 	case srcCard.IsEnv():

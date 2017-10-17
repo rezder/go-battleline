@@ -58,16 +58,17 @@ func TestGameFile(t *testing.T) {
 				newGame.LoadHist(hist)
 				oldGame.GameMoveLoop(func(
 					gameMoveix int,
-					pos *bold.GamePos,
+					prePos, postPos *bold.GamePos,
 					moveCardix, dealtix, moveix int,
 					move bold.Move,
 					isGiveUpMove, isPassMove bool,
-					claimFailExs [9][]int) {
-
+					claimFailExs [9][]int,
+					mudDishIxs []int,
+				) {
 					newGame.ScrollForward() //Init Move
 					newMoves := newGame.Pos.CalcMoves()
-					compareMoves(pos.Moves, pos.MovesHand, pos.MovePass, newMoves, move, pos, newGame.Pos, t)
-					compareCones(pos.Flags, newGame.Pos.ConePos, t)
+					compareMoves(prePos.Moves, prePos.MovesHand, prePos.MovePass, newMoves, move, prePos, newGame.Pos, t)
+					compareCones(prePos.Flags, newGame.Pos.ConePos, t)
 				})
 			}
 		}

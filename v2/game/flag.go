@@ -18,8 +18,8 @@ type Flag struct {
 }
 
 func (f *Flag) String() string {
-	return fmt.Sprintf("Flag{Players:%v,Positions:%v,IsWon:%v,IsMud:%v,IsFog:%v}",
-		f.Players, f.Positions, f.IsWon, f.IsMud, f.IsFog)
+	return fmt.Sprintf("Flag{Players:%v,Positions:%v,ConePos:%v,IsWon:%v,IsMud:%v,IsFog:%v}",
+		f.Players, f.Positions, f.ConePos, f.IsWon, f.IsMud, f.IsFog)
 }
 func (f *Flag) Copy() (c *Flag) {
 	if f != nil {

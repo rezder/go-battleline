@@ -22,7 +22,7 @@ type Analysis struct {
 	FlagValue        int
 	IsTargetMade     bool
 	IsLost           bool
-	IsWinn           bool //TODO remove n and replace IsWin() when confirmed ok.
+	IsWin            bool
 	IsNewFlag        bool
 	IsPlayable       bool
 	IsClaimed        bool
@@ -117,7 +117,7 @@ func NewAnalysis(
 		fa.FormationSize = flag.FormationSize()
 		fa.BotFormationSize = flag.PlayerFormationSize(playix)
 		if fa.BotFormationSize < flag.FormationSize() {
-			fa.IsPlayable = true
+			fa.IsPlayable = true // this is only morale or troop
 		}
 		botMoraleNo := len(flag.Players[playix].Morales)
 		if fa.BotFormationSize == botMoraleNo {
@@ -145,7 +145,7 @@ func NewAnalysis(
 			fa.IsLost = lost(fa.TargetRank, fa.TargetSum, fa.BotMaxSum, fa.BotMaxRank)
 		}
 		if !fa.IsLost {
-			fa.IsWinn = isWin(fa.TargetRank, fa.TargetSum, flag.IsFog, fa.IsTargetMade, fa.Analysis, flag.Players[playix].Troops,
+			fa.IsWin = isWin(fa.TargetRank, fa.TargetSum, flag.IsFog, fa.IsTargetMade, fa.Analysis, flag.Players[playix].Troops,
 				flag.Players[playix].Morales, fa.BotFormationSize, fa.FormationSize)
 		}
 		log.Printf(log.Debug, "Flag:%v Lost:%v BotRank:%v BotSum:%v TargetRank:%v TargetSum:%v\n", fa.Flagix, fa.IsLost, fa.BotMaxRank, fa.BotMaxSum, fa.TargetRank, fa.TargetSum)
@@ -211,50 +211,6 @@ func opp(ix int) (oppix int) {
 		oppix = 0
 	}
 	return oppix
-}
-
-//IsWin check for a won flag ignore that some troops on hand must be played first.
-//TODO remove IsWin
-func (ana *Analysis) IsWin() (isWin bool) {
-	if !ana.IsLost {
-		targetRank := ana.TargetRank
-		if targetRank == 0 && !ana.IsFog {
-			targetRank = 100
-		}
-		if ana.IsTargetMade && ana.TargetRank != 0 {
-			targetRank = targetRank - 1
-		}
-		if targetRank != 0 {
-			for _, combiAna := range ana.Analysis {
-				if combiAna.Prop == 1 {
-					if combiAna.Comb.Rank <= targetRank {
-						isWin = true
-					}
-					break
-				}
-				if combiAna.Comb.Rank > targetRank {
-					break
-				}
-			}
-		}
-		if !isWin {
-			if targetRank == 100 || targetRank == 0 {
-				curSum := MoraleTroopsSum(ana.Flag.Players[ana.Playix].Troops, ana.Flag.Players[ana.Playix].Morales)
-				if ana.BotFormationSize < ana.FormationSize {
-					curSum = curSum + ana.FormationSize - ana.BotFormationSize
-				}
-				if ana.TargetSum < curSum {
-					isWin = true
-				}
-			}
-		}
-
-	}
-	//TODO remove when confirmed.
-	if isWin != ana.IsWinn {
-		fmt.Println(" win deviates ?")
-	}
-	return isWin
 }
 
 // HandAnalyze create a rank analysis of each troop on the hand.

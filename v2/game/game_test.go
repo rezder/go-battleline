@@ -313,6 +313,18 @@ func TestCalcMoves(t *testing.T) {
 		t.Log(moves)
 		t.Errorf("No. calculated moves: %v deviates form expected moves:%v", len(moves), exp)
 	}
+	gamePos = NewPos()
+	gamePos.CardPos = [71]pos.Card{0, 8, 21, 13, 14, 14, 14, 6, 21, 13, 13, 8, 1, 22, 21, 6, 6, 16, 4, 10, 4, 19, 12, 2, 18, 3, 16, 5, 16, 5, 5, 8, 12, 11, 2, 19, 17, 19, 15, 21, 15, 11, 12, 2, 7, 3, 17, 9, 9, 9, 15, 22, 1, 1, 18, 3, 17, 11, 22, 22, 22, 21, 20, 10, 21, 5, 22, 21, 22, 15, 4}
+	gamePos.ConePos = [10]pos.Cone{0, 2, 2, 1, 0, 0, 2, 2, 0, 1}
+	gamePos.LastMoveType = MoveTypeAll.Cone
+	gamePos.LastMoveIx = 155
+	gamePos.LastMover = 1
+	moves = gamePos.CalcMoves()
+	exp = 9
+	if len(moves) != exp {
+		t.Log(moves)
+		t.Errorf("No. calculated moves: %v deviates form expected moves:%v", len(moves), exp)
+	}
 }
 func TestPass(t *testing.T) {
 	gamePos := NewPos()

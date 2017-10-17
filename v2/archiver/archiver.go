@@ -21,7 +21,8 @@ type Server struct {
 //NewServer create archiver server.
 func NewServer(db *bolt.DB, port string) (server *Server, err error) {
 	server = new(Server)
-	dbh := dbhist.New(dbhist.KeyPlayers, db, 500)
+	server.port = port
+	dbh := dbhist.New(dbhist.KeyPlayersTime, db, 500)
 	err = dbh.Init()
 	if err != nil {
 		return server, err

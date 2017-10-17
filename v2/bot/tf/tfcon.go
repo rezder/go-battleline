@@ -22,11 +22,19 @@ func New(tfaddr string) (tfc *Con, err error) {
 		return tfc, err
 	}
 	tfc.socket, err = tfc.context.NewSocket(zmq4.REQ)
-	tfc.socket.SetRcvtimeo(time.Second * 10) //return error with ErrNo EAGAIN
 	if err != nil {
 		_ = tfc.context.Term()
 		tfc.context = nil
 		err = errors.Wrap(err, "Error creating zmq socket")
+		return tfc, err
+	}
+	err = tfc.socket.SetRcvtimeo(time.Second * 10) //return error with ErrNo EAGAIN
+	if err != nil {
+		_ = tfc.socket.Close()
+		_ = tfc.context.Term()
+		tfc.socket = nil
+		tfc.context = nil
+		err = errors.Wrap(err, "Error creating zmq time")
 		return tfc, err
 	}
 	err = tfc.socket.SetLinger(1)
@@ -93,6 +101,8 @@ func (tfc *Con) ReqProba(data []byte, noMoves int) (proba []float64, err error) 
 	log.Printf(log.DebugMsg, "Zmq received %v", proba)
 	return proba, err
 }
+
+//Move select the move with the best probability
 func Move(probas []float64) (moveix int) {
 	var maxProba float64
 	for i, proba := range probas {

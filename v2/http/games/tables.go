@@ -110,9 +110,11 @@ Loop:
 			publishTables(games, pubList)
 		case start := <-startCh:
 			if isPlaying(start.PlayerIds, games) {
+				log.Printf(log.DebugMsg, "Close requested start game: %v", start)
 				close(start.PlayerChs[0])
 				close(start.PlayerChs[1])
 			} else {
+				log.Printf(log.DebugMsg, "Tables starts game: %v", start)
 				var savedGame *bg.Game
 				savedGame, start = getOldGame(start, savedGamesDb, errCh)
 				joinWatchCh := NewJoinWatchChCl()

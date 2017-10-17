@@ -112,7 +112,7 @@ func (deck *Deck) MaxStrenghts() []int {
 func maxStrenghts(troops []card.Troop) (strenghts []int) {
 	strenghts = make([]int, 0, 4)
 	for i, troop := range troops {
-		strenghts[i] = troop.Strenght()
+		strenghts = append(strenghts, troop.Strenght())
 		if i == 3 {
 			break
 		}

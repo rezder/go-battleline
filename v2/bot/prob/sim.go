@@ -26,7 +26,7 @@ type Sim struct {
 //Desserter only out-flag.
 //Traitor have both and the may be the same.
 //Redeploy may have two or only a out-flag.
-func (sim *Sim) Move(move *game.Move) (inFlagAna, outFlagAna *fa.Analysis) {
+func (sim *Sim) Move(move *game.Move) (outFlagAna, inFlagAna *fa.Analysis) {
 	simHand, simOutFlag, simInFlag, outFlagix, inFlagix := simHandMove(sim.posCards, sim.conePos, move)
 	if inFlagix != -1 {
 		inFlagAna = fa.NewAnalysis(sim.botix, simInFlag, simHand, sim.oppHand, sim.deckMaxStrenghts, sim.deck, inFlagix, true)
@@ -34,7 +34,7 @@ func (sim *Sim) Move(move *game.Move) (inFlagAna, outFlagAna *fa.Analysis) {
 			outFlagAna = inFlagAna
 		}
 	}
-	if outFlagix != -1 && outFlagAna != nil {
+	if outFlagix != -1 && outFlagAna == nil {
 		outFlagAna = fa.NewAnalysis(sim.botix, simOutFlag, simHand, sim.oppHand, sim.deckMaxStrenghts, sim.deck, outFlagix, true)
 	}
 	return outFlagAna, inFlagAna
@@ -81,7 +81,7 @@ func simHandMove(
 			}
 		}
 		if trimFlagix != -1 {
-			simPosCards = mudTrimFlag(simPosCards, trimFlagix)
+			simPosCards, _ = mudTrimFlag(simPosCards, trimFlagix)
 		}
 		for _, move := range moves {
 			if pos.Card(move.OldPos).IsOnHand() {

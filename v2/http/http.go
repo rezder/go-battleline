@@ -292,7 +292,7 @@ func (handler *clientPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 }
 
 //Add keep a live for 3 minute to a tcp handler.
-//TODO CHECK why this is deafult but id do not know how good an idea this is.
+//TODO CHECK why this is default but id do not know how good an idea this is.
 type tcpKeepAliveListener struct {
 	*net.TCPListener
 }

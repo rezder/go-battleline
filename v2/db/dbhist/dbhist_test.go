@@ -85,7 +85,7 @@ func testOpenDb(filePath string, keyf func(*game.Hist) []byte, t *testing.T) (bd
 		t.Fatalf("Open database file: %v failed: %v", filePath, err)
 	}
 
-	bdb = New(KeyPlayersTime, db, 25)
+	bdb = New(keyf, db, 25)
 	err = bdb.Init()
 	if err != nil {
 		t.Fatalf("Init database failed: %v", err)

@@ -32,6 +32,7 @@ func NewKeep(
 	moves Moves,
 	deck *fa.Deck,
 	isBotFirst bool) (k *Keep) {
+
 	k = new(Keep)
 	k.botHand = botHand
 	k.NewFlagMoveix = -1
@@ -54,10 +55,12 @@ func NewKeep(
 		k.handAna = fa.HandAnalyze(k.botHand.Troops, deck, isBotFirst)
 		newCardMove, newFlagix := priNewFlagMove(k.PriFlagixs, flagsAna, k.handAna, k.botHand.Troops, k.flag)
 		if !newCardMove.IsNone() {
-			_, k.NewFlagMoveix = moves.FindHandFlag(newFlagix, newCardMove)
+			if len(moves) > 0 && moves[0].MoveType.IsHand() {
+				_, k.NewFlagMoveix = moves.FindHandFlag(newFlagix, newCardMove)
+			}
 			if newCardMove.IsTroop() {
 				troop := card.Troop(newCardMove)
-				keepMap.cardsMap[troop] = true
+				keepMap.cardsMap[troop] = true //This is random as any phalanx card may have more connected cards
 				keepMap.insert(k.handAna[troop], 2)
 				k.flagHand = keepMap.calcHand(k.botHand.Troops)
 			} else {
@@ -65,7 +68,7 @@ func NewKeep(
 			}
 		}
 	}
-	log.Printf(log.Debug, "Keep: flag,flagHand: %v,%v\n", k.flag, k.flagHand)
+	log.Printf(log.Debug, "Keep: flag,flagHand: %v,%v,keepMap:%v\n", k.flag, k.flagHand, keepMap)
 	return k
 }
 
@@ -158,14 +161,16 @@ func keepLowestStrenghts(
 	}
 	return troops
 }
-func keepFirstCard(keepTroops map[card.Troop]bool, troops []card.Troop) (firstTroop card.Card) {
-	for _, troop := range troops {
+
+func keepLastCard(keepTroops map[card.Troop]bool, troops []card.Troop) (lastTroop card.Card) {
+	for i := len(troops) - 1; i >= 0; i-- {
+		troop := troops[i]
 		if !keepTroops[troop] {
-			firstTroop = card.Card(troop)
+			lastTroop = card.Card(troop)
 			break
 		}
 	}
-	return firstTroop
+	return lastTroop
 }
 
 //RequestFlagHandLowestStrenght returns a troop from the hand,
@@ -178,20 +183,20 @@ func (k *Keep) RequestFlagHandLowestStrenght() (cardMove card.Card) {
 	return cardMove
 }
 
-// RequestFirst returns a troop that is not reserved by a flag
+// RequestLast returns a troop that is not reserved by a flag
 //formation if possible.
-func (k *Keep) RequestFirst(reqTroops []card.Troop) (troop card.Card) {
-	troop = keepFirstCard(k.flagHand, reqTroops)
+func (k *Keep) RequestLast(reqTroops []card.Troop) (troop card.Card) {
+	troop = keepLastCard(k.flagHand, reqTroops)
 	if troop.IsNone() {
-		troop = keepFirstCard(k.flag, reqTroops)
+		troop = keepLastCard(k.flag, reqTroops)
 	}
 	return troop
 }
 
-//RequestFirstHand returns a troop that is not reserved by a flag or
+//RequestLastHand returns a troop that is not reserved by a flag or
 //a hand(empty flag move ) formation if possible.
-func (k *Keep) RequestFirstHand(reqTroops []card.Troop) (troop card.Card) {
-	troop = keepFirstCard(k.flagHand, reqTroops)
+func (k *Keep) RequestLastHand(reqTroops []card.Troop) (troop card.Card) {
+	troop = keepLastCard(k.flagHand, reqTroops)
 	return troop
 }
 
@@ -296,7 +301,7 @@ func (k *Keep) DemandDump(
 	if len(k.flag) < len(k.botHand.Troops) {
 		for _, combiFlag := range flagsAna[flagix].Analysis {
 			if len(combiFlag.Playables) > 0 {
-				cardMove := keepFirstCard(k.flag, combiFlag.Playables)
+				cardMove := keepLastCard(k.flag, combiFlag.Playables)
 				if cardMove.IsTroop() {
 					logTxt = "A combination card"
 					troop = card.Troop(cardMove)
@@ -331,6 +336,20 @@ func newKeepMap() (km *keepMap) {
 	km.valueMap = make(map[int]int)
 	return km
 }
+func (km *keepMap) Len() (no int) {
+	no = len(km.cardsMap)
+	if len(km.colorMap) > 0 {
+		for _, colNo := range km.colorMap {
+			no = no + colNo
+		}
+	}
+	if len(km.valueMap) > 0 {
+		for _, strNo := range km.valueMap {
+			no = no + strNo
+		}
+	}
+	return no
+}
 func keepMapFlagAnaKeepTroops(flagAna *fa.Analysis) bool {
 	return !flagAna.IsFog && !flagAna.IsLost && !flagAna.IsNewFlag && flagAna.IsPlayable
 }
@@ -339,12 +358,10 @@ func keepMapFlagAnaKeepTroops(flagAna *fa.Analysis) bool {
 //formation the phalanx formations is also included.
 func (km *keepMap) insert(combiAnas []*combi.Analysis, missingNo int) {
 	cutOffFormationValue := 0
-	formationValue := 0
 	for _, combiAna := range combiAnas {
 		if cutOffFormationValue == 0 {
 			if combiAna.Prop > 0 {
 				cutOffFormationValue = combiAna.Comb.Formation.Value
-				formationValue = cutOffFormationValue
 				if card.FWedge.Value == cutOffFormationValue {
 					cutOffFormationValue = card.FPhalanx.Value
 				}
@@ -355,14 +372,14 @@ func (km *keepMap) insert(combiAnas []*combi.Analysis, missingNo int) {
 		} else {
 		Loop:
 			for _, troop := range combiAna.Playables {
-				switch formationValue {
+				switch combiAna.Comb.Formation.Value {
 				case card.FWedge.Value:
 					km.cardsMap[troop] = true
 				case card.FPhalanx.Value:
 					km.valueMap[troop.Strenght()] = km.valueMap[troop.Strenght()] + missingNo
 					break Loop
 				case card.FBattalion.Value:
-					km.valueMap[troop.Color()] = km.valueMap[troop.Color()] + missingNo
+					km.colorMap[troop.Color()] = km.colorMap[troop.Color()] + missingNo
 					break Loop
 				case card.FSkirmish.Value:
 					km.valueMap[troop.Strenght()] = km.valueMap[troop.Strenght()] + 1
@@ -405,52 +422,58 @@ func (km *keepMap) calcHand(handTroops []card.Troop) (handKeep map[card.Troop]bo
 	}
 	return handKeep
 }
-func priNewFlagMove(flagixs []int, //TODO The new flag move should take in to accout the conflicting target like keep but for deck. the problem flag(10,_,8) should count against newflag 8,8,8.
+func priNewFlagMove(flagixs []int,
 	flagsAna map[int]*fa.Analysis,
 	handAna map[card.Troop][]*combi.Analysis,
 	handTroops []card.Troop,
 	keepFlag map[card.Troop]bool) (moveCard card.Card, moveFlagix int) {
 
 	var logTxt string
-	logTxt = "New flag is rank move"
+
+	moveCard, moveFlagix, logTxt = newFlagPriTargetMove(flagixs, flagsAna, handAna, keepFlag, 1)
+	if moveCard.IsNone() {
+		emptyFlagixs := emptyPriFlagixs(flagixs, flagsAna)
+		if len(emptyFlagixs) > 0 {
+			moveCard, moveFlagix, logTxt = newFlagMadeCombiMove(handAna, keepFlag, emptyFlagixs)
+			if moveCard.IsNone() {
+				moveCard, moveFlagix, logTxt = newFlagPhalanxMove(handAna, keepFlag, emptyFlagixs) //what about keep
+			}
+		}
+		if moveCard.IsNone() {
+			moveCard, moveFlagix, logTxt = newFlagPriTargetMove(flagixs, flagsAna, handAna, keepFlag, 0)
+		}
+	}
+	if moveCard.IsTroop() {
+		log.Printf(log.Debug, "%v Troop: %v Flagix: %v", logTxt, card.Troop(moveCard), moveFlagix)
+	}
+
+	return moveCard, moveFlagix
+}
+func newFlagPriTargetMove(
+	priFlagixs []int,
+	flagsAna map[int]*fa.Analysis,
+	handAna map[card.Troop][]*combi.Analysis,
+	keepFlagTroops map[card.Troop]bool,
+	minOppFormSize int,
+) (moveCard card.Card, moveFlagix int, logTxt string) {
+
+	logTxt = fmt.Sprintf("New flag is target rank move opp. size: %v ", minOppFormSize)
 	moveFlagix = -1
-	for _, flagix := range flagixs {
+	for _, flagix := range priFlagixs {
 		flagAna := flagsAna[flagix]
-		if flagAna.IsNewFlag && flagAna.OppFormationSize > 0 {
+		if flagAna.IsNewFlag && flagAna.OppFormationSize >= minOppFormSize {
 			targetRank := flagAna.TargetRank
 			if flagAna.IsTargetMade {
 				targetRank = targetRank - 1
 			}
-			moveCard = newFlagTargetMove(handAna, targetRank)
+			moveCard = newFlagTargetMove(handAna, targetRank, keepFlagTroops)
 		}
 		if moveCard.IsTroop() {
 			moveFlagix = flagix
 			break
 		}
 	}
-	if moveCard.IsNone() {
-		var nfCard card.Card
-		nfCard, logTxt = newFlagMadeCombiMove(handAna)
-		if nfCard.IsNone() {
-			nfCard, logTxt = newFlagPhalanxMove(handAna)
-		}
-		if nfCard.IsNone() {
-			nfCard, logTxt = newFlagHigestRankMove(handAna, keepFlag)
-		}
-
-		if nfCard.IsTroop() {
-			flagix := newFlagSelectFlag(card.Troop(nfCard), flagixs, flagsAna)
-			if flagix != -1 {
-				moveCard = nfCard
-				moveFlagix = flagix
-			}
-		}
-	}
-	if moveCard.IsTroop() {
-		log.Printf(log.Debug, "%v Troop: %v", logTxt, card.Troop(moveCard))
-	}
-
-	return moveCard, moveFlagix
+	return moveCard, moveFlagix, logTxt
 }
 func prioritizePlayableFlags(flagsAna map[int]*fa.Analysis) (flagixs []int) {
 	flagValues := make([]int, len(flagsAna))
@@ -468,89 +491,178 @@ func prioritizePlayableFlags(flagsAna map[int]*fa.Analysis) (flagixs []int) {
 	return flagixs
 }
 
-//newFlagSelectFlag selects the new flag to play on.
-func newFlagSelectFlag(troop card.Troop, flagixs []int, flagsAna map[int]*fa.Analysis) (flagix int) {
-	flagix = -1
-	newFlagixs := make([]int, 0, len(flagixs))
-	for _, flagix := range flagixs {
+func emptyPriFlagixs(priFlagixs []int, flagsAna map[int]*fa.Analysis) []int {
+	newFlagixs := make([]int, 0, len(priFlagixs))
+	for _, flagix := range priFlagixs {
 		flagAna := flagsAna[flagix]
 		if flagAna.IsNewFlag && flagAna.OppFormationSize == 0 {
 			newFlagixs = append(newFlagixs, flagix)
 		}
 	}
-	if len(newFlagixs) != 0 {
-		if len(newFlagixs) == 1 {
-			flagix = newFlagixs[0]
-		} else {
-			troopStr := troop.Strenght()
-			switch {
-			case troopStr > 7: //TODO this too simple we need to look rank compare it to target and bot rank,and if flag is lose game
-				flagix = newFlagixs[0]
-			case troopStr < 8 && troopStr > 5:
-				flagix = newFlagixs[len(newFlagixs)/2]
-			default:
-				flagix = newFlagixs[len(newFlagixs)-1]
-			}
+	return newFlagixs
+}
+
+//newFlagSelectFlag selects the new flag to play on.
+//TODO this too simple we need to look rank compare it to target and bot rank,and if flag is lose game.
+func newFlagSelectFlag(troop card.Troop, priFlagixs []int) (flagix int) {
+	if len(priFlagixs) == 1 {
+		flagix = priFlagixs[0]
+	} else {
+		troopStr := troop.Strenght()
+		switch {
+		case troopStr > 7:
+			flagix = priFlagixs[0]
+		case troopStr < 8 && troopStr > 5:
+			flagix = priFlagixs[len(priFlagixs)/2]
+		default:
+			flagix = priFlagixs[len(priFlagixs)-1]
 		}
 	}
+
 	return flagix
 }
-func newFlagPhalanxMove(handAna map[card.Troop][]*combi.Analysis) (troop card.Card, logTxt string) {
-
+func newFlagPhalanxMove(
+	handAna map[card.Troop][]*combi.Analysis,
+	keepFlag map[card.Troop]bool,
+	priFlagixs []int,
+) (troop card.Card, flagix int, logTxt string) {
+	flagix = -1
 	logTxt = "New flag is best phalanx or higher move"
 	targetRank := combi.LastFormationRank(card.FPhalanx, 3)
-	troop = newFlagTargetMove(handAna, targetRank)
-	return troop, logTxt
+	troop = newFlagTargetMove(handAna, targetRank, keepFlag)
+	if troop.IsTroop() {
+		flagix = newFlagSelectFlag(card.Troop(troop), priFlagixs)
+	}
+	return troop, flagix, logTxt
 }
-func newFlagTargetMove(handAna map[card.Troop][]*combi.Analysis, targetRank int) (troop card.Card) {
+
+//newFlagTargetMove find troop to play on new flag with a target.
+//TODO could be better if playables not in keep is condsiddered.
+func newFlagTargetMove(
+	handAna map[card.Troop][]*combi.Analysis,
+	targetRank int,
+	keepFlagTroops map[card.Troop]bool,
+) (troop card.Card) {
 
 	troopSumProp := make(map[card.Troop]float64)
 	for handTroop, combiAnas := range handAna {
-		for _, combiAna := range combiAnas {
-			if combiAna.Prop > 0 && combiAna.Comb.Rank <= targetRank {
-				troopSumProp[handTroop] = troopSumProp[handTroop] + combiAna.Prop
-			}
-		}
-	}
-	troop = probMaxSumTroop(troopSumProp)
-	return troop
-}
-
-func newFlagMadeCombiMove(handAna map[card.Troop][]*combi.Analysis) (troop card.Card, logTxt string) {
-
-	logTxt = "New flag is a combi move"
-	targetRank := combi.LastFormationRank(card.FPhalanx, 3)
-HandLoop:
-	for handTroop, combiAnas := range handAna {
-		for _, combiAna := range combiAnas {
-			if combiAna.Prop == 1 && combiAna.Comb.Rank <= targetRank {
-				troop = card.Card(handTroop)
-				break HandLoop
-			}
-		}
-	}
-
-	return troop, logTxt
-}
-
-func newFlagHigestRankMove(
-	handAna map[card.Troop][]*combi.Analysis,
-	keepFlagTroops map[card.Troop]bool) (troop card.Card, logTxt string) {
-	logTxt = "New flag is highest rank move"
-	topRank := 10000
-	for handTroop, combiAnas := range handAna {
 		if !keepFlagTroops[handTroop] {
 			for _, combiAna := range combiAnas {
-				if combiAna.Prop > 0 {
-					if combiAna.Comb.Rank < topRank {
-						troop = card.Card(handTroop)
-						topRank = combiAna.Comb.Rank
-					}
-					break
+				if combiAna.Prop > 0 && combiAna.Comb.Rank <= targetRank {
+					troopSumProp[handTroop] = troopSumProp[handTroop] + combiAna.Prop
 				}
 			}
 		}
 	}
+	log.Printf(log.Debug, "New flag target move prob: %v", troopSumProp)
+	troops := probMaxSumTroops(troopSumProp)
+	if len(troops) > 0 {
+		if len(troops) == 1 {
+			troop = card.Card(troops[0])
+		} else {
+			minKeepPhalanxNo := 100
+			var minKeepMap *keepMap
+			for _, t := range troops {
+				keepMap := newKeepMap()
+				keepMap.insert(handAna[t], 2)
+				keepPhalanxNo := keepMap.Len()
+				if keepPhalanxNo < minKeepPhalanxNo {
+					troop = card.Card(t)
+					minKeepPhalanxNo = keepPhalanxNo
+					minKeepMap = keepMap
+				} else if keepPhalanxNo == minKeepPhalanxNo {
+					if len(minKeepMap.cardsMap) == 1 && len(keepMap.cardsMap) == 1 {
+						for min := range minKeepMap.cardsMap {
+							for cur := range keepMap.cardsMap {
+								if min.Strenght() < cur.Strenght() {
+									troop = card.Card(t)
+									minKeepMap = keepMap
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return troop
+}
 
-	return troop, logTxt
+//probMaxSumTroop findes the troops with the bigest probability if any. Tiebreaker
+//troop strenght.
+func probMaxSumTroops(cardSumProp map[card.Troop]float64) (maxTroops []card.Troop) {
+	var maxTroop card.Troop
+	maxSumProp := float64(0)
+	for troop, sumProp := range cardSumProp {
+		if sumProp > maxSumProp {
+			maxTroop = troop
+			maxSumProp = sumProp
+		} else if sumProp == maxSumProp {
+			if maxTroop == 0 || troop.Strenght() > maxTroop.Strenght() {
+				maxTroop = troop
+			}
+		}
+	}
+	if maxTroop != 0 {
+		for troop, sumProp := range cardSumProp {
+			if sumProp == maxSumProp && maxTroop.Strenght() == troop.Strenght() {
+				maxTroops = append(maxTroops, troop)
+			}
+		}
+	}
+	return maxTroops
+}
+
+//newFlagMadeCombiMove finds the best made combi wedge or phalanx.
+//TODO CHECK this could be better if more combies exist but it does not happen often.
+func newFlagMadeCombiMove(
+	handAna map[card.Troop][]*combi.Analysis,
+	keepFlagTroops map[card.Troop]bool,
+	emptyFlagixs []int,
+) (troop card.Card, flagix int, logTxt string) {
+
+	logTxt = "New flag is a made combi move"
+	flagix = -1
+	targetRank := combi.LastFormationRank(card.FPhalanx, 3) + 1
+	keepPhalanxNo := 100
+	for handTroop, combiAnas := range handAna {
+		if !keepFlagTroops[handTroop] {
+			for _, combiAna := range combiAnas {
+				if combiAna.Comb.Rank > targetRank {
+					break
+				}
+				if combiAna.Prop == 1 && newFlagMadeCombiPlayable(combiAna.Playables, handTroop, keepFlagTroops) {
+					if combiAna.Comb.Rank < targetRank {
+						targetRank = combiAna.Comb.Rank
+						if combiAna.Comb.Formation == card.FPhalanx {
+							kepMap := newKeepMap()
+							kepMap.insert(combiAnas, 2)
+							keepPhalanxNo = kepMap.Len()
+						}
+						flagix = newFlagSelectFlag(handTroop, emptyFlagixs)
+						troop = card.Card(handTroop)
+						break
+					} else if combiAna.Comb.Rank == targetRank && combiAna.Comb.Formation == card.FPhalanx {
+						kepMap := newKeepMap()
+						kepMap.insert(combiAnas, 2)
+						if kepMap.Len() < keepPhalanxNo { //Smallest to dump card not need in case of 1b,1r,1g,2g
+							flagix = newFlagSelectFlag(handTroop, emptyFlagixs)
+							troop = card.Card(handTroop)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+	return troop, flagix, logTxt
+}
+func newFlagMadeCombiPlayable(playables []card.Troop, handTroop card.Troop, keepFlagTroops map[card.Troop]bool) bool {
+	if !keepFlagTroops[handTroop] &&
+		len(playables) > 1 &&
+		playables[0].Strenght() <= handTroop.Strenght() &&
+		len(keepLowestStrenghts(playables, keepFlagTroops, 2)) == 2 {
+		return true
+	}
+	return false
 }

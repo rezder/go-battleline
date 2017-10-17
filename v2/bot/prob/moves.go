@@ -1,6 +1,7 @@
 package prob
 
 import (
+	"fmt"
 	"github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-battleline/v2/game/card"
 	"github.com/rezder/go-battleline/v2/game/pos"
@@ -28,23 +29,24 @@ func (moves Moves) FindDeck(deckPos pos.Card) (moveix int) {
 func (moves Moves) FindScoutReturn(tacs []card.Card, troops []card.Troop) (moveix int) {
 	moveix = -1
 	cardsNo := len(tacs) + len(troops)
-Loop:
-	for ix, move := range moves {
-		if len(move.Moves) == cardsNo && move.MoveType == game.MoveTypeAll.ScoutReturn {
-			for bpi, bpMove := range move.Moves {
-				if bpi < len(tacs) {
-					if bpMove.Index != int(tacs[bpi]) {
-						break Loop
-					}
-				} else {
-					if bpMove.Index != int(tacs[bpi-len(tacs)]) {
-						break Loop
+	if len(moves) > 0 && moves[0].MoveType == game.MoveTypeAll.ScoutReturn {
+	Loop:
+		for ix, move := range moves {
+			if len(move.Moves) == cardsNo {
+				for bpi, bpMove := range move.Moves {
+					if bpi < len(tacs) {
+						if bpMove.Index != int(tacs[bpi]) {
+							continue Loop
+						}
+					} else {
+						if bpMove.Index != int(troops[bpi-len(tacs)]) {
+							continue Loop
+						}
 					}
 				}
+				moveix = ix
+				break
 			}
-			moveix = ix
-		} else { //some thing is really wrong. Moves should only contain scout moves.
-			break Loop
 		}
 	}
 	if moveix == -1 {
@@ -155,6 +157,7 @@ func (moves Moves) FindHandFlag(flagix int, cardMove card.Card) (handFlagMove *g
 		}
 	}
 	if moveix == -1 {
+		fmt.Println(moves, flagix, cardMove)
 		panic("Move should exist") //all find should panic I think
 	}
 	return handFlagMove, moveix

@@ -60,7 +60,7 @@ func dbFlagSimulateMoves(
 }
 func dbFlagSimMove(lostFlagix int, move *game.Move, sim *Sim,
 ) (lostFlagSimAna, collFlagSimAna *fa.Analysis) {
-	inFlagAna, outFlagAna := sim.Move(move)
+	outFlagAna, inFlagAna := sim.Move(move)
 
 	outFlagix := pos.Card(move.Moves[1].OldPos).Flagix()
 	inFlagix := pos.Card(move.Moves[1].NewPos).Flagix()
@@ -132,14 +132,14 @@ func (dba *dbFlagAnaSim) String() string {
 	if dba == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("{Flag:%v Win:%v LoseGame:%v WinProb:%v PhalanxWin: %v FlagValue:%v}",
-		dba.oldAna.Flagix, dba.isWin, dba.isLosingGame, dba.winProb, dba.phalanxProb, dba.flagValue)
+	return fmt.Sprintf("{Flag:%v Win:%v LoseGame:%v WinProb:%v PhalanxWin: %v FlagValue:%v, TroopsNo:%v}",
+		dba.oldAna.Flagix, dba.isWin, dba.isLosingGame, dba.winProb, dba.phalanxProb, dba.flagValue, dba.botTroopNo)
 }
 func newDbFlagAnaSim(oldAna, ana *fa.Analysis) (dba *dbFlagAnaSim) {
 	dba = new(dbFlagAnaSim)
 	dba.oldAna = oldAna
 	dba.ana = ana
-	dba.isWin = ana.IsWin()
+	dba.isWin = ana.IsWin
 	dba.winProb, dba.phalanxProb = dbFlagCalcImprovProb(oldAna, ana)
 	dba.botTroopNo = ana.Flag.PlayerFormationSize(ana.Playix)
 	dba.flagValue = oldAna.FlagValue
@@ -180,7 +180,7 @@ func newDbFlagAna(moveix int, lost, oldLost, collateral, oldCollateral *fa.Analy
 //Next comes wining the lost flag and improving the collateral flag a Win Improve and so on.
 //1 Win win tiebreaker sum of flags value.
 //2 Win improve collateral tiebreaker best collateral.
-//3 Win lost flag is also in flag no tiebreaker just pick one.
+//3 Win nil no tiebreaker just pick one.
 //4 Win worse collateral tiebreaker best collateral
 //5 Best lost.
 //WARNING all flags may be new flag.
@@ -224,12 +224,18 @@ func (dba *dbFlagAna) compare(other *dbFlagAna) (comp int) {
 		return comp
 
 	}
+	//No win of lost flag
 	if !dba.lost.equal(other.lost) {
 		taIsNotLost := !dba.lost.ana.IsLost && !dba.isCollLoseGame()
 		otIsNotLost := !other.lost.ana.IsLost && !other.isCollLoseGame()
-		comp = dbFlagLessCompare(!taIsNotLost, otIsNotLost, func() bool {
+		comp = dbFlagLessCompare(taIsNotLost, otIsNotLost, func() bool {
 			return dbFlagLessCompareProb(dba.lost, other.lost)
 		})
+		if comp != 0 {
+			return comp
+		}
+		comp = dbFlagLessCompareLost(dba.lost, other.lost)
+
 	} else {
 		taCollWin := dba.is2Flag() && dba.coll.isWin
 		otCollWin := other.is2Flag() && other.coll.isWin
@@ -255,11 +261,23 @@ func (dba *dbFlagAna) compare(other *dbFlagAna) (comp int) {
 		if comp != 0 {
 			return comp
 		}
-		comp = dbFlagLessCompare(dba.is2Flag(), other.is2Flag(), func() bool {
+		comp = dbFlagLessCompare(!dba.coll.ana.IsLost, !other.coll.ana.IsLost, func() bool {
 			return dbFlagLessCompareProb(dba.coll, other.coll)
 		})
+		if comp != 0 {
+			return comp
+		}
+		comp = dbFlagLessCompareLost(dba.coll, other.coll)
 	}
 	return comp
+}
+func dbFlagLessCompareLost(dba, other *dbFlagAnaSim) int {
+	if dba.botTroopNo > other.botTroopNo {
+		return -1
+	} else if dba.botTroopNo < other.botTroopNo {
+		return 1
+	}
+	return 0
 }
 
 // dbFlagLessCompareProb compare first using probabilities then troop numbers

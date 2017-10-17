@@ -20,6 +20,7 @@ func init() {
 		card.TCScout, card.TCRedeploy}
 }
 
+//MoveClaim makes a claim flag move.
 func MoveClaim(viewPos *game.ViewPos) (moveix int) {
 	posCards := game.NewPosCards(viewPos.CardPos)
 	posCards = mudTrim(posCards, viewPos.CardPos[card.TCMud])
@@ -38,8 +39,10 @@ func MoveClaim(viewPos *game.ViewPos) (moveix int) {
 	return moveix
 }
 
+//MoveDeck makes deck move.
 func MoveDeck(viewPos *game.ViewPos) (moveix int) {
 	posCards := game.NewPosCards(viewPos.CardPos)
+	posCards = mudTrim(posCards, viewPos.CardPos[card.TCMud])
 	deck := fa.NewDeck(viewPos, posCards)
 	botix := viewPos.Playerix()
 	var deckPos pos.Card
@@ -53,9 +56,9 @@ func MoveDeck(viewPos *game.ViewPos) (moveix int) {
 		flags := game.FlagsCreate(posCards, viewPos.ConePos)
 		tacAna := newPlayableTacAna(viewPos.CardPos, botix)
 		if botHand.NoTacs() == 0 {
-			deckPos = deckZeroTacMove(tacAna.botNo, tacAna.IsBotLeader, deck, botHand, oppHand, botix, flags[:], posCards, viewPos.ConePos, viewPos.Moves)
+			deckPos = deckZeroTacMove(tacAna.botNo, tacAna.IsBotLeader, deck, botHand, oppHand, botix, flags[:], posCards, viewPos.ConePos)
 		} else {
-			deckPos = deckScoutMove(tacAna.botNo, deck, botHand, oppHand, botix, flags[:], viewPos.Moves)
+			deckPos = deckScoutMove(tacAna.botNo, deck, botHand, oppHand, botix, flags[:])
 		}
 	}
 	var moves Moves = viewPos.Moves
@@ -85,6 +88,7 @@ func MoveScoutReturn(viewPos *game.ViewPos) (moveix int) {
 	var tacs []card.Card
 	var troops []card.Troop
 	posCards := game.NewPosCards(viewPos.CardPos)
+	posCards = mudTrim(posCards, viewPos.CardPos[card.TCMud])
 	botix := viewPos.Playerix()
 	deck := fa.NewDeck(viewPos, posCards)
 	botHand, oppHand := createHands(posCards, botix)
@@ -109,8 +113,10 @@ func MoveScoutReturn(viewPos *game.ViewPos) (moveix int) {
 	return moveix
 }
 
+//MoveHand makes a move from the hand.
 func MoveHand(viewPos *game.ViewPos) (moveix int) {
 	posCards := game.NewPosCards(viewPos.CardPos)
+	posCards = mudTrim(posCards, viewPos.CardPos[card.TCMud])
 	botix := viewPos.Playerix()
 	deck := fa.NewDeck(viewPos, posCards)
 	botHand, oppHand := createHands(posCards, botix)
@@ -132,6 +138,7 @@ func MoveHand(viewPos *game.ViewPos) (moveix int) {
 	keep := NewKeep(flagsAna, botHand, oppHand, viewPos.Moves, deck, isBotFirst)
 	playTacAna := newPlayableTacAna(viewPos.CardPos, botix)
 	passMoveix := sim.SearchPass()
+	moveix = -1
 	if passMoveix != -1 {
 		moveix = lostFlagTacticMove(flagsAna, botHand, playTacAna, deck.DeckTroopNo(), sim)
 		if moveix == -1 {
@@ -210,7 +217,6 @@ func deckZeroTacMove(
 	flags []*game.Flag,
 	posCards game.PosCards,
 	conePos [10]pos.Cone,
-	moves Moves,
 ) (deckPos pos.Card) {
 
 	deckPos = pos.CardAll.DeckTroop
@@ -224,7 +230,6 @@ func deckZeroTacMove(
 			oppHand:          oppHand,
 			posCards:         posCards,
 			conePos:          conePos,
-			Moves:            moves,
 		}
 		analyzeFlagsAddFlagValue(flagsAna)
 		analyzeFlagsAddLooseGameFlags(flagsAna)
@@ -310,7 +315,11 @@ func analyzeFlagsAddLooseGameFlags(flagsAna map[int]*fa.Analysis) {
 func isFlagLostOrClaimed(flagAna *fa.Analysis) bool {
 	return flagAna.IsLost || (flagAna.IsClaimed && flagAna.Claimer != flagAna.Playix)
 }
-func threeFlagsInRow(lostFlagix int, flagsAna map[int]*fa.Analysis, cond func(*fa.Analysis) bool) (loose bool) {
+func threeFlagsInRow(
+	lostFlagix int,
+	flagsAna map[int]*fa.Analysis,
+	cond func(*fa.Analysis) bool) (loose bool) {
+
 	if lostFlagix > 1 &&
 		cond(flagsAna[lostFlagix-1]) &&
 		cond(flagsAna[lostFlagix-2]) {
@@ -378,7 +387,7 @@ func deckCalcPickTac(
 	playableLeader bool,
 	deckTacs []card.Card,
 	peekTac card.Card,
-	sim *Sim) (pickTac bool) {
+	sim *Sim) (isPickTac bool) {
 	offenceTacs, defenceTacs := offDefTacs(playableLeader, deckTacs, peekTac)
 	offFlagSet, offenceTacSet := findOffenceFlags(offenceTacs, flagsAna, sim)
 	defFlagSet, defenceTacSet := findDefenceFlags(defenceTacs, flagsAna)
@@ -386,10 +395,10 @@ func deckCalcPickTac(
 		logTxt := ""
 		if looseWinFlagExist(flagsAna) {
 			logTxt = "Loose or win flag exist"
-			pickTac = true
+			isPickTac = true
 		} else if len(offFlagSet)+len(defFlagSet) > 4 && playableTacNo != 0 {
 			logTxt = "Many flag need tactic cards"
-			pickTac = true
+			isPickTac = true
 		}
 		if len(logTxt) != 0 {
 			logTxt = logTxt + fmt.Sprintf("\nOffence Flags: %v Offence Tactics: %v\n", offFlagSet, offenceTacSet)
@@ -398,10 +407,10 @@ func deckCalcPickTac(
 		}
 
 	}
-	return pickTac
+	return isPickTac
 }
 
-//offDeffTacs find the relevante offencive and defencive tatic cards remaining in the deck.
+//offDeffTacs find the relevante offensive and defensive tatic cards remaining in the deck.
 //When we know the next tactic card only that card is used.
 //if leader is not playable leader cards is removed.
 func offDefTacs(
@@ -468,7 +477,7 @@ func countFlags(
 	return no
 }
 func isFlagWonOrClaimed(flagAna *fa.Analysis) bool {
-	return flagAna.IsWin() || flagAna.Claimer == flagAna.Playix
+	return (!flagAna.IsClaimed && flagAna.IsWin) || flagAna.Claimer == flagAna.Playix
 }
 func isOffenceTac(tac card.Card) bool {
 	return tac.IsMorale()
@@ -515,11 +524,11 @@ func findOffenceFlags(
 	tacSet = make(map[card.Card]bool)
 	if len(offenceTacs) > 0 {
 		for _, flagAna := range flagsAna {
-			if flagAna.Flag.PlayerFormationSize(flagAna.Playix)+1 == flagAna.FormationSize && !flagAna.IsWin() {
+			if flagAna.Flag.PlayerFormationSize(flagAna.Playix)+1 == flagAna.FormationSize && !flagAna.IsWin {
 				for _, tac := range offenceTacs {
-					simMove, _ := sim.FindHandFlag(flagAna.Flagix, tac)
-					simFlagAna, _ := sim.Move(simMove)
-					if simFlagAna.IsWin() {
+					simMove := createHandFlagMove(flagAna.Flagix, tac, flagAna.Playix)
+					_, simFlagAna := sim.Move(simMove)
+					if simFlagAna.IsWin {
 						flagixSet[flagAna.Flagix] = true
 						tacSet[tac] = true
 					}
@@ -535,7 +544,6 @@ func deckScoutMove(
 	botHand, oppHand *card.Cards,
 	botix int,
 	flags []*game.Flag,
-	moves Moves,
 ) (deckPos pos.Card) {
 
 	deckPos = pos.CardAll.DeckTroop
@@ -560,7 +568,7 @@ func deckScoutMove(
 		flagsAna, _ := analyzeFlags(flags, botHand, oppHand, deck, isBotFirst, botix)
 		analyzeFlagsAddFlagValue(flagsAna)
 		analyzeFlagsAddLooseGameFlags(flagsAna)
-		keep := NewKeep(flagsAna, botHand, oppHand, moves, deck, isBotFirst)
+		keep := NewKeep(flagsAna, botHand, oppHand, nil, deck, isBotFirst)
 		if keep.CalcIsHandGood(flagsAna, 2) {
 			deckPos = pos.CardAll.DeckTac
 		}
@@ -577,7 +585,7 @@ func scoutReturnTacs(hand *card.Cards, isPlayLeader bool) (tacs []card.Card) {
 	}
 	var leaders []card.Morale
 	for _, morale := range hand.Morales {
-		if isPlayLeader {
+		if !isPlayLeader {
 			if morale.IsLeader() {
 				tacs = append(tacs, card.Card(morale))
 				break
@@ -701,7 +709,7 @@ func lostFlagDumpMove(
 	if lostFlagix != -1 {
 		troop := keep.RequestFlagHandLowestStrenght()
 		if !troop.IsNone() {
-			log.Println(log.Debug, "Made a Lost Flag Dump move")
+			log.Printf(log.Debug, "Made a Lost Flag Dump move flagix: %v, troop: %v", lostFlagix, troop)
 			_, moveix = moves.FindHandFlag(lostFlagix, troop)
 		}
 	}
@@ -739,6 +747,7 @@ func prioritizedMove(
 
 	moveix = keep.NewFlagMoveix
 	if moveix != -1 {
+		log.Printf(log.Debug, "Makes a new flag move ix: %v", moveix)
 		return moveix
 	}
 	moveix = priTacticMove(flagsAna, keep, playTacAna, botHand, deckTroopNo, sim)
@@ -889,12 +898,12 @@ Loop:
 	for _, morale := range botHandMorales {
 		isLeader := morale.IsLeader()
 		if (isLeader && playTacAna.IsBotLeader) || !isLeader {
-			for i := 0; i < len(priFlagixs); i++ {
-				flagAna := flagsAna[i]
-				if !flagAna.IsNewFlag && flagAna.IsPlayable {
+			for _, flagix := range priFlagixs {
+				flagAna := flagsAna[flagix]
+				if !flagAna.IsNewFlag {
 					simMove, simMoveix := sim.FindHandFlag(flagAna.Flagix, card.Card(morale))
-					simFlagAna, _ := sim.Move(simMove)
-					if simFlagAna.IsWin() {
+					_, simFlagAna := sim.Move(simMove)
+					if simFlagAna.IsWin {
 						moveix = simMoveix
 						break Loop
 					}
@@ -916,15 +925,17 @@ func priDumpMove(
 }
 func pfkfFog(flagAna *fa.Analysis, keep *Keep) (troop card.Card, logTxt string) {
 	logTxt = "Made a fog move"
+
 	if flagAna.IsFog {
 		if len(flagAna.SumTroops) > 0 {
-			troop = keep.RequestFirst(flagAna.SumTroops)
+			troop = keep.RequestLast(flagAna.SumTroops)
 		}
 	} else if flagAna.TargetRank == 0 {
 		if len(flagAna.SumTroops) > 0 && flagAna.BotMaxSum >= flagAna.TargetSum {
-			troop = keep.RequestFirst(flagAna.SumTroops)
+			troop = keep.RequestLast(flagAna.SumTroops)
 		}
 	}
+
 	return troop, logTxt
 }
 func pfnf2Pick1Card(flagAna *fa.Analysis) (troop card.Card, logTxt string) {
@@ -950,13 +961,16 @@ func pfkfSum(flagAna *fa.Analysis, keep *Keep) (troop card.Card, logTxt string) 
 			}
 		}
 		if botRank == 0 {
-			troop = keep.RequestFirstHand(flagAna.SumTroops)
+			troop = keep.RequestLastHand(flagAna.SumTroops)
 		}
 	}
 	return troop, logTxt
 }
-func maxPlayables(troops []card.Troop) (troop card.Troop) { //TODO remove include sum 3 funcs with sort when save
-	return troops[0]
+func maxPlayables(troops []card.Troop) (troop card.Troop) {
+	if len(troops) > 0 {
+		return troops[0]
+	}
+	return troop
 }
 
 func pfnfButtomWedge(flagAna *fa.Analysis) (troop card.Card, logTxt string) {
@@ -1076,8 +1090,8 @@ func lostFlagTacHandFlag(
 			}
 			if isSim {
 				simMove, simMoveix := sim.FindHandFlag(flagix, tac)
-				simFlagAna, _ := sim.Move(simMove)
-				if flagAna.IsLoosingGame && !simFlagAna.IsLost || simFlagAna.IsWin() {
+				_, simFlagAna := sim.Move(simMove)
+				if flagAna.IsLoosingGame && !simFlagAna.IsLost || simFlagAna.IsWin {
 					moveix = simMoveix
 					break
 				}
@@ -1112,8 +1126,9 @@ Loop:
 			preventLossMoveix := -1
 			for _, killCard := range killCards {
 				killMove, killMoveix := sim.FindDeserterMove(killCard)
-				_, simAna := sim.Move(killMove)
-				if simAna.IsWin() {
+				simAna, _ := sim.Move(killMove)
+				if simAna.IsWin {
+					log.Printf(log.Debug, "Deserter win kill move card: %v", killCard)
 					moveix = killMoveix
 					break Loop
 				}
@@ -1122,6 +1137,7 @@ Loop:
 				}
 			}
 			if preventLossMoveix != -1 && flagAna.IsLoosingGame {
+				log.Printf(log.Debug, "Deserter prevent kill move card: %v", preventLossMoveix)
 				moveix = preventLossMoveix
 				break Loop
 			}
@@ -1146,7 +1162,11 @@ func finDeserterKillCard(
 				desertCard = card.Card(oppTroops[1])
 			}
 		case card.FPhalanx.Value:
-			desertCard = card.Card(oppTroops[0])
+			if len(oppMorales) > 0 {
+				desertCard = card.Card(findMaxStrenghtMorale(oppMorales))
+			} else {
+				desertCard = card.Card(oppTroops[0])
+			}
 		case card.FBattalion.Value:
 			desertCard = deserterKillStrenght(oppMorales, oppTroops[0])
 		}
@@ -1184,13 +1204,14 @@ func deserterKillStrenght(morales []card.Morale, troop card.Troop) (desert card.
 }
 
 func mudTrimDish(troops []card.Troop, morales []card.Morale) (dishCard card.Card) {
-	lowestRank := 1
-	lowestSum := 0
+	sumRank := 200
+	lowestRank := sumRank + 1
+	higestSum := 0
 	var handTroops []card.Troop
 	drawSet := make(map[card.Troop]bool)
 	drawNo := 0
 	isMud := false
-	sumRank := 200
+
 	moraleTroopSum := fa.MoraleTroopsSum(troops, morales)
 	for _, outTroop := range troops {
 		simTroops := make([]card.Troop, 0, len(troops)-1)
@@ -1205,14 +1226,14 @@ func mudTrimDish(troops []card.Troop, morales []card.Morale) (dishCard card.Card
 			rank = sumRank
 			sum = moraleTroopSum - outTroop.Strenght()
 		}
-		if rank > lowestRank {
+		if rank < lowestRank {
 			lowestRank = rank
 			dishCard = card.Card(outTroop)
-			lowestSum = sum
+			higestSum = sum
 		} else if rank == sumRank && lowestRank == sumRank {
-			if sum < lowestSum {
+			if sum > higestSum {
 				dishCard = card.Card(outTroop)
-				lowestSum = sum
+				higestSum = sum
 			}
 		}
 	}
@@ -1229,14 +1250,14 @@ func mudTrimDish(troops []card.Troop, morales []card.Morale) (dishCard card.Card
 			rank = sumRank
 			sum = moraleTroopSum - outMorale.MaxStrenght()
 		}
-		if rank > lowestRank {
+		if rank < lowestRank {
 			lowestRank = rank
 			dishCard = card.Card(outMorale)
-			lowestSum = sum
+			higestSum = sum
 		} else if rank == sumRank && lowestRank == sumRank {
-			if sum < lowestSum {
+			if sum > higestSum {
 				dishCard = card.Card(outMorale)
-				lowestSum = sum
+				higestSum = sum
 			}
 		}
 	}
@@ -1244,21 +1265,23 @@ func mudTrimDish(troops []card.Troop, morales []card.Morale) (dishCard card.Card
 	return dishCard
 }
 func mudTrim(posCards [][]card.Card, mudPos pos.Card) [][]card.Card {
-	if mudPos.IsOnTable() {
-		for flagix, pos1 := range pos.CardAll.Players[0].Flags {
-			pos2 := pos.CardAll.Players[1].Flags[flagix]
-			if len(posCards[int(pos1)]) > 3 || len(posCards[int(pos2)]) > 3 {
-				posCards = mudTrimFlag(posCards, flagix)
+	if mudPos.IsInDish() {
+		isTrimed := false
+		for flagix := range pos.CardAll.Players[0].Flags {
+			posCards, isTrimed = mudTrimFlag(posCards, flagix)
+			if isTrimed {
 				break
 			}
 		}
 	}
 	return posCards
 }
-func mudTrimFlag(posCards [][]card.Card, flagix int) [][]card.Card {
+func mudTrimFlag(posCards [][]card.Card, flagix int) ([][]card.Card, bool) {
+	isTrimed := false
 	for _, playerPos := range pos.CardAll.Players {
 		cards := game.PosCards(posCards).SortedCards(playerPos.Flags[flagix])
-		if cards.No() > 3 {
+		if cards.NoFormation() > 3 {
+			isTrimed = true
 			dishCard := mudTrimDish(cards.Troops, cards.Morales)
 			posix := int(playerPos.Flags[flagix])
 			updCards := make([]card.Card, 0, len(posCards[posix]))
@@ -1272,5 +1295,8 @@ func mudTrimFlag(posCards [][]card.Card, flagix int) [][]card.Card {
 			posCards[dishPosix] = append(posCards[dishPosix], dishCard)
 		}
 	}
-	return posCards
+	return posCards, isTrimed
+}
+func createHandFlagMove(flagix int, cardMove card.Card, mover int) *game.Move {
+	return game.CreateMoveHand(int(cardMove), flagix, mover)
 }

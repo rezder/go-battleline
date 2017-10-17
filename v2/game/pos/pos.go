@@ -102,6 +102,11 @@ func (c Card) IsOnTable() bool {
 	return !c.IsOnHand() && !c.IsInDeck()
 }
 
+//IsInDish returns true if card postion is in Dish.
+func (c Card) IsInDish() bool {
+	return c == CardAll.Players[0].Dish || c == CardAll.Players[1].Dish
+}
+
 //Flagix returns the flag index or -1 if not a flag position
 func (c Card) Flagix() (flagix int) {
 	flagix = -1

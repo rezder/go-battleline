@@ -93,8 +93,17 @@ func Ana(
 			} //end switch
 			ana.Playables = playablesSort(ana.Playables)
 		} else { //Only tacs
-			//Should not bee needed
-			panic("Illegal argument flag most have troops, this have only moral tactic troops")
+			// we can handle only one special case, that come up during mud dish but dont call this function with only morales
+			if len(flagMorales) == 3 && formationNo == 3 {
+				battalion21 := combinations3[24]
+				if ana.Comb != battalion21 {
+					ana.Prop = 0
+				} else {
+					ana.Prop = 1
+				}
+			} else {
+				panic(fmt.Sprintf("Illegal argument flag most have troops, this have only moral tactic cards: %v,formationNo: %v", flagMorales, formationNo))
+			}
 		}
 	}
 	return ana

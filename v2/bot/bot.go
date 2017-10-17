@@ -75,6 +75,10 @@ func (bot *Bot) Stop() {
 	log.Println(log.Verbose, "Bot stopping because of interrupt signal")
 	<-bot.FinConnCh
 	log.Println(log.Verbose, "Bot stopped")
+	err := bot.ws.Close()
+	if err != nil {
+		log.PrintErr(errors.Wrap(err, "Closing websocket"))
+	}
 }
 
 //login logs in to the game server.
@@ -210,13 +214,29 @@ Loop:
 							close(messDoneCh)
 							break Loop
 						}
-						readyOpps := make([]*games.PubData, 0, len(list)-1)
+						cap := 0
+						if len(list) > 1 {
+							cap = len(list) - 1
+						}
+						readyOpps := make([]*games.PubData, 0, cap)
+						isRequestList := false
 						for _, player := range list {
 							if player.Opp == 0 && player.Name != name {
 								readyOpps = append(readyOpps, player)
+							} else if player.Opp != 0 && player.Name == name {
+								isRequestList = true
 							}
 						}
-						if len(readyOpps) > 0 {
+
+						if isRequestList {
+							act := games.NewAction(games.ACTIDList)
+							log.Println(log.DebugMsg, "Request list")
+							ok := netWrite(conn, act)
+							if !ok {
+								close(messDoneCh)
+								break Loop
+							}
+						} else if len(readyOpps) > 0 {
 							invite := inviteHandler.SendInvite(readyOpps)
 							if invite != 0 {
 								act := games.NewAction(games.ACTIDInvite)
@@ -240,45 +260,51 @@ Loop:
 						close(messDoneCh)
 						break Loop
 					}
-					if playingData == nil && inviteHandler.AcceptInvite(&invite) {
-						act := games.NewAction(games.ACTIDInvAccept)
-						act.ID = invite.InvitorID
-						log.Printf(log.DebugMsg, "Accepting invite from %v", invite.InvitorID)
-						ok := netWrite(conn, act)
-						if !ok {
-							close(messDoneCh)
-							break Loop
+					if !invite.IsRejected {
+						if playingData == nil && inviteHandler.AcceptInvite(&invite) {
+							act := games.NewAction(games.ACTIDInvAccept)
+							act.ID = invite.InvitorID
+							log.Printf(log.DebugMsg, "Accepting invite from %v", invite.InvitorID)
+							ok := netWrite(conn, act)
+							if !ok {
+								close(messDoneCh)
+								break Loop
+							}
+						} else {
+							act := games.NewAction(games.ACTIDInvDecline)
+							act.ID = invite.InvitorID
+							log.Printf(log.DebugMsg, "Declining invite from %v", invite.InvitorID)
+							ok := netWrite(conn, act)
+							if !ok {
+								close(messDoneCh)
+								break Loop
+							}
 						}
 					} else {
-						act := games.NewAction(games.ACTIDInvDecline)
-						act.ID = invite.InvitorID
-						log.Printf(log.DebugMsg, "Declining invite from %v", invite.InvitorID)
-						ok := netWrite(conn, act)
-						if !ok {
-							close(messDoneCh)
-							break Loop
-						}
+						log.Printf(log.DebugMsg, "Invite to %v rejected", invite.ReceiverID)
 					}
 				case games.JTMess:
 				case games.JTPlaying:
 					var tmpPlayingData games.PlayingChData
-					err := json.Unmarshal(jsonDataTemp.Data, tmpPlayingData)
+					err := json.Unmarshal(jsonDataTemp.Data, &tmpPlayingData)
 					if err != nil {
 						err = errors.Wrap(err, "Unmarshal playing data failed")
 						log.PrintErr(err)
 						close(messDoneCh)
 						break Loop
 					}
-					playingData = &tmpPlayingData
-					viewPos := playingData.ViewPos
 					if playingData == nil {
+						playingData = &tmpPlayingData
 						noGame = noGame + 1
-						if viewPos.LastMoveType == game.MoveTypeAll.Init {
+						if playingData.ViewPos.LastMoveType == game.MoveTypeAll.Init {
 							mover.GameStart(playingData)
 						} else {
 							mover.GameRestart(playingData)
 						}
+					} else {
+						playingData = &tmpPlayingData
 					}
+					viewPos := playingData.ViewPos
 					if viewPos.Winner < 2 || !viewPos.LastMoveType.HasNext() {
 						if viewPos.Winner == viewPos.View.Playerix() {
 							noWins = noWins + 1
@@ -288,17 +314,12 @@ Loop:
 						} else {
 							mover.GameFinish(playingData)
 						}
+						playingData = nil
 						if noGame == limitNoGame {
 							close(messDoneCh)
 							break Loop
 						}
-						act := games.NewAction(games.ACTIDList)
-						log.Println(log.DebugMsg, "Request list")
-						ok := netWrite(conn, act)
-						if !ok {
-							close(messDoneCh)
-							break Loop
-						}
+
 					} else if len(viewPos.Moves) > 0 {
 						moveix := mover.Move(viewPos)
 						act := games.NewAction(games.ACTIDMove)
@@ -377,29 +398,39 @@ type JsonDataTemp struct {
 	JsonType int
 	Data     json.RawMessage
 }
+
+//InviteHandler handles invites
 type InviteHandler interface {
 	AcceptInvite(invite *games.Invite) bool
-	SendInvite(readyOpps []*games.PubData) (playerId int)
+	SendInvite(readyOpps []*games.PubData) (playerID int)
 }
+
+//StdInviteHandler handles invite by accept all or invite first.
 type StdInviteHandler struct {
 	isInviter bool
 }
 
+// NewStdInviteHandler create invite handler.
 func NewStdInviteHandler(isInviter bool) *StdInviteHandler {
 	s := new(StdInviteHandler)
 	s.isInviter = isInviter
 	return s
 }
+
+//AcceptInvite accept or decline invites
 func (s *StdInviteHandler) AcceptInvite(invite *games.Invite) bool {
 	return !s.isInviter
 }
-func (s *StdInviteHandler) SendInvite(readyOpps []*games.PubData) (playerId int) {
+
+//SendInvite sends invites.
+func (s *StdInviteHandler) SendInvite(readyOpps []*games.PubData) (playerID int) {
 	if s.isInviter {
-		playerId = readyOpps[0].ID
+		playerID = readyOpps[0].ID
 	}
-	return playerId
+	return playerID
 }
 
+//Mover a interface for handle battleline moves.
 type Mover interface {
 	GameStart(playingData *games.PlayingChData)
 	GameRestart(playingData *games.PlayingChData)

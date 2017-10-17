@@ -25,7 +25,7 @@ func main() {
 	var limitNoGame int
 	var isSendInvite bool
 	flag.StringVar(&scheme, "scheme", "http", "Scheme http or https")
-	flag.StringVar(&gameURL, "gameurl", "game.rezder.com:8181", "The server url example: game.rezder.com:8181")
+	flag.StringVar(&gameURL, "gameurl", "game.rezder.com:8282", "The server url example: game.rezder.com:8181")
 	flag.StringVar(&tfURL, "tfurl", "", "The tensorflow server url example: localhost:5555")
 	flag.StringVar(&name, "name", "Rene", "User name")
 	flag.StringVar(&pw, "pw", "12345678", "User password")
@@ -52,13 +52,17 @@ func main() {
 		log.PrintErr(err)
 		return
 	}
+	battBot.Start()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	log.Printf(log.Min, "Bot (%v) up and running. Close with ctrl+c\n", name)
 	select {
 	case <-stop:
+		log.Printf(log.DebugMsg, "Bot (%v) receive stop signal.", name)
 		battBot.Stop()
+		log.Printf(log.DebugMsg, "Bot (%v) send stop.", name)
 	case <-battBot.FinConnCh:
+		log.Printf(log.DebugMsg, "Bot (%v) done.", name)
 	}
 }
 
@@ -67,6 +71,7 @@ type mover struct {
 }
 
 func newMover(tfURL string) (m *mover, err error) {
+	m = new(mover)
 	if len(tfURL) > 0 {
 		var tfCon *tf.Con
 		tfCon, err = tf.New(tfURL)
