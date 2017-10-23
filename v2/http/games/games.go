@@ -13,10 +13,10 @@ type Server struct {
 }
 
 //New Create a game server.
-func New(archiverPort int) (g *Server, err error) {
+func New(archPokePort int, archAddr string) (g *Server, err error) {
 	g = new(Server)
 	list := NewList()
-	tables, err := NewTablesServer(list, archiverPort)
+	tables, err := NewTablesServer(list, archPokePort, archAddr)
 	if err != nil {
 		return g, err
 	}

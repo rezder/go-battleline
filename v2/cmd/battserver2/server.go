@@ -20,7 +20,8 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	portFlag := flag.Int("port", 8282, "tcp port")
-	archiverPortFlag := flag.Int("archport", 7373, "Arciver tcp port")
+	archPokePortFlag := flag.Int("archpokeport", 7373, "Arciver poke tcp port, the archivers poke this port when ready")
+	archAddrFlag := flag.String("archaddr", "", "Archiver address, if the archiver is allready running and ready")
 	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 3 highest")
 	//TODO change rootDirFlag default to ./server/htmlroot
 	rootDirFlag := flag.String("rootdir", "/home/rho/js/batt-game-app/build/", "The server files root directory")
@@ -33,7 +34,7 @@ func main() {
 	} else {
 		port = ":" + strconv.Itoa(*portFlag)
 	}
-	httpServer, err := http.New(port, *archiverPortFlag, *rootDirFlag)
+	httpServer, err := http.New(port, *archPokePortFlag, *archAddrFlag, *rootDirFlag)
 	if err != nil {
 		log.PrintErr(err)
 		return

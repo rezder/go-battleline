@@ -17,8 +17,8 @@ func TestMoves(t *testing.T) {
 	filePath := "_test/testdb.db2"
 	bdb := testOpenDb(filePath, t)
 	gameix := 0
-	log.InitLog(log.Debug)
-	testGameix := 494
+	log.InitLog(log.Min)
+	testGameix := -1
 	_, _, err := bdb.Search(func(hist *game.Hist) bool {
 		if testGameix == -1 || gameix == testGameix {
 			g := game.NewGame()

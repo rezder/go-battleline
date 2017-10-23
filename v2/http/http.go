@@ -25,7 +25,7 @@ type Server struct {
 }
 
 //New creates a new Server.
-func New(port string, archiverPort int, rootDir string) (s *Server, err error) {
+func New(port string, archPokePort int, archAddr, rootDir string) (s *Server, err error) {
 	s = new(Server)
 	s.rootDir = rootDir
 	s.port = port
@@ -47,7 +47,7 @@ func New(port string, archiverPort int, rootDir string) (s *Server, err error) {
 	}
 	s.netListener = netListener
 	var gameServer *games.Server
-	gameServer, err = games.New(archiverPort)
+	gameServer, err = games.New(archPokePort, archAddr)
 	if err != nil {
 		return s, err
 	}

@@ -18,12 +18,12 @@ type Client struct {
 }
 
 //New create client that handles connection to an archiver.
-func New(port int, achiverAdr string) (c *Client, err error) {
+func New(pokePort int, achiverAdr string) (c *Client, err error) {
 	c = new(Client)
 	c.archiverAdr = achiverAdr
 	c.histCh = make(chan *bg.Hist, 25)
 	c.finishCh = make(chan struct{})
-	c.pokeListener, err = net.Listen("tcp", ":"+strconv.Itoa(port))
+	c.pokeListener, err = net.Listen("tcp", ":"+strconv.Itoa(pokePort))
 	return c, err
 }
 

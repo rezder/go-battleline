@@ -26,8 +26,12 @@ type TablesServer struct {
 }
 
 //NewTablesServer creates a battleline tables server.
+//archAddr maybe empty or nil
 func NewTablesServer(
-	pubList *PubList, archiverPort int) (s *TablesServer, err error) {
+	pubList *PubList,
+	archPokePort int,
+	archAddr string,
+) (s *TablesServer, err error) {
 
 	s = new(TablesServer)
 	s.pubList = pubList
@@ -48,7 +52,7 @@ func NewTablesServer(
 		_ = db.Close()
 		return s, err
 	}
-	s.archiver, err = arch.New(archiverPort, "")
+	s.archiver, err = arch.New(archPokePort, archAddr)
 	return s, err
 }
 
