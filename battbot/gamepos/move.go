@@ -677,6 +677,9 @@ func pfnfBestWinCard(flagAna *flag.Analysis) (troopix int, logTxt string) {
 	logTxt = "Made a n flag cards move: Best wining card."
 	if !flagAna.IsFog && flagAna.OppTroopsNo > 0 {
 		targetRank := flagAna.TargetRank
+		if targetRank == 0 {
+			targetRank = 200
+		}
 		if flagAna.IsTargetMade {
 			targetRank = targetRank - 1
 		}

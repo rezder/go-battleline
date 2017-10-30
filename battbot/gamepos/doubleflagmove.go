@@ -349,7 +349,7 @@ func dbFlagCalcImprovProb(oldAna, ana *flag.Analysis) (diffWinProb, diffPhalanxP
 	return diffWinProb, diffPhalanxProb
 }
 func flagAnaProb(flagAna *flag.Analysis) (win, phalanx float64) {
-	if flagAna.Analysis != nil && !flagAna.IsFog && !flagAna.IsNewFlag {
+	if flagAna.Analysis != nil && !flagAna.IsFog && !flagAna.IsNewFlag && flagAna.TargetRank != 0 {
 		targetRank := flagAna.TargetRank
 		if flagAna.IsTargetMade {
 			targetRank = targetRank - 1

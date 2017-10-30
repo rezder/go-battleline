@@ -217,7 +217,7 @@ func HandAnalyze(
 func lost(targetRank, targetSum, botMaxSum, botRank int) bool {
 	isLost := false
 	if targetRank > 0 {
-		if botRank >= targetRank {
+		if botRank >= targetRank || botRank == 0 {
 			isLost = true
 		}
 	} else { //skirmish line
