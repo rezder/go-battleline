@@ -2,6 +2,7 @@ package prob
 
 import (
 	"fmt"
+	"github.com/rezder/go-battleline/v2/bot/prob/combi"
 	fa "github.com/rezder/go-battleline/v2/bot/prob/flag"
 	"github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-battleline/v2/game/card"
@@ -15,13 +16,15 @@ import (
 //and play the best if it is a win win move or if it is a prevent loss.
 func lostFlagTacDbFlag(
 	flagsAna map[int]*fa.Analysis,
+	priLiveFlagixs []int,
 	guile card.Guile,
 	sim *Sim,
 ) (moveix int) {
 	moveix = -1
 	dbMoves, dbMoveixs := sim.FindDoubleFlags(guile)
 	if len(dbMoves) > 0 {
-		for flagix, flagAna := range flagsAna {
+		for _, flagix := range priLiveFlagixs {
+			flagAna := flagsAna[flagix]
 			if flagAna.IsLost {
 				dbFlagAnas := dbFlagSimulateMoves(dbMoves, dbMoveixs, flagix, flagsAna, sim)
 				if dbFlagAnas.Len() > 0 {
@@ -330,12 +333,12 @@ func dbFlagCalcImprovProb(oldAna, ana *fa.Analysis) (diffWinProb, diffPhalanxPro
 	return diffWinProb, diffPhalanxProb
 }
 func flagAnaProb(flagAna *fa.Analysis) (win, phalanx float64) {
-	if flagAna.Analysis != nil && !flagAna.IsFog && !flagAna.IsNewFlag {
+	if flagAna.RankAnas != nil && !flagAna.IsFog && !flagAna.IsNewFlag {
 		targetRank := flagAna.TargetRank
-		if flagAna.IsTargetMade {
+		if flagAna.IsTargetMade && targetRank != combi.HostRank(flagAna.FormationSize) {
 			targetRank = targetRank - 1
 		}
-		for _, combiAna := range flagAna.Analysis {
+		for _, combiAna := range flagAna.RankAnas {
 			if combiAna == nil {
 				break
 			}
@@ -343,7 +346,7 @@ func flagAnaProb(flagAna *fa.Analysis) (win, phalanx float64) {
 				win = win + combiAna.Prop
 			}
 		}
-		for _, combiAna := range flagAna.Analysis {
+		for _, combiAna := range flagAna.RankAnas {
 			if combiAna == nil {
 				break
 			}

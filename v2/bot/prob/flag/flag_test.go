@@ -24,7 +24,7 @@ func TestPhalanx(t *testing.T) {
 	deck := []card.Troop{56, 18, 43, 58, 52, 21, 57, 51, 59, 5, 22, 55, 54, 30}
 	formationSize := 3
 	expRank := 16
-	rank := CalcMaxRank(flagTroops, flagMorales, handTroops, createSetFrom(deck), 10, formationSize == 4)
+	rank := CalcMaxRank(flagTroops, flagMorales, handTroops, createSetFrom(deck), 10, 4)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[expRank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)

@@ -1,7 +1,6 @@
 package prob
 
 import (
-	"fmt"
 	"github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-battleline/v2/game/card"
 	"github.com/rezder/go-battleline/v2/game/pos"
@@ -103,6 +102,7 @@ func (moves Moves) FindScoutMove(deckPos pos.Card) (moveix int) {
 
 //FindDeserterMove finds a deserter move if not panics.
 func (moves Moves) FindDeserterMove(killCard card.Card) (dMove *game.Move, moveix int) {
+	moveix = -1
 	for ix, move := range moves {
 		if len(move.Moves) > 0 && move.Moves[0].Index == card.TCDeserter {
 			if move.Moves[1].Index == int(killCard) {
@@ -157,7 +157,6 @@ func (moves Moves) FindHandFlag(flagix int, cardMove card.Card) (handFlagMove *g
 		}
 	}
 	if moveix == -1 {
-		fmt.Println(moves, flagix, cardMove)
 		panic("Move should exist") //all find should panic I think
 	}
 	return handFlagMove, moveix

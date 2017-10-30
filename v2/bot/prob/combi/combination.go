@@ -33,6 +33,11 @@ func CombinationsMud(isMud bool) []*Combination {
 	return combinations3
 }
 
+// HostRank returns host rank
+func HostRank(size int) int {
+	return len(Combinations(size))
+}
+
 //Combination a battleline formation and strength
 type Combination struct {
 	Rank      int
@@ -59,10 +64,17 @@ func createCombi(cardsNo int) (combis []*Combination) {
 	combis = append(combis, createCombiPhalanx(cardsNo)...)
 	combis = append(combis, createCombiBattalion(cardsNo)...)
 	combis = append(combis, createCombiSkirmish(cardsNo)...)
+	combis = append(combis, createCombiHost())
 	for i, c := range combis {
 		c.Rank = i + 1
 	}
 	return combis
+}
+func createCombiHost() *Combination {
+	c := &Combination{
+		Formation: card.FHost,
+	}
+	return c
 }
 func createCombiWedge(cardsNo int) []*Combination {
 	combis := make([]*Combination, 0, 10+1-cardsNo)

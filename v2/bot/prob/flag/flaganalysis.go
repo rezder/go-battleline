@@ -29,10 +29,10 @@ type Analysis struct {
 	Claimer          int
 	IsFog            bool
 	IsLoosingGame    bool
-	Analysis         []*combi.Analysis
-	SumTroops        []card.Troop
+	RankAnas         []*combi.Analysis
 	Flag             *game.Flag
 	Playix           int
+	//TODO maybe add HostRank
 }
 
 func (ana *Analysis) String() string {
@@ -40,9 +40,9 @@ func (ana *Analysis) String() string {
 		return "<nil>"
 	}
 	combiAna := "<nil>"
-	if ana.Analysis != nil {
+	if ana.RankAnas != nil {
 		positive := make([]*combi.Analysis, 0, 0)
-		for _, c := range ana.Analysis {
+		for _, c := range ana.RankAnas {
 			if c != nil {
 				if c.Prop > 0 {
 					positive = append(positive, c)
@@ -65,7 +65,8 @@ func (ana *Analysis) String() string {
 			combiAna = combiAna + "]"
 		}
 	}
-	txt := fmt.Sprintf("{Flagix:%v TargetRank:%v TargetSum:%v BotMaxRank:%v BotMaxSum: %v sumTroops:%v FlagValue:%v IsLost:%v LooseGame:%v Combination:%v", ana.Flagix+1, ana.TargetRank, ana.TargetSum, ana.BotMaxRank, ana.BotMaxSum, ana.SumTroops, ana.FlagValue, ana.IsLost, ana.IsLoosingGame, combiAna)
+	txt := fmt.Sprintf("{Flagix:%v TargetRank:%v BotMaxRank:%v FlagValue:%v IsLost:%v LooseGame:%v Combination:%v",
+		ana.Flagix+1, ana.TargetRank, ana.BotMaxRank, ana.FlagValue, ana.IsLost, ana.IsLoosingGame, combiAna)
 	return txt
 }
 
@@ -92,25 +93,27 @@ func NewAnalysis(
 		if flag.PlayerFormationSize(oppix) == flag.FormationSize() {
 			fa.IsTargetMade = true
 		}
-		if !flag.IsFog {
-			if len(flag.Players[oppix].Troops) > 0 {
-				fa.TargetRank = CalcMaxRank(flag.Players[oppix].Troops,
-					flag.Players[oppix].Morales, oppHand.Troops,
-					deck.Troops(), deck.OppDrawNo(!isBotFirst), flag.IsMud)
-			} else {
-				fa.TargetRank = calcMaxRankNewFlag(
-					flag.Players[oppix].Morales,
-					oppHand.Troops,
-					deck.Troops(),
-					flag.FormationSize())
-			}
+		oppMissNo := flag.FormationSize() - flag.PlayerFormationSize(oppix)
+		oppFlagStr := MoraleTroopsSum(flag.Players[oppix].Troops, flag.Players[oppix].Morales)
+		var isOppOK bool
+		fa.TargetSum, _, isOppOK = combi.HostMaxHandDeck(oppMissNo, oppFlagStr, deckMaxStrenghts, oppHand.Troops)
+		if !isOppOK {
+			panic("did not expect this") //TODO remove when confirmed
 		}
-		oppDeckStrenghts := make([]int, len(deckMaxStrenghts))
-		copy(oppDeckStrenghts, deckMaxStrenghts)
-		fa.TargetSum, _ = maxSum(flag.Players[oppix].Troops,
-			flag.Players[oppix].Morales, oppHand.Troops, oppDeckStrenghts, flag.FormationSize())
 		if fa.IsTargetMade {
 			fa.TargetSum = fa.TargetSum + 1
+		}
+		if len(flag.Players[oppix].Troops) > 0 {
+			fa.TargetRank = CalcMaxRank(flag.Players[oppix].Troops,
+				flag.Players[oppix].Morales, oppHand.Troops,
+				deck.Troops(), deckMaxStrenghts, deck.OppDrawNo(!isBotFirst),
+				flag.FormationSize(), flag.IsFog, fa.TargetSum, combi.HostRank(flag.FormationSize()))
+		} else {
+			fa.TargetRank = calcMaxRankNewFlag(
+				flag.Players[oppix].Morales,
+				oppHand.Troops,
+				deck.Troops(),
+				flag.FormationSize(), flag.IsFog)
 		}
 
 		fa.IsFog = flag.IsFog
@@ -124,31 +127,29 @@ func NewAnalysis(
 			fa.IsNewFlag = true //TODO what if moral 8 or 1,2,3 is alone then handAna is of no use.
 			// It could only happen if moral card was played as second card and traitor need the
 			// troop.
-			if !flag.IsFog {
-				fa.BotMaxRank = calcMaxRankNewFlag(flag.Players[playix].Morales,
-					botHand.Troops, deck.Troops(), flag.FormationSize())
-			}
+			fa.BotMaxRank = calcMaxRankNewFlag(flag.Players[playix].Morales,
+				botHand.Troops, deck.Troops(), flag.FormationSize(), flag.IsFog)
 		} else {
-			if !flag.IsFog {
-				fa.Analysis = rankAnalyze(flag.Players[playix].Troops, flag.Players[playix].Morales,
-					botHand.Troops, deck.Troops(), deck.BotDrawNo(isBotFirst), flag.IsMud)
-				fa.BotMaxRank = calcBotMaxRank(fa.Analysis)
-			}
+			fa.RankAnas = rankAnalyze(flag.Players[playix].Troops, flag.Players[playix].Morales,
+				botHand.Troops, deck.Troops(), deckMaxStrenghts, deck.BotDrawNo(isBotFirst), flag.FormationSize(), flag.IsFog, fa.TargetRank, fa.TargetSum)
+			fa.BotMaxRank = calcBotMaxRank(fa.RankAnas)
 		}
-		botDeckStrenghts := make([]int, len(deckMaxStrenghts))
-		copy(botDeckStrenghts, deckMaxStrenghts)
-
-		fa.SumTroops, fa.BotMaxSum = sumTroops(botDeckStrenghts, flag.Players[playix].Troops,
-			flag.Players[playix].Morales, botHand.Troops, fa.TargetSum, flag.FormationSize())
+		botFlagStr := MoraleTroopsSum(flag.Players[playix].Troops, flag.Players[playix].Morales)
+		botMissNo := flag.FormationSize() - flag.PlayerFormationSize(playix)
+		var isBotOK bool
+		fa.BotMaxSum, _, isBotOK = combi.HostMaxHandDeck(botMissNo, botFlagStr, deckMaxStrenghts, botHand.Troops)
+		if !isBotOK {
+			panic("did not expect this") //TODO remove when confirmed
+		}
 
 		if fa.IsTargetMade {
-			fa.IsLost = lost(fa.TargetRank, fa.TargetSum, fa.BotMaxSum, fa.BotMaxRank)
+			fa.IsLost = lost(fa.TargetRank, fa.TargetSum, fa.BotMaxSum, fa.BotMaxRank, fa.FormationSize)
 		}
 		if !fa.IsLost {
-			fa.IsWin = isWin(fa.TargetRank, fa.TargetSum, flag.IsFog, fa.IsTargetMade, fa.Analysis, flag.Players[playix].Troops,
+			fa.IsWin = isWin(fa.TargetRank, fa.TargetSum, flag.IsFog, fa.IsTargetMade, fa.RankAnas, flag.Players[playix].Troops,
 				flag.Players[playix].Morales, fa.BotFormationSize, fa.FormationSize)
 		}
-		log.Printf(log.Debug, "Flag:%v Lost:%v BotRank:%v BotSum:%v TargetRank:%v TargetSum:%v\n", fa.Flagix, fa.IsLost, fa.BotMaxRank, fa.BotMaxSum, fa.TargetRank, fa.TargetSum)
+		log.Printf(log.Debug, "Flagix:%v Flag:%v Lost:%v BotRank:%v BotSum:%v TargetRank:%v TargetSum:%v\n", fa.Flagix, fa.Flag, fa.IsLost, fa.BotMaxRank, fa.BotMaxSum, fa.TargetRank, fa.TargetSum)
 	}
 
 	return fa
@@ -156,7 +157,7 @@ func NewAnalysis(
 
 func calcBotMaxRank(combisAna []*combi.Analysis) (rank int) {
 	for _, ana := range combisAna {
-		if ana.Prop > 0 {
+		if ana.Prop > 0 || ana.Comb.Formation.Value == card.FHost.Value {
 			rank = ana.Comb.Rank
 			break
 		}
@@ -172,35 +173,17 @@ func isWin(
 	flagMorales []card.Morale,
 	botFormationSize, formationSize int) (isWin bool) {
 
-	targetRank := anaTargetRank
-	if targetRank == 0 && !isFog {
-		targetRank = 100
-	}
-	if isTargetMade && anaTargetRank != 0 {
-		targetRank = targetRank - 1
-	}
-	if targetRank != 0 {
-		for _, combiAna := range combAnas {
-			if combiAna.Prop == 1 {
-				if combiAna.Comb.Rank <= targetRank {
-					isWin = true
-				}
-				break
-			}
-			if combiAna.Comb.Rank > targetRank {
-				break
-			}
-		}
-	}
-	if !isWin {
-		if targetRank == 100 || targetRank == 0 {
-			curSum := MoraleTroopsSum(flagTroops, flagMorales)
-			if botFormationSize < formationSize {
-				curSum = curSum + formationSize - botFormationSize
-			}
-			if targetSum < curSum {
+	for _, combiAna := range combAnas {
+		if combiAna.Prop == 1 {
+			if (!isTargetMade && combiAna.Comb.Rank <= anaTargetRank) ||
+				(isTargetMade && combiAna.Comb.Rank < anaTargetRank) ||
+				(isTargetMade && combiAna.Comb.Rank == anaTargetRank && combiAna.Comb.Rank == combi.HostRank(formationSize)) {
 				isWin = true
 			}
+			break
+		}
+		if combiAna.Comb.Rank > anaTargetRank {
+			break
 		}
 	}
 	return isWin
@@ -214,11 +197,16 @@ func opp(ix int) (oppix int) {
 }
 
 // HandAnalyze create a rank analysis of each troop on the hand.
+// it assume no/ ignore enviroment cards,
+// and targetSum = 0 this means can use Prob or Playables on combination Host
 func HandAnalyze(
 	handTroops []card.Troop,
 	deck *Deck,
+	deckMaxStrenghts []int,
 	isBotFirst bool) (ana map[card.Troop][]*combi.Analysis) {
 	ana = make(map[card.Troop][]*combi.Analysis)
+	targetRank := 1
+	targetSum := 0
 	for _, troop := range handTroops {
 		simHandTroops := make([]card.Troop, 0, len(handTroops))
 		for _, simTroop := range handTroops {
@@ -226,69 +214,26 @@ func HandAnalyze(
 				simHandTroops = simTroop.AppendStrSorted(simHandTroops)
 			}
 		}
-		ana[troop] = rankAnalyze([]card.Troop{troop}, nil, simHandTroops, deck.Troops(), deck.BotDrawNo(isBotFirst), false)
+		ana[troop] = rankAnalyze([]card.Troop{troop}, nil, simHandTroops, deck.Troops(), deckMaxStrenghts, deck.BotDrawNo(isBotFirst), 3, false, targetRank, targetSum)
 	}
 	return ana
 }
 
 //lost calculate if a flag is lost it assume opponent moves first and win
 //when rank or sum is equal
-func lost(targetRank, targetSum, botMaxSum, botRank int) bool {
+func lost(targetRank, targetSum, botMaxSum, botRank, formationSize int) bool {
 	isLost := false
-	if targetRank > 0 {
-		if botRank >= targetRank {
-			isLost = true
-		}
-	} else { //skirmish line
-		if botRank == 0 {
-			if botMaxSum < targetSum { //target Sum has been increased with one because it was made
-				isLost = true
-			}
-		}
+
+	if targetRank < botRank || (targetRank == botRank && targetRank != combi.HostRank(formationSize)) {
+		isLost = true
+	} else if targetRank == botRank &&
+		targetRank == combi.HostRank(formationSize) &&
+		botMaxSum < targetSum { //target Sum has been increased with one because it was made
+		isLost = true
 	}
+
 	return isLost
 
-}
-
-//sumTroops the troops playable in a skirmish line formation (sum).
-//Its cards that give enough to reach the target or if target is not possible
-//the higest cards that still exist.
-//#deckStrenghts
-func sumTroops(
-	deckStrenghts []int,
-	flagTroops []card.Troop,
-	flagMorales []card.Morale,
-	botHandTroops []card.Troop,
-	targetSum, formationSize int) (playableTroops []card.Troop, botMaxSum int) {
-	botFormationSize := len(flagTroops) + len(flagMorales)
-	if botFormationSize == formationSize {
-		botMaxSum = MoraleTroopsSum(flagTroops, flagMorales)
-	} else {
-		botMaxSum, deckStrenghts = maxSum(flagTroops, flagMorales, botHandTroops, deckStrenghts, formationSize)
-		if targetSum >= botMaxSum {
-			playableTroops = make([]card.Troop, 0, len(botHandTroops))
-			for _, troop := range botHandTroops {
-				if troop.Strenght() >= deckStrenghts[formationSize-botFormationSize-1] {
-					playableTroops = append(playableTroops, troop)
-				}
-			}
-		} else {
-			flagSum := MoraleTroopsSum(flagTroops, flagMorales)
-			playableTroops = make([]card.Troop, 0, len(botHandTroops))
-			needStrenght := targetSum - flagSum
-			avgNeedStrenght := float32(needStrenght) / float32(formationSize-botFormationSize)
-			for _, troop := range botHandTroops {
-				if needStrenght > 0 {
-					if float32(troop.Strenght()) >= avgNeedStrenght {
-						playableTroops = append(playableTroops, troop)
-					}
-				} else {
-					playableTroops = append(playableTroops, troop)
-				}
-			}
-		}
-	}
-	return playableTroops, botMaxSum
 }
 
 // CalcMaxRank calculate the maximum rank a
@@ -298,18 +243,19 @@ func CalcMaxRank(
 	flagMorales []card.Morale,
 	handTroops []card.Troop,
 	drawSet map[card.Troop]bool,
+	deckStrenghts []int,
 	drawNo int,
-	mud bool) (rank int) {
+	formationSize int,
+	isFog bool,
+	targetRank, targetSum int,
+) (rank int) {
 
-	combinations := combi.CombinationsMud(mud)
+	combinations := combi.Combinations(formationSize)
 	allCombi := math.Comb(uint64(len(drawSet)), uint64(drawNo))
 	for _, comb := range combinations {
-		ana := combi.Ana(comb, flagTroops, flagMorales, handTroops, drawSet, drawNo, mud)
-		ana.All = allCombi
-		if ana.Valid > 0 {
-			ana.Prop = float64(ana.Valid) / float64(allCombi)
-		}
-		if ana.Prop > 0 {
+		ana := combi.Ana(comb, flagTroops, flagMorales, handTroops, drawSet, deckStrenghts, drawNo, formationSize, isFog, targetRank, targetSum)
+		ana.SetAll(allCombi)
+		if ana.Prop > 0 || comb.Formation.Value == card.FHost.Value {
 			rank = ana.Comb.Rank
 			break
 		}
@@ -320,34 +266,41 @@ func calcMaxRankNewFlag(
 	flagMorales []card.Morale,
 	handTroops []card.Troop,
 	drawSet map[card.Troop]bool,
-	formationSize int) (rank int) {
-
-	combinations := combi.Combinations(formationSize)
-	moraleNo := len(flagMorales)
-	flagTroopStrenght := 0
-	for _, morale := range flagMorales {
-		flagTroopStrenght = flagTroopStrenght + morale.MaxStrenght()
-	}
-	if moraleNo == formationSize {
-		rank = findBattalionRank(flagTroopStrenght, combinations)
+	formationSize int,
+	isFog bool,
+) (rank int) {
+	if isFog {
+		rank = combi.HostRank(formationSize)
 	} else {
-		allDrawSet := make(map[card.Troop]bool)
-		for i, v := range drawSet {
-			allDrawSet[i] = v
+		combinations := combi.Combinations(formationSize)
+		moraleNo := len(flagMorales)
+		flagTroopStrenght := 0
+		for _, morale := range flagMorales {
+			flagTroopStrenght = flagTroopStrenght + morale.MaxStrenght()
 		}
-		for _, v := range handTroops {
-			allDrawSet[v] = true
-		}
-		if moraleNo == 3 || moraleNo == 2 && formationSize == 3 {
-			maxValue := maxTroopStrenght(allDrawSet)
-			rank = findBattalionRank(flagTroopStrenght+maxValue, combinations)
-		} else if moraleNo == 2 {
-			mv1, mv2 := max2TroopStrenghts(allDrawSet)
-			rank = findBattalionRank(mv1+mv2+flagTroopStrenght, combinations)
-		} else if moraleNo == 1 {
-			rank = calcMaxRankNewFlagOneMoral(flagMorales[0], allDrawSet, formationSize, combinations)
+		if moraleNo == formationSize {
+			rank = findBattalionRank(flagTroopStrenght, combinations)
 		} else {
-			rank = calcMaxRankNewFlagZeroMoral(allDrawSet, formationSize, combinations)
+			allDrawSet := make(map[card.Troop]bool)
+			for i, v := range drawSet {
+				allDrawSet[i] = v
+			}
+			for _, v := range handTroops {
+				allDrawSet[v] = true
+			}
+			//TODO this does not work for two morales as they can make a wedge and max2TroopStrenghts
+			//should be per color not all cards.
+			if moraleNo == 3 || moraleNo == 2 && formationSize == 3 {
+				maxValue := maxTroopStrenght(allDrawSet)
+				rank = findBattalionRank(flagTroopStrenght+maxValue, combinations)
+			} else if moraleNo == 2 {
+				mv1, mv2 := max2TroopStrenghts(allDrawSet)
+				rank = findBattalionRank(mv1+mv2+flagTroopStrenght, combinations)
+			} else if moraleNo == 1 {
+				rank = calcMaxRankNewFlagOneMoral(flagMorales[0], allDrawSet, formationSize, combinations)
+			} else {
+				rank = calcMaxRankNewFlagZeroMoral(allDrawSet, formationSize, combinations)
+			}
 		}
 	}
 	return rank
@@ -410,6 +363,8 @@ Loop:
 				rank = comb.Rank
 				break Loop
 			}
+		case card.FHost.Value:
+			rank = comb.Rank
 		}
 	}
 	return rank
@@ -484,7 +439,7 @@ Loop:
 				}
 			}
 
-		case card.FSkirmish.Value:
+		case card.FSkirmish.Value: //TODO may be faster if sort deck after strenght map[str][]card.Troop and do like battalion
 			valueTroops := sortTroopStr(comb.Troops[combi.COLNone])
 			failed := false
 			usedJoker := false
@@ -509,6 +464,8 @@ Loop:
 				rank = comb.Rank
 				break Loop
 			}
+		case card.FHost.Value:
+			rank = comb.Rank
 		}
 	}
 	return rank
@@ -608,89 +565,30 @@ func MoraleTroopsSum(flagTroops []card.Troop, flagMorales []card.Morale) (sum in
 	return sum
 }
 
-//maxSum calculate the maximum sum a flag posistion can reach without
-//using morale cards from the hand.
-//#deckValues
-func maxSum(
-	flagTroops []card.Troop,
-	flagMorales []card.Morale,
-	handTroops []card.Troop,
-	deckStrenghts []int,
-	formationSize int) (sum int, updDeckStrs []int) {
-	playerFormationSize := len(flagTroops) + len(flagMorales)
-	sum = MoraleTroopsSum(flagTroops, flagMorales)
-	if playerFormationSize < formationSize {
-		max := false
-		for _, troop := range handTroops {
-			deckStrenghts, max = maxStrenghtsUpd(troop, deckStrenghts)
-			if max {
-				break
-			}
-		}
-
-		for i := 0; i < formationSize-playerFormationSize; i++ {
-			sum = sum + deckStrenghts[i]
-		}
-	}
-	updDeckStrs = deckStrenghts
-	return sum, updDeckStrs
-}
-
-// maxStrenghtsUpd update the max strenght list with a card.
-// #strenghts
-func maxStrenghtsUpd(troop card.Troop, strenghts []int) (updStrenghts []int, max bool) {
-	troopStr := troop.Strenght()
-	updStrenghts = strenghts
-	cardNo := 4
-	upd := false
-	for ix, strenght := range updStrenghts {
-		if troopStr > strenght {
-			if len(updStrenghts) < cardNo {
-				updStrenghts = append(updStrenghts, 0)
-				copy(updStrenghts[ix+1:], updStrenghts[ix:])
-			} else {
-				copy(updStrenghts[ix+1:], updStrenghts[ix:cardNo-1])
-			}
-			updStrenghts[ix] = troopStr
-			upd = true
-			break
-		}
-	}
-	if !upd && len(updStrenghts) < cardNo {
-		updStrenghts = append(updStrenghts, troopStr)
-	}
-
-	if len(updStrenghts) == cardNo && updStrenghts[cardNo-1] == 10 {
-		max = true
-	}
-	return updStrenghts, max
-}
 func rankAnalyze(
 	flagTroops []card.Troop,
 	flagMorales []card.Morale,
 	handTroops []card.Troop,
 	drawSet map[card.Troop]bool,
-	drawNo int,
-	isMud bool) (ranks []*combi.Analysis) {
-
-	formationSize := 3
-	if isMud {
-		formationSize = 4
-	}
+	deckStrenghts []int,
+	drawNo, formationSize int,
+	isFog bool,
+	targetRank, targetSum int,
+) (ranks []*combi.Analysis) {
 	combinations := combi.Combinations(formationSize)
 	formationMade := len(flagTroops)+len(flagMorales) == formationSize
 	ranks = make([]*combi.Analysis, len(combinations))
 	allCombi := math.Comb(uint64(len(drawSet)), uint64(drawNo))
 	for i, comb := range combinations {
-		ana := combi.Ana(comb, flagTroops, flagMorales, handTroops, drawSet, drawNo, isMud)
+		ana := combi.Ana(comb, flagTroops, flagMorales, handTroops, drawSet, deckStrenghts, drawNo, formationSize, isFog, targetRank, targetSum)
+		ana.SetAll(allCombi)
 		ranks[i] = ana
-		ana.All = allCombi
-		if ana.Valid > 0 {
-			ana.Prop = float64(ana.Valid) / float64(allCombi)
-		}
 		if formationMade && ana.Prop == 1 {
 			break
 		}
+		//TODO make prob and playables for host, and include isFog in rankAnalyze.
+		//Slight change to isWin(): == for host possible. and the isLost can reuse the rankAnalyze but
+		//it must also work without.First make without prob calc just set .5 for undesided.
 	}
 	return ranks
 }

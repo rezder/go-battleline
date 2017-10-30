@@ -11,17 +11,18 @@ import (
 
 //Keep keeps track of higher prioritized flags reserved cards.
 type Keep struct {
-	flag          map[card.Troop]bool
-	flagHand      map[card.Troop]bool
-	handAna       map[card.Troop][]*combi.Analysis
-	NewFlagMoveix int
-	PriFlagixs    []int
-	botHand       *card.Cards
+	flag           map[card.Troop]bool
+	flagHand       map[card.Troop]bool
+	handAna        map[card.Troop][]*combi.Analysis
+	NewFlagMoveix  int
+	PriPlayFlagixs []int
+	PriLiveFlagixs []int
+	botHand        *card.Cards
 }
 
 func (k *Keep) String() string {
 	txt := fmt.Sprintf("{Flag:%v FlagHand:%v NewFlagMove:%v PriFlag:%v}",
-		k.flag, k.flagHand, k.NewFlagMoveix, k.PriFlagixs)
+		k.flag, k.flagHand, k.NewFlagMoveix, k.PriPlayFlagixs)
 	return txt
 }
 
@@ -31,6 +32,7 @@ func NewKeep(
 	botHand, oppHand *card.Cards,
 	moves Moves,
 	deck *fa.Deck,
+	deckMaxStrs []int,
 	isBotFirst bool) (k *Keep) {
 
 	k = new(Keep)
@@ -38,7 +40,7 @@ func NewKeep(
 	k.NewFlagMoveix = -1
 	keepMap := newKeepMap()
 	isNewFlag := false
-	k.PriFlagixs = prioritizePlayableFlags(flagsAna)
+	k.PriPlayFlagixs, k.PriLiveFlagixs = prioritizePlayableFlags(flagsAna)
 
 	for _, flagAna := range flagsAna {
 		if flagAna.IsNewFlag && !isNewFlag {
@@ -46,14 +48,14 @@ func NewKeep(
 		}
 		if keepMapFlagAnaKeepTroops(flagAna) {
 			missingNo := flagAna.FormationSize - flagAna.BotFormationSize
-			keepMap.insert(flagAna.Analysis, missingNo)
+			keepMap.insert(flagAna.RankAnas, missingNo)
 		}
 	}
 
 	k.flag = keepMap.calcHand(k.botHand.Troops)
 	if isNewFlag {
-		k.handAna = fa.HandAnalyze(k.botHand.Troops, deck, isBotFirst)
-		newCardMove, newFlagix := priNewFlagMove(k.PriFlagixs, flagsAna, k.handAna, k.botHand.Troops, k.flag)
+		k.handAna = fa.HandAnalyze(k.botHand.Troops, deck, deckMaxStrs, isBotFirst)
+		newCardMove, newFlagix := priNewFlagMove(k.PriPlayFlagixs, flagsAna, k.handAna, k.botHand.Troops, k.flag)
 		if !newCardMove.IsNone() {
 			if len(moves) > 0 && moves[0].MoveType.IsHand() {
 				_, k.NewFlagMoveix = moves.FindHandFlag(newFlagix, newCardMove)
@@ -225,7 +227,7 @@ func (k *Keep) DemandScoutReturn(
 				leftTroops = append(leftTroops, troop)
 			}
 		}
-		missixs := keepScoutReturnDemand(flagsAna, leftTroops, missTroopsNo, k.PriFlagixs)
+		missixs := keepScoutReturnDemand(flagsAna, leftTroops, missTroopsNo, k.PriPlayFlagixs)
 		troops = append(troops, missixs...)
 	}
 	return troops
@@ -271,7 +273,7 @@ func keepScoutReturnDemand(
 			for _, flagAna := range copyFlagsAna {
 				if keepMapFlagAnaKeepTroops(flagAna) {
 					missingNo := flagAna.FormationSize - flagAna.BotFormationSize
-					keepMap.insert(flagAna.Analysis, missingNo)
+					keepMap.insert(flagAna.RankAnas, missingNo)
 				}
 			}
 			keepFlag := keepMap.calcHand(handTroops)
@@ -299,7 +301,7 @@ func (k *Keep) DemandDump(
 	flagix int) (troop card.Troop) {
 	logTxt := ""
 	if len(k.flag) < len(k.botHand.Troops) {
-		for _, combiFlag := range flagsAna[flagix].Analysis {
+		for _, combiFlag := range flagsAna[flagix].RankAnas {
 			if len(combiFlag.Playables) > 0 {
 				cardMove := keepLastCard(k.flag, combiFlag.Playables)
 				if cardMove.IsTroop() {
@@ -351,7 +353,7 @@ func (km *keepMap) Len() (no int) {
 	return no
 }
 func keepMapFlagAnaKeepTroops(flagAna *fa.Analysis) bool {
-	return !flagAna.IsFog && !flagAna.IsLost && !flagAna.IsNewFlag && flagAna.IsPlayable
+	return !flagAna.IsLost && !flagAna.IsNewFlag && flagAna.IsPlayable
 }
 
 //keepTroops keeps all cards from the top formation, in case of wedge
@@ -381,7 +383,11 @@ func (km *keepMap) insert(combiAnas []*combi.Analysis, missingNo int) {
 				case card.FBattalion.Value:
 					km.colorMap[troop.Color()] = km.colorMap[troop.Color()] + missingNo
 					break Loop
+				case card.FHost.Value:
+					fallthrough //TODO this is right for host only on card and allways the first last maybe ok if one card only missing.
+					//I guess host and skirmish dont need two resever often.
 				case card.FSkirmish.Value:
+					//TODO this is right for Skirmish only one card ??? or maybe it is
 					km.valueMap[troop.Strenght()] = km.valueMap[troop.Strenght()] + 1
 					break Loop
 				}
@@ -463,8 +469,8 @@ func newFlagPriTargetMove(
 		flagAna := flagsAna[flagix]
 		if flagAna.IsNewFlag && flagAna.OppFormationSize >= minOppFormSize {
 			targetRank := flagAna.TargetRank
-			if flagAna.IsTargetMade {
-				targetRank = targetRank - 1
+			if flagAna.IsTargetMade && targetRank != combi.HostRank(flagAna.FormationSize) {
+				targetRank = targetRank - 1 //rank 1 is not possible because flag is lost
 			}
 			moveCard = newFlagTargetMove(handAna, targetRank, keepFlagTroops)
 		}
@@ -475,20 +481,24 @@ func newFlagPriTargetMove(
 	}
 	return moveCard, moveFlagix, logTxt
 }
-func prioritizePlayableFlags(flagsAna map[int]*fa.Analysis) (flagixs []int) {
+func prioritizePlayableFlags(flagsAna map[int]*fa.Analysis) (playFlagixs, liveFlagixs []int) {
 	flagValues := make([]int, len(flagsAna))
 	for i, ana := range flagsAna {
 		flagValues[i] = ana.FlagValue
 	}
 	sortixs := slice.SortWithIx(flagValues)
-	flagixs = make([]int, 0, len(sortixs))
+	playFlagixs = make([]int, 0, len(sortixs))
+	liveFlagixs = make([]int, 0, len(sortixs))
 	for i := len(sortixs) - 1; i >= 0; i-- {
 		if flagsAna[sortixs[i]].IsPlayable {
-			flagixs = append(flagixs, sortixs[i])
+			playFlagixs = append(playFlagixs, sortixs[i])
+		}
+		if !flagsAna[sortixs[i]].IsClaimed {
+			liveFlagixs = append(liveFlagixs, sortixs[i])
 		}
 	}
-	log.Printf(log.Debug, "Prioritized flags: %v\n", flagixs)
-	return flagixs
+	log.Printf(log.Debug, "Prioritized playable flags: %v, live flags: %v\n", playFlagixs, liveFlagixs)
+	return playFlagixs, liveFlagixs
 }
 
 func emptyPriFlagixs(priFlagixs []int, flagsAna map[int]*fa.Analysis) []int {
@@ -540,7 +550,7 @@ func newFlagPhalanxMove(
 //TODO could be better if playables not in keep is condsiddered.
 func newFlagTargetMove(
 	handAna map[card.Troop][]*combi.Analysis,
-	targetRank int,
+	targetRank int, //Made formation must be one lower
 	keepFlagTroops map[card.Troop]bool,
 ) (troop card.Card) {
 
