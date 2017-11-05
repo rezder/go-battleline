@@ -12,6 +12,12 @@ const (
 	NOTroop = 60
 	//NOTac is the number of tactic cards.
 	NOTac = 10
+	//NOColors the numbers of colors
+	NOColors = 6
+	//MAXStr the maximum strenght of troop
+	MAXStr = 10
+	//COLNone
+	COLNone = 0
 
 	//Tactic cards.
 

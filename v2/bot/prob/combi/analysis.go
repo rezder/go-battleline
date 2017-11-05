@@ -2,6 +2,7 @@ package combi
 
 import (
 	"fmt"
+	"github.com/rezder/go-battleline/v2/bot/prob/dht"
 	"github.com/rezder/go-battleline/v2/game/card"
 	math "github.com/rezder/go-math/int"
 	"sort"
@@ -24,6 +25,9 @@ func (ana *Analysis) String() string {
 		ana.Comb.Rank, ana.Prop, ana.Comb.Formation.Name, ana.Comb.Strength, ana.Valid, ana.All, ana.Playables)
 	return txt
 }
+
+//SetAll updates the All combinations field and calculate
+//the probabilties.
 func (ana *Analysis) SetAll(all uint64) {
 	ana.All = all
 	if ana.Valid > 0 {
@@ -36,70 +40,73 @@ func Ana(
 	comb *Combination,
 	flagTroops []card.Troop,
 	flagMorales []card.Morale,
-	handTroops []card.Troop,
-	drawSet map[card.Troop]bool,
-	deckStrenghts []int,
-	drawNo int,
+	deckHandTroops *dht.Cache,
+	playix int,
 	formationSize int,
 	isFog bool,
 	targetRank, targetsum int,
 ) (ana *Analysis) {
-	nAll := uint64(len(drawSet))
-	dAll := uint64(drawNo)
+	nAll := uint64(len(deckHandTroops.SrcDeckTroops))
+	dAll := uint64(deckHandTroops.SrcDrawNos[playix])
 	if comb.Formation.Value == card.FHost.Value {
-		ana = anaHost(comb, flagTroops, flagMorales, handTroops, drawSet, deckStrenghts, formationSize, drawNo, targetRank, targetsum, nAll, dAll)
+		ana = anaHost(comb, flagTroops, flagMorales, deckHandTroops, playix, formationSize, targetRank, targetsum, nAll, dAll)
 	} else {
 		ana = new(Analysis)
 		ana.Comb = comb
+		drawNo := deckHandTroops.SrcDrawNos[playix]
 		if !isFog {
 			isValid, validFlagTroops, validFlagMorales, color := anaCombiFlagCards(comb.Troops, flagTroops, flagMorales, comb.Formation.Value)
-			if !isValid || formationSize-len(flagTroops)-len(flagMorales) > drawNo {
+			if !isValid {
 				ana.Prop = 0
 			} else {
 				if len(validFlagTroops) != 0 {
-					validHandTroops, validDrawTroops := anaCombiHandDraw(comb.Troops[color], handTroops, drawSet) //sorted after combi.Troops
-					switch comb.Formation {
-					case card.FWedge:
-						isValidMorale := moralesReduce(validFlagTroops, validFlagMorales)
-						if !isValidMorale {
-							ana.Prop = 0
-						} else {
-							isReduceCalc := false
-							isInvalidOnly := false
-							if len(validFlagMorales) != 0 {
-								flagStrTroops := TroopsToStrenghtTroops(validFlagTroops)
-								handStrTroops := TroopsToStrenghtTroops(validHandTroops)
-								drawStrTroops := TroopsToStrenghtTroops(validDrawTroops)
-								isReduceCalc, isInvalidOnly = anaStraightMorales(validFlagMorales,
-									handStrTroops, drawStrTroops, flagStrTroops, formationSize)
-								validHandTroops = strenghtTroopsToTroops(handStrTroops) //sorted after map rnd.
-								validDrawTroops = strenghtTroopsToTroops(drawStrTroops)
-							}
-							if !isInvalidOnly {
-								anaWedgePhalanx(ana, nAll, dAll, formationSize, validFlagTroops, validFlagMorales, validHandTroops, validDrawTroops)
-								//This the rar case of mud,123 joker and troop with strenght 3.
-								if isReduceCalc { // 1 out 3 is bad when draw two cards
-									if nAll > dAll {
-										ana.Valid = ana.Valid - math.Comb(nAll-uint64(3), dAll-uint64(2))
-									}
-								}
-							} else {
+					validHandTroops, validDrawTroops := anaCombiHandDraw(comb.Troops[color], deckHandTroops.SrcHandTroops[playix], deckHandTroops.OnlyDeckSet()) //sorted after combi.Troops
+					if formationSize-len(validHandTroops)-len(flagMorales)-len(flagTroops) > drawNo {
+						ana.Prop = 0
+					} else {
+						switch comb.Formation {
+						case card.FWedge:
+							isValidMorale := moralesReduce(validFlagTroops, validFlagMorales)
+							if !isValidMorale {
 								ana.Prop = 0
+							} else {
+								isReduceCalc := false
+								isInvalidOnly := false
+								if len(validFlagMorales) != 0 {
+									flagStrTroops := TroopsToStrenghtTroops(validFlagTroops)
+									handStrTroops := TroopsToStrenghtTroops(validHandTroops)
+									drawStrTroops := TroopsToStrenghtTroops(validDrawTroops)
+									isReduceCalc, isInvalidOnly = anaStraightMorales(validFlagMorales,
+										handStrTroops, drawStrTroops, flagStrTroops, formationSize)
+									validHandTroops = strenghtTroopsToTroops(handStrTroops) //sorted after map rnd.
+									validDrawTroops = strenghtTroopsToTroops(drawStrTroops)
+								}
+								if !isInvalidOnly {
+									anaWedgePhalanx(ana, nAll, dAll, formationSize, validFlagTroops, validFlagMorales, validHandTroops, validDrawTroops)
+									//This the rar case of mud,123 joker and troop with strenght 3.
+									if isReduceCalc { // 1 out 3 is bad when draw two cards
+										if nAll > dAll {
+											ana.Valid = ana.Valid - math.Comb(nAll-uint64(3), dAll-uint64(2))
+										}
+									}
+								} else {
+									ana.Prop = 0
+								}
 							}
-						}
 
-					case card.FPhalanx:
-						anaWedgePhalanx(ana, nAll, dAll, formationSize, validFlagTroops, validFlagMorales, validHandTroops, validDrawTroops)
+						case card.FPhalanx:
+							anaWedgePhalanx(ana, nAll, dAll, formationSize, validFlagTroops, validFlagMorales, validHandTroops, validDrawTroops)
 
-					case card.FBattalion:
-						anaBattalion(ana, nAll, dAll, formationSize, comb.Strength, validFlagMorales,
-							validFlagTroops, validHandTroops, validDrawTroops)
+						case card.FBattalion:
+							anaBattalion(ana, nAll, dAll, formationSize, comb.Strength, validFlagMorales,
+								validFlagTroops, validHandTroops, validDrawTroops)
 
-					case card.FSkirmish:
-						anaSkirmish(ana, nAll, dAll, formationSize, validFlagMorales, validFlagTroops, validHandTroops, validDrawTroops)
+						case card.FSkirmish:
+							anaSkirmish(ana, nAll, dAll, formationSize, validFlagMorales, validFlagTroops, validHandTroops, validDrawTroops)
 
-					} //end switch
-					ana.Playables = playablesSort(ana.Playables)
+						} //end switch
+						ana.Playables = playablesSort(ana.Playables)
+					}
 				} else { //Only tacs
 					// we can handle only one special case, that come up during mud dish but dont call this function with only morales
 					if len(flagMorales) == 3 && formationSize == 3 {
@@ -122,85 +129,48 @@ func anaHost(
 	comb *Combination,
 	flagTroops []card.Troop,
 	flagMorales []card.Morale,
-	handTroops []card.Troop,
-	drawSet map[card.Troop]bool,
-	deckStrenghts []int,
-	formationSize, drawNo, targetRank, targetSum int,
+	deckHandTroops *dht.Cache,
+	playix int,
+	formationSize, targetRank, targetSum int,
 	nAll, dAll uint64,
 ) (ana *Analysis) {
 	ana = new(Analysis)
 	ana.Comb = comb
 	missNo := formationSize - len(flagTroops) - len(flagMorales)
-	if len(handTroops) > missNo {
-		handTroops = handTroops[:missNo]
-	}
 	var flagStrs = moraleTroopsSum(flagTroops, flagMorales)
-	trimDeckStrs := deckStrenghts
-	if len(deckStrenghts) > drawNo {
-		trimDeckStrs = trimDeckStrs[:drawNo]
-	}
-	maxStrs, maxHandTroops, isOK := HostMaxHandDeck(missNo, flagStrs, trimDeckStrs, handTroops)
-	if maxStrs < targetSum || !isOK {
-		ana.Prop = 0
-		ana.Playables = hostPlayables(maxStrs, missNo, flagStrs, handTroops, trimDeckStrs)
-	} else {
+	targetRes := deckHandTroops.TargetSum(playix, card.COLNone, missNo, targetSum-flagStrs)
 
-		curStrs := flagStrs
-		for _, troop := range handTroops {
-			curStrs = curStrs + troop.Strenght()
+	if !targetRes.IsPossibel {
+		ana.Prop = 0
+		sum, isOk := deckHandTroops.Sum(playix, card.COLNone, missNo)
+		if isOk {
+			ana.Playables = hostPlayables(sum, missNo, playix, deckHandTroops)
 		}
-		if curStrs >= targetSum {
+	} else {
+		if targetRes.IsMade {
 			ana.Prop = 1
-			ana.Playables = hostPlayables(targetSum, missNo, flagStrs, handTroops, trimDeckStrs)
+			ana.Playables = hostPlayables(targetSum-flagStrs, missNo, playix, deckHandTroops)
 		} else {
-			if targetRank == HostRank(formationSize) {
-				ana.Valid = hostValid(targetSum, flagStrs, missNo, drawNo, maxHandTroops, handTroops, trimDeckStrs, drawSet, nAll, dAll)
+			if targetRank == RankHost(formationSize) {
+				ana.Valid = hostValid(targetRes.ValidDeckTroops, targetRes.ValidHandTroops,
+					targetRes.NewNo, targetRes.NewSum, nAll, dAll)
 			} else {
 				ana.Valid = math.Comb(nAll, dAll) / 2
 			}
-			ana.Playables = hostPlayables(targetSum, missNo, flagStrs, handTroops, trimDeckStrs)
+			ana.Playables = hostPlayables(targetSum-flagStrs, missNo, playix, deckHandTroops)
 		}
 
 	}
 	return ana
 }
 func hostValid(
-	targetSum, flagStr, missNo, drawNo int,
-	maxHandTroops, handTroops []card.Troop,
-	deckStrenghts []int,
-	drawSet map[card.Troop]bool,
+	validDeckTroops, validHandTroops []card.Troop,
+	missNo, targetSum int,
 	nAll, dAll uint64,
 ) (valid uint64) {
-	trimFlagStr := flagStr
-	for _, troop := range maxHandTroops {
-		trimFlagStr = trimFlagStr + troop.Strenght()
-	}
-	trimHandTroops := handTroops[len(maxHandTroops):]
-	trimMissNo := missNo - len(maxHandTroops)
-	trimStr := 0
-	if trimMissNo == 1 {
-		trimStr = targetSum - trimFlagStr
-	} else {
-		maxStrs, _, _ := HostMaxHandDeck(trimMissNo-1, trimFlagStr, deckStrenghts, trimHandTroops)
-		trimStr = targetSum - maxStrs
-	}
-	validTroops := make([]card.Troop, 0, len(drawSet))
-	for troop := range drawSet {
-		if troop.Strenght() >= trimStr {
-			validTroops = append(validTroops, troop)
-		}
-	}
-	validHandTroops := make([]card.Troop, 0, len(handTroops))
-	for _, troop := range trimHandTroops {
-		if troop.Strenght() >= trimStr {
-			validHandTroops = append(validHandTroops, troop)
-			if len(validHandTroops) == trimMissNo-1 {
-				break
-			}
-		}
-	}
-	nValid := uint64(len(validTroops))
-	dValid := uint64(trimMissNo - len(validHandTroops))
+
+	nValid := uint64(len(validDeckTroops))
+	dValid := uint64(missNo - len(validHandTroops))
 	if dValid < uint64(1) {
 		dValid = uint64(1)
 	}
@@ -212,10 +182,10 @@ func hostValid(
 		}
 		for d := drawMaxValid; d >= drawMinValue; d-- {
 			if nAll != nValid {
-				valid = valid + (hostProbPermCombi(validTroops, validHandTroops, targetSum-trimFlagStr, trimMissNo, int(d)) *
+				valid = valid + (hostProbPermCombi(validDeckTroops, validHandTroops, targetSum, missNo, int(d)) *
 					math.Comb(nAll-nValid, dAll-d))
 			} else {
-				valid = valid + hostProbPermCombi(validTroops, validHandTroops, targetSum-trimFlagStr, trimMissNo, int(d))
+				valid = valid + hostProbPermCombi(validDeckTroops, validHandTroops, targetSum, missNo, int(d))
 			}
 		}
 	}
@@ -270,21 +240,18 @@ func hostMaxStrenght(troops, handTroops []card.Troop, noTroops int) (maxStr int)
 	}
 	return maxStr
 }
-func hostPlayables(
-	targetSum, drawNo, flagStrs int,
-	handTroops []card.Troop,
-	deckStrenghts []int) (playables []card.Troop) {
-	if drawNo == 1 {
-		for _, handTroop := range handTroops {
-			if handTroop.Strenght() >= targetSum-flagStrs {
+func hostPlayables(targetSum, missNo, botix int, deckHandTroops *dht.Cache) (playables []card.Troop) {
+	if missNo == 1 {
+		for _, handTroop := range deckHandTroops.SrcHandTroops[botix] {
+			if handTroop.Strenght() >= targetSum {
 				playables = append(playables, handTroop)
 			} else {
 				break
 			}
 		}
 	} else {
-		maxStrs, _, _ := HostMaxHandDeck(drawNo-1, flagStrs, deckStrenghts, handTroops)
-		for _, handTroop := range handTroops {
+		maxStrs, _ := deckHandTroops.Sum(botix, card.COLNone, missNo-1)
+		for _, handTroop := range deckHandTroops.SrcHandTroops[botix] {
 			if handTroop.Strenght() >= targetSum-maxStrs {
 				playables = append(playables, handTroop)
 			} else {
@@ -294,39 +261,6 @@ func hostPlayables(
 	}
 
 	return playables
-}
-func HostMaxHandDeck(
-	drawNo, flagStrs int,
-	deckStrenghts []int,
-	handTroops []card.Troop,
-) (maxStrs int, maxHandTroops []card.Troop, isOk bool) {
-
-	maxStrs = flagStrs
-	deckStrs := deckStrenghts[:]
-	handTrs := handTroops[:]
-	isOk = true
-	for i := 0; i < drawNo; i++ {
-		if len(deckStrs) > 0 && len(handTrs) > 0 {
-			if handTrs[0].Strenght() >= deckStrs[0] {
-				maxStrs = maxStrs + handTrs[0].Strenght()
-				maxHandTroops = append(maxHandTroops, handTrs[0])
-				handTrs = handTrs[1:]
-			} else {
-				maxStrs = maxStrs + deckStrs[0]
-				deckStrs = deckStrs[1:]
-			}
-		} else if len(handTrs) > 0 {
-			maxStrs = maxStrs + handTrs[0].Strenght()
-			maxHandTroops = append(maxHandTroops, handTrs[0])
-			handTrs = handTrs[1:]
-		} else if len(deckStrs) > 0 {
-			maxStrs = maxStrs + deckStrs[0]
-			deckStrs = deckStrs[1:]
-		} else {
-			isOk = false
-		}
-	}
-	return maxStrs, maxHandTroops, isOk
 }
 
 //moraleTroopsSum sums the strenght of troops and morales.
@@ -894,14 +828,14 @@ func anaCombiFlagCards(
 
 	validMorales = make(map[card.Morale]map[int]bool)
 	isValid = true
-	color = COLNone
+	color = card.COLNone
 	colorFormation := false
-	if len(combiTroops[COLNone]) == 0 {
+	if len(combiTroops[card.COLNone]) == 0 {
 		colorFormation = true
 	}
 	for _, troop := range flagTroops {
 		isFound := false
-		if colorFormation && color == COLNone {
+		if colorFormation && color == card.COLNone {
 			color = troop.Color()
 		}
 		for _, v := range combiTroops[color] {

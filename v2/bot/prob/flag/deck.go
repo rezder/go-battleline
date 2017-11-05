@@ -46,12 +46,8 @@ func NewDeck(viewPos *game.ViewPos, posCards game.PosCards) (deck *Deck) {
 }
 
 //Troops returns a all troops in the deck.
-func (deck *Deck) Troops() map[card.Troop]bool {
-	troops := make(map[card.Troop]bool)
-	for _, troop := range deck.cards.Troops {
-		troops[troop] = true
-	}
-	return troops
+func (deck *Deck) Troops() []card.Troop {
+	return deck.cards.Troops
 }
 
 //Guiles returns a all guiles cards in the deck.
@@ -73,6 +69,17 @@ func (deck *Deck) Envs() []card.Env {
 //WARNING adds the tactic card together.
 func (deck *Deck) Tacs() []card.Card {
 	return deck.cards.Tacs()
+}
+
+//DrawNos the number of draws from the deck per player.
+func (deck *Deck) DrawNos(drawFirst int) (nos [2]int) {
+	botix := deck.oppix - 1
+	if botix < 0 {
+		botix = 1
+	}
+	nos[botix] = deck.BotDrawNo(deck.oppix != drawFirst)
+	nos[deck.oppix] = deck.OppDrawNo(deck.oppix == drawFirst)
+	return nos
 }
 
 //OppDrawNo calculate the opponent number of unknown cards.

@@ -6,15 +6,20 @@ import (
 )
 
 const (
-	//COLNone none color
-	COLNone = 0
+	tbNone     = 0
+	tbRank     = 1
+	tbStrenght = 2
 )
 
-var combinations3, combinations4 []*Combination
+var (
+	combinations3, combinations4 []*Combination
+	tbNames                      [3]string
+)
 
 func init() {
 	combinations3 = createCombi(3)
 	combinations4 = createCombi(4)
+	tbNames = [3]string{"None", "Rank", "Strenght"}
 }
 
 //Combinations returns the all the possible combinations.
@@ -33,9 +38,14 @@ func CombinationsMud(isMud bool) []*Combination {
 	return combinations3
 }
 
-// HostRank returns host rank
-func HostRank(size int) int {
+// RankHost returns host rank
+func RankHost(size int) int {
 	return len(Combinations(size))
+}
+
+// RankTieBreaker returns the tiebreaker rule.
+func RankTieBreaker(rank, size int) TieBreaker {
+	return Combinations(size)[rank-1].TieBreaker
 }
 
 //Combination a battleline formation and strength
@@ -46,6 +56,7 @@ type Combination struct {
 	//Troops is all the cards that can be used to create the formation.
 	//per color
 	Troops map[int][]card.Troop
+	TieBreaker
 }
 
 func (c *Combination) String() string {
@@ -72,7 +83,8 @@ func createCombi(cardsNo int) (combis []*Combination) {
 }
 func createCombiHost() *Combination {
 	c := &Combination{
-		Formation: card.FHost,
+		Formation:  card.FHost,
+		TieBreaker: tbStrenght,
 	}
 	return c
 }
@@ -80,8 +92,9 @@ func createCombiWedge(cardsNo int) []*Combination {
 	combis := make([]*Combination, 0, 10+1-cardsNo)
 	for strenght := 10; strenght >= cardsNo; strenght-- {
 		combi := Combination{
-			Formation: card.FWedge,
-			Troops:    make(map[int][]card.Troop),
+			Formation:  card.FWedge,
+			Troops:     make(map[int][]card.Troop),
+			TieBreaker: tbRank,
 		}
 
 		for color := 1; color < 7; color++ {
@@ -104,15 +117,16 @@ func createCombiPhalanx(cardsNo int) []*Combination {
 	//Phalanx
 	for str := 10; str > 0; str-- {
 		combi := Combination{
-			Formation: card.FPhalanx,
-			Strength:  str * cardsNo,
-			Troops:    make(map[int][]card.Troop),
+			Formation:  card.FPhalanx,
+			Strength:   str * cardsNo,
+			Troops:     make(map[int][]card.Troop),
+			TieBreaker: tbRank,
 		}
 		troops := make([]card.Troop, 0, 6)
 		for color := 1; color < 7; color++ {
 			troops = append(troops, card.Troop((color-1)*10+str))
 		}
-		combi.Troops[COLNone] = troops
+		combi.Troops[card.COLNone] = troops
 		combis = append(combis, &combi)
 	}
 	return combis
@@ -134,9 +148,10 @@ func createCombiBattalion(cardsNo int) (combis []*Combination) {
 	combis = make([]*Combination, 0, maxsum-minsum)
 	for sum := maxsum; sum > minsum; sum-- {
 		combi := Combination{
-			Formation: card.FBattalion,
-			Strength:  sum,
-			Troops:    make(map[int][]card.Troop),
+			Formation:  card.FBattalion,
+			Strength:   sum,
+			Troops:     make(map[int][]card.Troop),
+			TieBreaker: tbRank,
 		}
 		//TODO I do not know why I did this?
 		/*fac := math.FactorSum(allCards, sum, cardsNo, true)
@@ -163,8 +178,9 @@ func createCombiSkirmish(cardsNo int) (combis []*Combination) {
 
 	for str := 10; str >= cardsNo; str-- {
 		combi := Combination{
-			Formation: card.FSkirmish,
-			Troops:    make(map[int][]card.Troop),
+			Formation:  card.FSkirmish,
+			Troops:     make(map[int][]card.Troop),
+			TieBreaker: tbRank,
 		}
 		baseixs := make([]int, 0, cardsNo)
 		strenght := 0
@@ -179,7 +195,7 @@ func createCombiSkirmish(cardsNo int) (combis []*Combination) {
 				cardixs = append(cardixs, card.Troop((color-1)*10+baseix))
 			}
 		}
-		combi.Troops[COLNone] = cardixs
+		combi.Troops[card.COLNone] = cardixs
 
 		combis = append(combis, &combi)
 	}
@@ -202,4 +218,29 @@ func LastFormationRank(formation card.Formation, formationSize int) (rank int) {
 		rank = len(combinations) + 1
 	}
 	return rank
+}
+
+//TieBreaker the tiebreaker rule of a combination.
+type TieBreaker uint8
+
+//IsRank returns true if rank is the tiebreaker.
+//first to this rank wins.
+func (t TieBreaker) IsRank() bool {
+	return t == tbRank
+}
+
+//IsStrenght returns true if strenght is the tiebreaker.
+//first to strenght wins.
+func (t TieBreaker) IsStrenght() bool {
+	return t == tbStrenght
+}
+
+//IsNone returns true if no tiebreaker rule
+//this rank is not supposed to be combared
+//with a equal rank.
+func (t TieBreaker) IsNone() bool {
+	return t == tbNone
+}
+func (t TieBreaker) String() string {
+	return tbNames[int(t)]
 }

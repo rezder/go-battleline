@@ -1,6 +1,7 @@
 package prob
 
 import (
+	"github.com/rezder/go-battleline/v2/bot/prob/dht"
 	fa "github.com/rezder/go-battleline/v2/bot/prob/flag"
 	"github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-battleline/v2/game/card"
@@ -9,12 +10,10 @@ import (
 
 //Sim the general information need to simulate a move.
 type Sim struct {
-	deck             *fa.Deck
-	deckMaxStrenghts []int
-	oppHand          *card.Cards
-	botix            int
-	posCards         [][]card.Card
-	conePos          [10]pos.Cone
+	deckHandTroops *dht.Cache
+	botix          int
+	posCards       [][]card.Card
+	conePos        [10]pos.Cone
 	Moves
 }
 
@@ -27,15 +26,17 @@ type Sim struct {
 //Traitor have both and the may be the same.
 //Redeploy may have two or only a out-flag.
 func (sim *Sim) Move(move *game.Move) (outFlagAna, inFlagAna *fa.Analysis) {
-	simHand, simOutFlag, simInFlag, outFlagix, inFlagix := simHandMove(sim.posCards, sim.conePos, move)
+	//TODO maybe check Only works for tac moves as deckHandTroops is not changes when tac is used
+	//or if dht.Sim() is made use it even if it have no effect just incase.
+	_, simOutFlag, simInFlag, outFlagix, inFlagix := simHandMove(sim.posCards, sim.conePos, move)
 	if inFlagix != -1 {
-		inFlagAna = fa.NewAnalysis(sim.botix, simInFlag, simHand, sim.oppHand, sim.deckMaxStrenghts, sim.deck, inFlagix, true)
+		inFlagAna = fa.NewAnalysis(sim.botix, simInFlag, sim.deckHandTroops, inFlagix)
 		if inFlagix == outFlagix {
 			outFlagAna = inFlagAna
 		}
 	}
 	if outFlagix != -1 && outFlagAna == nil {
-		outFlagAna = fa.NewAnalysis(sim.botix, simOutFlag, simHand, sim.oppHand, sim.deckMaxStrenghts, sim.deck, outFlagix, true)
+		outFlagAna = fa.NewAnalysis(sim.botix, simOutFlag, sim.deckHandTroops, outFlagix)
 	}
 	return outFlagAna, inFlagAna
 }

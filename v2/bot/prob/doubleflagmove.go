@@ -335,7 +335,7 @@ func dbFlagCalcImprovProb(oldAna, ana *fa.Analysis) (diffWinProb, diffPhalanxPro
 func flagAnaProb(flagAna *fa.Analysis) (win, phalanx float64) {
 	if flagAna.RankAnas != nil && !flagAna.IsFog && !flagAna.IsNewFlag {
 		targetRank := flagAna.TargetRank
-		if flagAna.IsTargetMade && targetRank != combi.HostRank(flagAna.FormationSize) {
+		if flagAna.IsTargetMade && combi.RankTieBreaker(targetRank, flagAna.FormationSize).IsRank() {
 			targetRank = targetRank - 1
 		}
 		for _, combiAna := range flagAna.RankAnas {

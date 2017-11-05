@@ -3,6 +3,7 @@ package prob
 import (
 	"fmt"
 	"github.com/rezder/go-battleline/v2/bot/prob/combi"
+	"github.com/rezder/go-battleline/v2/bot/prob/dht"
 	fa "github.com/rezder/go-battleline/v2/bot/prob/flag"
 	"github.com/rezder/go-battleline/v2/game/card"
 	"github.com/rezder/go-error/log"
@@ -17,7 +18,7 @@ type Keep struct {
 	NewFlagMoveix  int
 	PriPlayFlagixs []int
 	PriLiveFlagixs []int
-	botHand        *card.Cards
+	botHandTroops  []card.Troop
 }
 
 func (k *Keep) String() string {
@@ -29,14 +30,13 @@ func (k *Keep) String() string {
 //NewKeep creates a keep.
 func NewKeep(
 	flagsAna map[int]*fa.Analysis,
-	botHand, oppHand *card.Cards,
 	moves Moves,
-	deck *fa.Deck,
-	deckMaxStrs []int,
-	isBotFirst bool) (k *Keep) {
+	deckHandTroops *dht.Cache,
+	botix int,
+) (k *Keep) {
 
 	k = new(Keep)
-	k.botHand = botHand
+	k.botHandTroops = deckHandTroops.SrcHandTroops[botix]
 	k.NewFlagMoveix = -1
 	keepMap := newKeepMap()
 	isNewFlag := false
@@ -52,10 +52,10 @@ func NewKeep(
 		}
 	}
 
-	k.flag = keepMap.calcHand(k.botHand.Troops)
+	k.flag = keepMap.calcHand(k.botHandTroops)
 	if isNewFlag {
-		k.handAna = fa.HandAnalyze(k.botHand.Troops, deck, deckMaxStrs, isBotFirst)
-		newCardMove, newFlagix := priNewFlagMove(k.PriPlayFlagixs, flagsAna, k.handAna, k.botHand.Troops, k.flag)
+		k.handAna = fa.HandAnalyze(deckHandTroops, botix)
+		newCardMove, newFlagix := priNewFlagMove(k.PriPlayFlagixs, flagsAna, k.handAna, k.botHandTroops, k.flag)
 		if !newCardMove.IsNone() {
 			if len(moves) > 0 && moves[0].MoveType.IsHand() {
 				_, k.NewFlagMoveix = moves.FindHandFlag(newFlagix, newCardMove)
@@ -64,7 +64,7 @@ func NewKeep(
 				troop := card.Troop(newCardMove)
 				keepMap.cardsMap[troop] = true //This is random as any phalanx card may have more connected cards
 				keepMap.insert(k.handAna[troop], 2)
-				k.flagHand = keepMap.calcHand(k.botHand.Troops)
+				k.flagHand = keepMap.calcHand(k.botHandTroops)
 			} else {
 				panic("New flag move should be a troop")
 			}
@@ -94,7 +94,7 @@ func (k *Keep) CalcIsHandGood(flagsAna map[int]*fa.Analysis, capNo int) bool {
 		}
 		if noNewFlags > 1 {
 			troops := make([]card.Troop, 0, 7)
-			for _, troop := range k.botHand.Troops {
+			for _, troop := range k.botHandTroops {
 				if !k.flagHand[troop] {
 					troops = append(troops, troop)
 				}
@@ -178,7 +178,7 @@ func keepLastCard(keepTroops map[card.Troop]bool, troops []card.Troop) (lastTroo
 //RequestFlagHandLowestStrenght returns a troop from the hand,
 // that is not reserved if possibel.
 func (k *Keep) RequestFlagHandLowestStrenght() (cardMove card.Card) {
-	troops := keepLowestStrenghts(k.botHand.Troops, k.flagHand, 1)
+	troops := keepLowestStrenghts(k.botHandTroops, k.flagHand, 1)
 	if len(troops) > 0 {
 		cardMove = card.Card(troops[0])
 	}
@@ -209,13 +209,13 @@ func (k *Keep) DemandScoutReturn(
 	flagsAna map[int]*fa.Analysis) (troops []card.Troop) {
 
 	troops = make([]card.Troop, 0, 2)
-	troops = keepScoutReturnRequest(k.botHand.Troops, k.flag, k.flagHand)
+	troops = keepScoutReturnRequest(k.botHandTroops, k.flag, k.flagHand)
 	if len(troops) >= no {
 		troops = troops[0:no]
 	} else {
 		missTroopsNo := no - len(troops)
-		leftTroops := make([]card.Troop, 0, len(k.botHand.Troops)-1)
-		for _, troop := range k.botHand.Troops {
+		leftTroops := make([]card.Troop, 0, len(k.botHandTroops)-1)
+		for _, troop := range k.botHandTroops {
 			isKeep := true
 			for _, removeTroop := range troops {
 				if removeTroop == troop {
@@ -300,7 +300,7 @@ func (k *Keep) DemandDump(
 	flagsAna map[int]*fa.Analysis,
 	flagix int) (troop card.Troop) {
 	logTxt := ""
-	if len(k.flag) < len(k.botHand.Troops) {
+	if len(k.flag) < len(k.botHandTroops) {
 		for _, combiFlag := range flagsAna[flagix].RankAnas {
 			if len(combiFlag.Playables) > 0 {
 				cardMove := keepLastCard(k.flag, combiFlag.Playables)
@@ -316,7 +316,7 @@ func (k *Keep) DemandDump(
 			logTxt = "lowest strenght card not in keep"
 		}
 	} else {
-		troop = k.botHand.Troops[len(k.botHand.Troops)-1]
+		troop = k.botHandTroops[len(k.botHandTroops)-1]
 		logTxt = "Min troop"
 	}
 	logTxt = fmt.Sprintf("Dump move card,flag: %v,%v\n", troop, flagix) + logTxt
@@ -469,8 +469,8 @@ func newFlagPriTargetMove(
 		flagAna := flagsAna[flagix]
 		if flagAna.IsNewFlag && flagAna.OppFormationSize >= minOppFormSize {
 			targetRank := flagAna.TargetRank
-			if flagAna.IsTargetMade && targetRank != combi.HostRank(flagAna.FormationSize) {
-				targetRank = targetRank - 1 //rank 1 is not possible because flag is lost
+			if flagAna.IsTargetMade && combi.RankTieBreaker(targetRank, flagAna.FormationSize).IsRank() {
+				targetRank = targetRank - 1 //rank 1 is not possible because the flag is lost
 			}
 			moveCard = newFlagTargetMove(handAna, targetRank, keepFlagTroops)
 		}
