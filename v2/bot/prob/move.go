@@ -886,6 +886,7 @@ Loop:
 					simMove, simMoveix := sim.FindHandFlag(flagAna.Flagix, card.Card(morale))
 					_, simFlagAna := sim.Move(simMove)
 					if simFlagAna.IsWin {
+						log.Printf(log.Debug, "Prioritised morale move morale: %v,flagix: %v", morale, flagix)
 						moveix = simMoveix
 						break Loop
 					}
