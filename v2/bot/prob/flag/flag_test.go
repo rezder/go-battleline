@@ -1,7 +1,6 @@
 package flag
 
 import (
-	"fmt"
 	"github.com/rezder/go-battleline/v2/bot/prob/combi"
 	"github.com/rezder/go-battleline/v2/bot/prob/dht"
 	"github.com/rezder/go-battleline/v2/game/card"
@@ -65,11 +64,12 @@ func TestPhalanx(t *testing.T) {
 	formationSize := 3
 	expRank := 16
 	drawNo := 10
-	targetSum := 0
+	targetHostStr := 0
+	targetBattStr := 0
 	targetRank := 1
 	isFog := false
 	dhTroops, botix := testCreateDHT(deckTroops, botHandTroops, drawNo)
-	rank := CalcMaxRank(flagTroops, flagMorales, dhTroops, botix, formationSize, isFog, targetRank, targetSum)
+	rank := CalcMaxRank(flagTroops, flagMorales, dhTroops, botix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[expRank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -110,7 +110,7 @@ func TestBattalion8(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 24
+	expRank := 19
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -124,7 +124,7 @@ func TestBattalion123(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 24
+	expRank := 19
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -138,14 +138,14 @@ func TestBattalion3Morale(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 25
+	expRank := 19
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
 	}
 	formationSize = 4
-	expRank = 23
+	expRank = 18
 	rank = calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -159,7 +159,7 @@ func TestLine8(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 40
+	expRank := 21
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -173,7 +173,7 @@ func TestLine123(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 47
+	expRank := 28
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -187,7 +187,7 @@ func TestBattalion1238(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 25
+	expRank := 19
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -201,7 +201,7 @@ func TestBattalionL8(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 3
 	isFog := false
-	expRank := 23
+	expRank := 19
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
@@ -243,9 +243,8 @@ func TestLineL8(t *testing.T) {
 	dhTroops, botix := testCreateDHT(deck, handTroops, 5)
 	formationSize := 4
 	isFog := false
-	expRank := 44
+	expRank := 20
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
-	fmt.Println(rank, expRank)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -260,7 +259,6 @@ func TestWedgeL123(t *testing.T) {
 	isFog := false
 	expRank := 6
 	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
-	fmt.Println(rank, expRank)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)

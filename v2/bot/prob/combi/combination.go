@@ -63,8 +63,8 @@ func (c *Combination) String() string {
 	if c == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("{Rank:%v Strength:%v Formation:%v Troops:%v",
-		c.Rank, c.Strength, c.Formation, c.Troops)
+	return fmt.Sprintf("{Rank:%v Strength:%v Formation:%v Troops:%v TieBreaker:%v",
+		c.Rank, c.Strength, c.Formation, c.Troops, c.TieBreaker)
 }
 
 //createCombi create all the possible combinations for the specified number of
@@ -73,7 +73,7 @@ func createCombi(cardsNo int) (combis []*Combination) {
 	combis = make([]*Combination, 0, 49)
 	combis = append(combis, createCombiWedge(cardsNo)...)
 	combis = append(combis, createCombiPhalanx(cardsNo)...)
-	combis = append(combis, createCombiBattalion(cardsNo)...)
+	combis = append(combis, createCombiBattalion()...)
 	combis = append(combis, createCombiSkirmish(cardsNo)...)
 	combis = append(combis, createCombiHost())
 	for i, c := range combis {
@@ -131,46 +131,27 @@ func createCombiPhalanx(cardsNo int) []*Combination {
 	}
 	return combis
 }
-func createCombiBattalion(cardsNo int) (combis []*Combination) {
-
-	//Battalion Order
+func createCombiBattalion() (combis []*Combination) {
 	allStrenghts := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	var maxsum int
-	if cardsNo == 3 {
-		maxsum = 27 //J10+10+7 higest no straight flush
-	} else {
-		maxsum = 36 //J10+10+9+6 J10,10,j8,8
+	troops := make(map[int][]card.Troop)
+	for color := 1; color <= card.NOColors; color++ {
+		cardixs := make([]card.Troop, 0, 10)
+		for _, str := range allStrenghts {
+			cardixs = append(cardixs, card.Troop((color-1)*10+str))
+		}
+		troops[color] = cardixs
 	}
-	minsum := 0
-	for i := 1; i < cardsNo+1; i++ {
-		minsum = minsum + i
-	}
-	combis = make([]*Combination, 0, maxsum-minsum)
-	for sum := maxsum; sum > minsum; sum-- {
+	combis = make([]*Combination, 2)
+	for i := range combis {
 		combi := Combination{
 			Formation:  card.FBattalion,
-			Strength:   sum,
-			Troops:     make(map[int][]card.Troop),
-			TieBreaker: tbRank,
+			Strength:   0,
+			Troops:     troops,
+			TieBreaker: tbStrenght,
 		}
-		//TODO I do not know why I did this?
-		/*fac := math.FactorSum(allCards, sum, cardsNo, true)
-		strSet := make(map[int]bool)
-		for _, ixs := range fac {
-			for _, ix := range ixs {
-				strSet[allStrenghts[ix]] = true
-			}
-		}
-		*/
-		for color := 1; color < 7; color++ {
-			cardixs := make([]card.Troop, 0, 10)
-			for _, str := range allStrenghts {
-				cardixs = append(cardixs, card.Troop((color-1)*10+str))
-			}
-			combi.Troops[color] = cardixs
-		}
-		combis = append(combis, &combi)
+		combis[i] = &combi
 	}
+	combis[1].TieBreaker = tbNone
 	return combis
 }
 func createCombiSkirmish(cardsNo int) (combis []*Combination) {

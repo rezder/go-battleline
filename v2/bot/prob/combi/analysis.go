@@ -44,12 +44,21 @@ func Ana(
 	playix int,
 	formationSize int,
 	isFog bool,
-	targetRank, targetsum int,
+	targetRank, targetHostStr, targetBattStr int,
 ) (ana *Analysis) {
 	nAll := uint64(len(deckHandTroops.SrcDeckTroops))
 	dAll := uint64(deckHandTroops.SrcDrawNos[playix])
-	if comb.Formation.Value == card.FHost.Value {
-		ana = anaHost(comb, flagTroops, flagMorales, deckHandTroops, playix, formationSize, targetRank, targetsum, nAll, dAll)
+	if comb.TieBreaker.IsStrenght() {
+		if comb.Formation.Value == card.FHost.Value {
+			ana = anaHost(comb, flagTroops, flagMorales, deckHandTroops, playix, formationSize, targetRank, targetHostStr, nAll, dAll)
+		} else {
+			if !isFog {
+				ana = anaBattalionStr(comb, flagTroops, flagMorales, deckHandTroops, playix, formationSize, targetBattStr, nAll, dAll)
+			} else {
+				ana = new(Analysis)
+				ana.Comb = comb
+			}
+		}
 	} else {
 		ana = new(Analysis)
 		ana.Comb = comb
@@ -98,8 +107,7 @@ func Ana(
 							anaWedgePhalanx(ana, nAll, dAll, formationSize, validFlagTroops, validFlagMorales, validHandTroops, validDrawTroops)
 
 						case card.FBattalion:
-							anaBattalion(ana, nAll, dAll, formationSize, comb.Strength, validFlagMorales,
-								validFlagTroops, validHandTroops, validDrawTroops)
+							anaWedgePhalanx(ana, nAll, dAll, formationSize, validFlagTroops, validFlagMorales, validHandTroops, validDrawTroops)
 
 						case card.FSkirmish:
 							anaSkirmish(ana, nAll, dAll, formationSize, validFlagMorales, validFlagTroops, validHandTroops, validDrawTroops)
@@ -125,6 +133,81 @@ func Ana(
 	}
 	return ana
 }
+func anaBattalionStr(
+	comb *Combination,
+	flagTroops []card.Troop,
+	flagMorales []card.Morale,
+	deckHandTroops *dht.Cache,
+	playix int,
+	formationSize, targetSum int,
+	nAll, dAll uint64,
+) (ana *Analysis) {
+	ana = new(Analysis)
+	ana.Comb = comb
+	if targetSum == 0 {
+		ana.Prop = 0
+	} else {
+		flagColorix := FlagColor(flagTroops)
+		if flagColorix == card.COLNone {
+			ana.Prop = 0
+		} else {
+			flagStr := moraleTroopsSum(flagTroops, flagMorales)
+			missNo := formationSize - len(flagTroops) - len(flagMorales)
+			targetRes := deckHandTroops.TargetSum(playix, flagColorix, missNo, targetSum-flagStr)
+			if !targetRes.IsPossibel {
+				ana.Prop = 0
+				sum, isOk := deckHandTroops.Sum(playix, flagColorix, missNo)
+				if isOk {
+					ana.Playables = battPlayables(sum, missNo, playix, flagColorix, deckHandTroops)
+				}
+			} else {
+				if targetRes.IsMade {
+					ana.Prop = 1
+					ana.Playables = battPlayables(targetSum-flagStr, missNo, playix, flagColorix, deckHandTroops)
+				} else {
+					ana.Valid = hostValid(targetRes.ValidDeckTroops, targetRes.ValidHandTroops,
+						targetRes.NewNo, targetRes.NewSum, nAll, dAll)
+					ana.Playables = battPlayables(targetSum-flagStr, missNo, playix, flagColorix, deckHandTroops)
+				}
+			}
+		}
+	}
+	return ana
+}
+func battPlayables(targetSum, missNo, botix, colorix int, deckHandTroops *dht.Cache) (playables []card.Troop) {
+	if missNo == 1 {
+		for _, handTroop := range deckHandTroops.SrcHandTroops[botix] {
+			if handTroop.Color() == colorix && handTroop.Strenght() >= targetSum {
+				playables = append(playables, handTroop)
+			} else {
+				break
+			}
+		}
+	} else {
+		maxStrs, _ := deckHandTroops.Sum(botix, colorix, missNo-1)
+		for _, handTroop := range deckHandTroops.SrcHandTroops[botix] {
+			if handTroop.Color() == colorix && handTroop.Strenght() >= targetSum-maxStrs {
+				playables = append(playables, handTroop)
+			} else {
+				break
+			}
+		}
+	}
+
+	return playables
+}
+func FlagColor(flagTroops []card.Troop) (flagColorix int) {
+	flagColorix = card.COLNone
+	for _, troop := range flagTroops {
+		if flagColorix == card.COLNone {
+			flagColorix = troop.Color()
+		} else if flagColorix != troop.Color() {
+			flagColorix = card.COLNone
+			break
+		}
+	}
+	return flagColorix
+}
 func anaHost(
 	comb *Combination,
 	flagTroops []card.Troop,
@@ -137,8 +220,8 @@ func anaHost(
 	ana = new(Analysis)
 	ana.Comb = comb
 	missNo := formationSize - len(flagTroops) - len(flagMorales)
-	var flagStrs = moraleTroopsSum(flagTroops, flagMorales)
-	targetRes := deckHandTroops.TargetSum(playix, card.COLNone, missNo, targetSum-flagStrs)
+	var flagStr = moraleTroopsSum(flagTroops, flagMorales)
+	targetRes := deckHandTroops.TargetSum(playix, card.COLNone, missNo, targetSum-flagStr)
 
 	if !targetRes.IsPossibel {
 		ana.Prop = 0
@@ -149,7 +232,7 @@ func anaHost(
 	} else {
 		if targetRes.IsMade {
 			ana.Prop = 1
-			ana.Playables = hostPlayables(targetSum-flagStrs, missNo, playix, deckHandTroops)
+			ana.Playables = hostPlayables(targetSum-flagStr, missNo, playix, deckHandTroops)
 		} else {
 			if targetRank == RankHost(formationSize) {
 				ana.Valid = hostValid(targetRes.ValidDeckTroops, targetRes.ValidHandTroops,
@@ -157,7 +240,7 @@ func anaHost(
 			} else {
 				ana.Valid = math.Comb(nAll, dAll) / 2
 			}
-			ana.Playables = hostPlayables(targetSum-flagStrs, missNo, playix, deckHandTroops)
+			ana.Playables = hostPlayables(targetSum-flagStr, missNo, playix, deckHandTroops)
 		}
 
 	}
@@ -413,146 +496,6 @@ func anaSkirmishCombi(drawStrenghts []int, missingNo, d int, moralStrenghts map[
 	return validNo
 }
 
-//anaBattalion analyze a Battalion combination same colors.
-//Its is the worst because many combination of strenghts can make the
-//same sum. So which card is played can influnce the probabilty of making the sum.
-//to get around that problem we just assume one will allways play the higest card.
-//this may not be the card that create the best probability for the sum. The lowest
-//usually is best to play. The idea was that it was the best player strategi, but
-//i am not sure, it may just be easier. It is also assumed all moral cards have
-//its higest strenght.
-//We transfer all cards to its strenght and hopfully keep track of which strenght belong to
-//which card. We often bunk strenghts from hand and draw together as any of then can be
-//used in the sum.
-//#ana
-func anaBattalion(ana *Analysis, nAll, dAll uint64, formationNo, strength int,
-	flagMorales map[card.Morale]map[int]bool, flagTroops, handTroops, drawTroops []card.Troop) {
-	sum := strength
-	for _, strSet := range flagMorales {
-		for s := range strSet {
-			sum = sum - s
-		}
-	}
-	for _, troop := range flagTroops {
-		sum = sum - troop.Strenght()
-	}
-	elementNo := formationNo - (len(flagTroops) + len(flagMorales)) //must 1-3 as minimum one troop on flag.
-	if elementNo == 0 {
-		if sum == 0 {
-			ana.Prop = 1
-		} else {
-			ana.Prop = 0
-		}
-	} else {
-		_, factors := anaBattalionStrenghts(handTroops, drawTroops, sum, elementNo)
-
-		if len(factors) != 0 {
-			handTroops, drawTroops = anaBattalionReduce(factors, handTroops, drawTroops)
-			var strenghts []int
-			strenghts, factors = anaBattalionStrenghts(handTroops, drawTroops, sum, elementNo) //to keep index in strenghts and troop aligned.
-			if len(handTroops)+len(drawTroops) < elementNo {
-				ana.Prop = 0
-			} else {
-				var handMaxUsedStrix int
-				//Playables rnd after map
-				handMaxUsedStrix, ana.Prop, ana.Playables = anaBattalionHandCombi(factors, handTroops, strenghts, elementNo)
-				if ana.Prop != 1 {
-					if handMaxUsedStrix != -1 {
-						elementNo, sum, handTroops, drawTroops, ana.Playables = anaBattalionHandMax(handMaxUsedStrix,
-							elementNo, sum, factors, strenghts, handTroops, drawTroops) //Only one troop in Playables
-					}
-					ana.Valid = anaBattalionPerm(handTroops, drawTroops, sum, elementNo, nAll, dAll)
-				}
-			}
-		} else {
-			ana.Prop = 0
-		}
-	}
-
-}
-
-//anaBattalionHandMax reduce the problem with the higest card strenght from the hand. We move the card to the "flag".
-//Some combination of sum may no longer be possible.
-func anaBattalionHandMax(
-	maxix, elementNo, sum int,
-	factors [][]int,
-	strenghts []int,
-	handTroops, drawTroops []card.Troop) (updElementNo, updSum int,
-	updHandTroops, updDrawTroops, handPlayableTroops []card.Troop) {
-
-	maxFactors := make([][]int, 0, 0)
-	for _, factor := range factors {
-		containMax := false
-		for _, strix := range factor {
-			if strix == maxix {
-				containMax = true
-				break
-			}
-		}
-		if containMax {
-			maxFactors = append(maxFactors, factor)
-		}
-	}
-	handPlayableTroops = []card.Troop{handTroops[maxix]}
-	updElementNo = elementNo - 1
-	updSum = sum - strenghts[maxix]
-	var reduceHandTroops []card.Troop
-	reduceHandTroops, updDrawTroops = anaBattalionReduce(maxFactors, handTroops, drawTroops)
-	updHandTroops = make([]card.Troop, 0, len(handTroops))
-	for _, ht := range reduceHandTroops {
-		if ht != handPlayableTroops[0] {
-			updHandTroops = append(updHandTroops, ht)
-		}
-	}
-
-	return updElementNo, updSum, updHandTroops, updDrawTroops, handPlayableTroops
-}
-
-//anaBattalionHandCombi checks if cards on hand alone can make the combination (prop=1), it also
-//find the index of the higest strenght card of the hand. This is only need if the hand can not make the
-//combinations.
-func anaBattalionHandCombi(
-	factors [][]int,
-	handTroops []card.Troop,
-	strenghts []int,
-	elementNo int) (handMaxUsedStrix int, prop float64, handPlayableTroops []card.Troop) {
-	handTroopSet := make(map[card.Troop]bool)
-	handMaxUsedStrix = -1
-	for _, factor := range factors {
-		factorHandTroops := make([]card.Troop, 0, 0)
-		for _, strix := range factor {
-			if strix < len(handTroops) {
-				factorHandTroops = append(factorHandTroops, handTroops[strix])
-				if handMaxUsedStrix == -1 || strenghts[strix] > strenghts[handMaxUsedStrix] {
-					handMaxUsedStrix = strix
-				}
-			}
-		}
-		if len(factorHandTroops) == elementNo {
-			prop = 1
-			for _, troop := range factorHandTroops {
-				handTroopSet[troop] = true
-			}
-		}
-	}
-	if prop == 1 {
-		for troop := range handTroopSet {
-			handPlayableTroops = append(handPlayableTroops, troop)
-		}
-	}
-	return handMaxUsedStrix, prop, handPlayableTroops
-}
-
-//anaBattalionStrenghts factor the strenghts of the hand and the draw.
-//factor contain the index of the strenghts and the index is also
-//related to the hand and draw troops. It must not get out of
-//synch.
-func anaBattalionStrenghts(handTroops, drawTroops []card.Troop, sum, elementNo int) (strenghts []int, factors [][]int) {
-	strenghts = troopsToStrenghts([][]card.Troop{handTroops, drawTroops})
-	factors = math.FactorSum(strenghts, sum, elementNo, true)
-	return strenghts, factors
-}
-
 //troopsToStrenghts combins the strenghts of troops from any lists of troops.
 func troopsToStrenghts(troops [][]card.Troop) (strenghts []int) {
 	strenghts = make([]int, 0, 10)
@@ -562,36 +505,6 @@ func troopsToStrenghts(troops [][]card.Troop) (strenghts []int) {
 		}
 	}
 	return strenghts
-}
-
-//anaBattalionReduce reduces hand and draw to the valid cards
-//according the factors. Warning it assumes the index match
-//hand and draw troops.
-func anaBattalionReduce(factors [][]int, handTroops, drawTroops []card.Troop) (updHandTroops, updDrawTroops []card.Troop) {
-	updHandTroops = anaBattalionReduceList(handTroops, factors, 0)
-	updDrawTroops = anaBattalionReduceList(drawTroops, factors, len(handTroops))
-	return updHandTroops, updDrawTroops
-}
-
-//anaBattalionReduceList removes the troops that can no longer make a sum.
-func anaBattalionReduceList(troops []card.Troop, factors [][]int, offset int) (updTroops []card.Troop) {
-	for ix, troop := range troops {
-		found := false
-		ix = ix + offset
-	Factor:
-		for _, factor := range factors {
-			for _, strix := range factor {
-				if strix == ix {
-					found = true
-					break Factor
-				}
-			}
-		}
-		if found {
-			updTroops = append(updTroops, troop)
-		}
-	}
-	return updTroops
 }
 
 //anaStraightMorales handles the moral tactic cards on the flag.

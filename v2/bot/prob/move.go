@@ -1168,7 +1168,8 @@ func mudTrimDish(
 	drawNos := [2]int{0, 0}
 	deckHandTroops := dht.NewCache(nil, handTroops, drawNos)
 	playix := 0
-	targetSum := 41 //Do not think it matter too high or too low
+	targetBattStr := 0
+	targetHostStr := 41 //Do not think it matter too high or too low
 	targetRank := 1
 	moraleTroopSum := fa.MoraleTroopsSum(troops, morales)
 	for _, outTroop := range troops {
@@ -1178,7 +1179,7 @@ func mudTrimDish(
 				simTroops = append(simTroops, simTroop)
 			}
 		}
-		rank := fa.CalcMaxRank(simTroops, morales, deckHandTroops, playix, formationSize, isFog, targetRank, targetSum)
+		rank := fa.CalcMaxRank(simTroops, morales, deckHandTroops, playix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
 		sum := 0
 		rankTieBreaker := combi.RankTieBreaker(rank, formationSize)
 		if !rankTieBreaker.IsRank() {
@@ -1202,7 +1203,7 @@ func mudTrimDish(
 				simMorales = append(simMorales, simMorale)
 			}
 		}
-		rank := fa.CalcMaxRank(troops, simMorales, deckHandTroops, playix, formationSize, isFog, targetRank, targetSum)
+		rank := fa.CalcMaxRank(troops, simMorales, deckHandTroops, playix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
 		rankTieBreaker := combi.RankTieBreaker(rank, formationSize)
 		sum := 0
 		if !rankTieBreaker.IsRank() {

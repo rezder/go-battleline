@@ -17,7 +17,7 @@ func TestCombi3(t *testing.T) {
 	t.Log(combis)
 	n := len(combis)
 
-	if n != 48 { //29
+	if n != 29 {
 		t.Errorf("Expected 48 got: %v", n)
 	}
 
@@ -29,8 +29,8 @@ func TestCombi4(t *testing.T) {
 	combis := createCombi(4)
 	n := len(combis)
 	t.Log(combis)
-	if n != 51 { //27
-		t.Errorf("Expected 51 got: %v", n)
+	if n != 27 {
+		t.Errorf("Expected 27 got: %v", n)
 	}
 }
 func TestAnaWedge(t *testing.T) {
@@ -39,8 +39,9 @@ func TestAnaWedge(t *testing.T) {
 	combiNo3 := 7
 	combiNo4 := 6
 	targetRank := 1
-	targetSum := 0
-	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetSum, combinations, dummies)
+	targetHostStr := 0
+	targetBattStr := 0
+	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetHostStr, targetBattStr, combinations, dummies)
 	//t.Error("Forced error")
 }
 
@@ -50,15 +51,17 @@ func TestAnaPhalanx(t *testing.T) {
 	combiNo3 := 10
 	combiNo4 := 9
 	targetRank := 1
-	targetSum := 0
-	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetSum, combinations, dummies)
+	targetHostStr := 0
+	targetBattStr := 0
+	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetHostStr, targetBattStr, combinations, dummies)
 	//t.Error("Forced error")
 }
 func TestAnaPhalanxShortStack2(t *testing.T) {
 	combi := Combinations(3)
 	goodTroops := []card.Troop{56, 18, 43, 58, 52, 21, 57, 51, 59, 5, 22, 55, 54, 30}
 	deckTroops := testSortTroops(goodTroops)
-	targetSum := 0
+	targetHostStr := 0
+	targetBattStr := 0
 	targetRank := 1
 	drawNo := 7 + ((len(deckTroops) - 7) / 2)
 	drawNos := [2]int{drawNo, 0}
@@ -67,7 +70,7 @@ func TestAnaPhalanxShortStack2(t *testing.T) {
 	flagMorales := []card.Morale{}
 	handTroops := [2][]card.Troop{[]card.Troop{}, []card.Troop{}}
 	deckHandTroops := dht.NewCache(deckTroops, handTroops, drawNos)
-	ana := Ana(combi[15], flagTroops, flagMorales, deckHandTroops, playix, 3, false, targetRank, targetSum)
+	ana := Ana(combi[15], flagTroops, flagMorales, deckHandTroops, playix, 3, false, targetRank, targetHostStr, targetBattStr)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[15], flagTroops, handTroops, drawNo, ana)
 	if ana.Valid != 715 {
@@ -86,7 +89,8 @@ func TestAnaPhalanxShortStack(t *testing.T) {
 	combi := Combinations(3)
 	goodTroops := []card.Troop{9, 1, 14, 37, 49, 38, 24}
 	deckTroops := testSortTroops(goodTroops)
-	targetSum := 0
+	targetHostStr := 0
+	targetBattStr := 0
 	targetRank := 1
 	drawNo := 7 + ((len(deckTroops) - 7) / 2)
 	drawNos := [2]int{drawNo, 0}
@@ -95,7 +99,7 @@ func TestAnaPhalanxShortStack(t *testing.T) {
 	flagMorales := []card.Morale{}
 	handTroops := [2][]card.Troop{[]card.Troop{}, []card.Troop{}}
 	deckHandTroops := dht.NewCache(deckTroops, handTroops, drawNos)
-	ana := Ana(combi[14], flagTroops, flagMorales, deckHandTroops, playix, 3, false, targetRank, targetSum)
+	ana := Ana(combi[14], flagTroops, flagMorales, deckHandTroops, playix, 3, false, targetRank, targetHostStr, targetBattStr)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[14], flagTroops, handTroops, drawNo, ana)
 	if ana.Valid != 1 {
@@ -106,11 +110,12 @@ func TestAnaPhalanxShortStack(t *testing.T) {
 func TestAnaBattalion(t *testing.T) {
 	combinations := []card.Troop{46, 45, 48, 43}
 	dummies := []card.Troop{5, 6, 7, 18, 22, 33, 52, 21, 33}
-	combiNo3 := 26
-	combiNo4 := 31
+	combiNo3 := 19
+	combiNo4 := 18
 	targetRank := 1
-	targetSum := 0
-	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetSum, combinations, dummies)
+	targetHostStr := 0
+	targetBattStr := 0
+	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetHostStr, targetBattStr, combinations, dummies)
 	//t.Error("Forced error")
 }
 func TestAnaBattalionGoodOdds(t *testing.T) {
@@ -122,35 +127,55 @@ func TestAnaBattalionGoodOdds(t *testing.T) {
 		dummies = append(dummies, card.Troop(i))
 	}
 	targetRank := 1
-	targetSum := 0
-	prob := combiTest(t, 27, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetSum)
+	targetHostStr := 0
+	targetBattStr := 0
+	prob := combiTest(t, 19, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	ex := float64(0)
 	if prob == ex {
-		t.Error("Host probability failed expected bigger than zero")
+		t.Error("Battalion probability failed expected bigger than zero")
 	}
 }
-
+func TestAnaBattalionStr(t *testing.T) {
+	flagTroops := []card.Troop{54}
+	flagMorales := []card.Morale{}
+	handTroops := []card.Troop{}
+	dummies := make([]card.Troop, 0, 60)
+	for i := 1; i <= 31; i++ {
+		dummies = append(dummies, card.Troop(i))
+	}
+	dummies = append(dummies, card.Troop(60))
+	targetRank := 1
+	targetHostStr := 0
+	targetBattStr := 21
+	prob := combiTest(t, 18, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr)
+	ex := float64(0)
+	if prob == ex {
+		t.Error("Battalion probability failed expected bigger than zero")
+	}
+}
 func TestAnaSkirmishSimple(t *testing.T) {
 	combinations := []card.Troop{1, 32, 43, 44}
 	dummies := []card.Troop{5, 6, 7, 18, 25, 37, 58, 29, 36}
-	combiNo3 := 46
+	combiNo3 := 26
 	targetRank := 1
-	targetSum := 0
+	targetHostStr := 0
+	targetBattStr := 0
 	flagTroops := combinations[:1]
 	flagMorales := []card.Morale{}
 	handTroops := make([]card.Troop, 7)
 	copy(handTroops, dummies[:7])
-	combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], flagMorales, 3, targetRank, targetSum)
+	combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	//t.Error("Forced error")
 }
 func TestAnaSkirmish123(t *testing.T) {
 	combinations := []card.Troop{1, 32, 43, 44}
 	dummies := []card.Troop{5, 6, 7, 18, 25, 37, 58, 29, 36}
-	combiNo3 := 46
-	combiNo4 := 49
+	combiNo3 := 28
+	combiNo4 := 26
 	targetRank := 1
-	targetSum := 0
-	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetSum, combinations, dummies)
+	targetHostStr := 0
+	targerBattStr := 0
+	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetHostStr, targerBattStr, combinations, dummies)
 	//t.Error("Forced error")
 }
 func TestAnaSkirmish123GoodOdds(t *testing.T) {
@@ -158,7 +183,8 @@ func TestAnaSkirmish123GoodOdds(t *testing.T) {
 	combi := Combinations(3)
 	goodTroops := []card.Troop{2, 3, 12, 13, 22, 23, 32, 33, 42, 43, 52, 53, 27}
 	deckTroops := testSortTroops(goodTroops)
-	targetSum := 0
+	targetHostStr := 0
+	targetBattStr := 0
 	targetRank := 1
 	drawNo := (len(deckTroops) - 7) / 2
 	drawNos := [2]int{drawNo, 0}
@@ -168,9 +194,9 @@ func TestAnaSkirmish123GoodOdds(t *testing.T) {
 	botHandTroops := []card.Troop{5, 6, 7, 18, 25, 37, 58}
 	handTroops := [2][]card.Troop{botHandTroops, []card.Troop{}}
 	deckHandTroops := dht.NewCache(deckTroops, handTroops, drawNos)
-	ana := Ana(combi[46], flagTroops, flagMorales, deckHandTroops, botix, 3, false, targetRank, targetSum)
+	ana := Ana(combi[26], flagTroops, flagMorales, deckHandTroops, botix, 3, false, targetRank, targetHostStr, targetBattStr)
 	t.Logf("Combi: %+v\nFlag: %v\nHand: %v\nDraws: %v\nResult: %v\n",
-		*combi[46], flagTroops, handTroops, drawNo, ana)
+		*combi[26], flagTroops, handTroops, drawNo, ana)
 	//t.Error("Forced error")
 }
 func TestAnaBad(t *testing.T) {
@@ -179,10 +205,11 @@ func TestAnaBad(t *testing.T) {
 	handTroops := []card.Troop{5, 6, 7, 18, 25, 37, 58}
 	dummies := []card.Troop{29, 36}
 	targetRank := 1
-	targetSum := 0
-	combiTest(t, 48, flagTroops, handTroops, dummies, flagMorales, 4, targetRank, targetSum)
+	targetHostStr := 0
+	targetBattStr := 0
+	combiTest(t, 26, flagTroops, handTroops, dummies, flagMorales, 4, targetRank, targetHostStr, targetBattStr)
 	handTroops[0] = card.Troop(2)
-	combiTest(t, 48, flagTroops, handTroops, dummies, flagMorales, 4, targetRank, targetSum)
+	combiTest(t, 26, flagTroops, handTroops, dummies, flagMorales, 4, targetRank, targetHostStr, targetBattStr)
 	//t.Error("Forced error")
 }
 func TestAnaHostMade(t *testing.T) {
@@ -191,8 +218,9 @@ func TestAnaHostMade(t *testing.T) {
 	handTroops := []card.Troop{20, 2, 1, 22, 23, 31, 33}
 	dummies := []card.Troop{29, 36}
 	targetRank := RankHost(3)
-	targetSum := 21
-	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetSum)
+	targetHostStr := 21
+	targetBattStr := 0
+	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	if prob != 1 {
 		t.Errorf("Host probability failed exp:%v got %v", 1, prob)
 	}
@@ -204,8 +232,9 @@ func TestAnaHostLost(t *testing.T) {
 	handTroops := []card.Troop{22, 2, 1, 22, 23, 31, 33}
 	dummies := []card.Troop{29, 36}
 	targetRank := RankHost(3)
-	targetSum := 22
-	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetSum)
+	targetHostStr := 22
+	targerBattStr := 0
+	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targerBattStr)
 	ex := float64(0)
 	if prob != ex {
 		t.Errorf("Host probability failed exp:%v got %v", ex, prob)
@@ -221,14 +250,15 @@ func TestAnaHostLostShortStack(t *testing.T) {
 	}
 
 	targetRank := RankHost(3)
-	targetSum := 22
-	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetSum)
+	targetHostStr := 22
+	targetBattStr := 0
+	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	ex := float64(0)
 	if prob == ex {
 		t.Error("Host probability failed expected positive probability")
 	}
 	dummies = append(dummies, 51)
-	prob = combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetSum)
+	prob = combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	if prob != ex {
 		t.Errorf("Host probability failed expected %v probability got %v", ex, prob)
 	}
@@ -239,46 +269,47 @@ func TestAnaHostProb(t *testing.T) {
 	handTroops := []card.Troop{22, 2, 1, 22, 23, 31, 33}
 	dummies := []card.Troop{29, 36}
 	targetRank := RankHost(3)
-	targetSum := 29
-	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetSum)
+	targetHostStr := 29
+	targetBattStr := 0
+	prob := combiTest(t, RankHost(3)-1, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	ex := float64(0)
 	if prob == ex {
 		t.Error("Host probability failed expected bigger than zero")
 	}
 }
 
-func combiMultiTest(t *testing.T, combiNo3, combiNo4, targetRank, targetSum int, combination, dummies []card.Troop) {
+func combiMultiTest(t *testing.T, combiNo3, combiNo4, targetRank, targetHostStr, targetBattStr int, combination, dummies []card.Troop) {
 	flagTroops := []card.Troop{combination[0]}
 	handTroops := make([]card.Troop, 7)
 	flagMorales := []card.Morale{}
 	copy(handTroops, dummies[:7])
-	combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], flagMorales, 3, targetRank, targetSum)
-	combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], flagMorales, 4, targetRank, targetSum)
+	combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], flagMorales, 3, targetRank, targetHostStr, targetBattStr)
+	combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], flagMorales, 4, targetRank, targetHostStr, targetBattStr)
 
-	prop := combiTest(t, combiNo3, combination[:3], handTroops, dummies[7:], flagMorales, 3, targetRank, targetSum)
+	prop := combiTest(t, combiNo3, combination[:3], handTroops, dummies[7:], flagMorales, 3, targetRank, targetHostStr, targetBattStr)
 	if prop != 1 {
 		t.Errorf("Combination: %v was not found. Prop %v", combination[:3], prop)
 	}
-	prop = combiTest(t, combiNo4, combination[:4], handTroops, dummies[7:], flagMorales, 4, targetRank, targetSum)
+	prop = combiTest(t, combiNo4, combination[:4], handTroops, dummies[7:], flagMorales, 4, targetRank, targetHostStr, targetBattStr)
 	if prop != 1 {
 		t.Errorf("Combination: %v was not found. Prop %v", combination[:4], prop)
 	}
 	for i := 1; i < 4; i++ {
 		handTroops[i-1] = combination[i]
-		combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], flagMorales, 3, targetRank, targetSum)
-		combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], flagMorales, 4, targetRank, targetSum)
+		combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], flagMorales, 3, targetRank, targetHostStr, targetBattStr)
+		combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], flagMorales, 4, targetRank, targetHostStr, targetBattStr)
 	}
 	handTroops = make([]card.Troop, 7)
 	copy(handTroops, dummies[:7])
 	jokers := []card.Morale{card.TC123, card.TCAlexander, card.TCDarius, card.TC8}
 	for i := range jokers {
 		morales := jokers[i : i+1]
-		combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], morales, 3, targetRank, targetSum)
-		combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], morales, 4, targetRank, targetSum)
+		combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], morales, 3, targetRank, targetHostStr, targetBattStr)
+		combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], morales, 4, targetRank, targetHostStr, targetBattStr)
 		for i := 1; i < 3; i++ {
 			handTroops[i-1] = combination[i]
-			combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], morales, 3, targetRank, targetSum)
-			combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], morales, 4, targetRank, targetSum)
+			combiTest(t, combiNo3, flagTroops, handTroops, dummies[7:], morales, 3, targetRank, targetHostStr, targetBattStr)
+			combiTest(t, combiNo4, flagTroops, handTroops, dummies[7:], morales, 4, targetRank, targetHostStr, targetBattStr)
 		}
 		handTroops = make([]card.Troop, 7)
 		copy(handTroops, dummies[:7])
@@ -288,7 +319,7 @@ func combiTest(t *testing.T,
 	combiNo int,
 	flagTroops, botHandTroops, dummies []card.Troop,
 	flagMorales []card.Morale,
-	formationSize, targetRank, targetSum int,
+	formationSize, targetRank, targetHostStr, targetBattStr int,
 ) float64 {
 
 	combi := Combinations(formationSize)
@@ -298,7 +329,7 @@ func combiTest(t *testing.T,
 	drawNos := [2]int{drawNo, 0}
 	handTroops := [2][]card.Troop{botHandTroops, nil}
 	deckHandTroops := dht.NewCache(deckTroops, handTroops, drawNos)
-	ana := Ana(combi[combiNo], flagTroops, flagMorales, deckHandTroops, botix, formationSize, false, targetRank, targetSum)
+	ana := Ana(combi[combiNo], flagTroops, flagMorales, deckHandTroops, botix, formationSize, false, targetRank, targetHostStr, targetBattStr)
 	t.Logf("Combi: %+v\nFlag: %v,%v\nHand: %v\nDraws: %v\nResult: %v\n",
 		*combi[combiNo], flagTroops, flagMorales, handTroops, drawNo, ana)
 	allCombi := math.Comb(uint64(len(deckTroops)), uint64(drawNo))
