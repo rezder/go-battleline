@@ -179,8 +179,6 @@ func battPlayables(targetSum, missNo, botix, colorix int, deckHandTroops *dht.Ca
 		for _, handTroop := range deckHandTroops.SrcHandTroops[botix] {
 			if handTroop.Color() == colorix && handTroop.Strenght() >= targetSum {
 				playables = append(playables, handTroop)
-			} else {
-				break
 			}
 		}
 	} else {
@@ -188,8 +186,6 @@ func battPlayables(targetSum, missNo, botix, colorix int, deckHandTroops *dht.Ca
 		for _, handTroop := range deckHandTroops.SrcHandTroops[botix] {
 			if handTroop.Color() == colorix && handTroop.Strenght() >= targetSum-maxStrs {
 				playables = append(playables, handTroop)
-			} else {
-				break
 			}
 		}
 	}
