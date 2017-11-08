@@ -40,23 +40,51 @@ func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Card) {
 			if cardMove.IsBack() {
 				cardBack := card.Back(cardMove)
 				if cardBack.IsTac() {
-					deck := make([]int, 0, 10)
-					for tacix := card.NOTroop + 1; tacix < len(g.Pos.CardPos); tacix++ {
-						cardPos := g.Pos.CardPos[tacix]
-						if cardPos == pos.CardAll.DeckTac {
-							deck = append(deck, tacix)
+					dealCardix := 0
+					if g.Pos.PlayerReturned != NoPlayer {
+						for i := len(g.Pos.CardsReturned) - 1; i >= 0; i-- {
+							card := g.Pos.CardsReturned[i]
+							if card.IsTac() && g.Pos.CardPos[int(card)].IsInDeck() {
+								dealCardix = int(card)
+								break
+							}
 						}
 					}
-					bpMove.Index = deck[rand.Intn(len(deck))]
+					if dealCardix != 0 {
+						bpMove.Index = dealCardix
+					} else {
+						deck := make([]int, 0, 10)
+						for tacix := card.NOTroop + 1; tacix < len(g.Pos.CardPos); tacix++ {
+							cardPos := g.Pos.CardPos[tacix]
+							if cardPos == pos.CardAll.DeckTac {
+								deck = append(deck, tacix)
+							}
+						}
+						bpMove.Index = deck[rand.Intn(len(deck))]
+					}
 				} else {
-					deck := make([]int, 0, 46)
-					for troopix := 1; troopix <= card.NOTroop; troopix++ {
-						cardPos := g.Pos.CardPos[troopix]
-						if cardPos == pos.CardAll.DeckTroop {
-							deck = append(deck, troopix)
+					dealCardix := 0
+					if g.Pos.PlayerReturned != NoPlayer {
+						for i := len(g.Pos.CardsReturned) - 1; i >= 0; i-- {
+							card := g.Pos.CardsReturned[i]
+							if card.IsTroop() && g.Pos.CardPos[int(card)].IsInDeck() {
+								dealCardix = int(card)
+								break
+							}
 						}
 					}
-					bpMove.Index = deck[rand.Intn(len(deck))]
+					if dealCardix != 0 {
+						bpMove.Index = dealCardix
+					} else {
+						deck := make([]int, 0, 46)
+						for troopix := 1; troopix <= card.NOTroop; troopix++ {
+							cardPos := g.Pos.CardPos[troopix]
+							if cardPos == pos.CardAll.DeckTroop {
+								deck = append(deck, troopix)
+							}
+						}
+						bpMove.Index = deck[rand.Intn(len(deck))]
+					}
 				}
 			}
 		}
