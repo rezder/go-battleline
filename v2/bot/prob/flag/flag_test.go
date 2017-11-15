@@ -15,7 +15,8 @@ func TestWedgeLeader(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 1
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
 	}
@@ -28,7 +29,8 @@ func TestWedge8(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 1
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
 	}
@@ -41,7 +43,8 @@ func TestWedge123(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 8
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
 	}
@@ -69,7 +72,7 @@ func TestPhalanx(t *testing.T) {
 	targetRank := 1
 	isFog := false
 	dhTroops, botix := testCreateDHT(deckTroops, botHandTroops, drawNo)
-	rank := CalcMaxRank(flagTroops, flagMorales, dhTroops, botix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
+	rank, _ := CalcMaxRank(flagTroops, flagMorales, dhTroops, botix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[expRank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -83,7 +86,8 @@ func TestPhalanxNewFlag(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 10
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -97,7 +101,8 @@ func TestPhalanx123(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 18
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -111,7 +116,15 @@ func TestBattalion8(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 19
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 20
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
+	if rank != expRank {
+		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
+		t.Errorf("Expect rank %v got %v\n", expRank, rank)
+	}
+	expRank = 20
+	targetBattStr = 23
+	rank = calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -125,7 +138,8 @@ func TestBattalion123(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 19
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 20
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -139,14 +153,15 @@ func TestBattalion3Morale(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 19
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 20
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
 	}
 	formationSize = 4
 	expRank = 18
-	rank = calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	rank = calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -160,7 +175,8 @@ func TestLine8(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 21
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -174,7 +190,8 @@ func TestLine123(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 28
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -188,7 +205,8 @@ func TestBattalion1238(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 19
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 20
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -202,7 +220,8 @@ func TestBattalionL8(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 19
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 22
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -216,7 +235,8 @@ func TestPhalanxL8(t *testing.T) {
 	formationSize := 3
 	isFog := false
 	expRank := 11
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -230,7 +250,8 @@ func TestPhalanxL123(t *testing.T) {
 	formationSize := 4
 	isFog := false
 	expRank := 17
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -244,7 +265,8 @@ func TestLineL8(t *testing.T) {
 	formationSize := 4
 	isFog := false
 	expRank := 20
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)
@@ -258,7 +280,8 @@ func TestWedgeL123(t *testing.T) {
 	formationSize := 4
 	isFog := false
 	expRank := 6
-	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, isFog)
+	targetBattStr := 0
+	rank := calcMaxRankNewFlag(flagMorales, dhTroops, botix, formationSize, targetBattStr, isFog)
 	if rank != expRank {
 		t.Logf("Combination %v", combi.Combinations(formationSize)[rank-1])
 		t.Errorf("Expect rank %v got %v\n", expRank, rank)

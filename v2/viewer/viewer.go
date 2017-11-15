@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rezder/go-battleline/v2/db/dbhist"
 	"github.com/rezder/go-battleline/v2/game"
+	dpos "github.com/rezder/go-battleline/v2/game/pos"
 	"github.com/rezder/go-error/log"
 	"io/ioutil"
 	"net/http"
@@ -288,7 +289,7 @@ func (g *gamesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gamePoss := make([]*game.ViewPos, 0, len(hist.Moves))
 		g := game.NewGame()
 		g.LoadHist(hist)
-		winner := game.NoPlayer
+		winner := dpos.NoPlayer
 		isNext := true
 		for isNext {
 			winner, isNext = g.ScrollForward()

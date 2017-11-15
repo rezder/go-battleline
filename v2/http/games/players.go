@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	bg "github.com/rezder/go-battleline/v2/game"
+	dpos "github.com/rezder/go-battleline/v2/game/pos"
 	"github.com/rezder/go-error/log"
 	"golang.org/x/net/websocket"
 	"io"
@@ -354,7 +355,7 @@ type GameState struct {
 //waitingForServer the player is waiting for the server to return a move.
 func (state *GameState) waitingForServer() (res bool) {
 	if state.respCh != nil &&
-		state.lastViewPos.Winner == bg.NoPlayer &&
+		state.lastViewPos.Winner == dpos.NoPlayer &&
 		state.lastViewPos.LastMoveType != bg.MoveTypeAll.Pause {
 		if len(state.lastViewPos.Moves) > 0 { //players turn
 			if state.hasMoved || state.isClosed {

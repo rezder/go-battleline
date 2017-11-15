@@ -130,6 +130,12 @@ func (f *Flag) HasFormation(player int) bool {
 func (f *Flag) FormationSize() (size int) {
 	return formationSize(f.IsMud)
 }
+
+//Formation calculates the formation and strenght.
+func (f *Flag) Formation(playix int) (formation *card.Formation, strenght int) {
+	formation, strenght = eval(f.Players[playix].Troops, f.Players[playix].Morales, f.IsMud, f.IsFog)
+	return formation, strenght
+}
 func (f *Flag) PlayerFormationSize(playerix int) int {
 	return len(f.Players[playerix].Troops) + len(f.Players[playerix].Morales)
 }

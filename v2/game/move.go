@@ -39,7 +39,7 @@ func (move *Move) String() string {
 //Works with nil.
 func (move *Move) GetMoverAndType() (int, MoveType) {
 	if move == nil {
-		return NoPlayer, MoveTypeAll.None
+		return pos.NoPlayer, MoveTypeAll.None
 	}
 	return move.Mover, move.MoveType
 }

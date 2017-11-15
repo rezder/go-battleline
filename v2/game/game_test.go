@@ -26,7 +26,7 @@ func TestGame(t *testing.T) {
 	}
 	winner, _ := game.Move(moves[0])
 	no := 1
-	for winner == NoPlayer {
+	for winner == pos.NoPlayer {
 		moves = game.Pos.CalcMoves()
 		winner, _ = game.Move(testMove(moves))
 		no++
@@ -164,12 +164,12 @@ func TestSavedGame(t *testing.T) {
 		if testPoss != nil {
 			posix := 0
 			isNext := true
-			winner := NoPlayer
+			winner := pos.NoPlayer
 			for isNext {
 				winner, isNext = game.ScrollForward() //Init Move
-				if isNext || winner != NoPlayer {
+				if isNext || winner != pos.NoPlayer {
 					var moves []*Move
-					if winner == NoPlayer {
+					if winner == pos.NoPlayer {
 						moves = game.Pos.CalcMoves()
 					}
 					oldPos := testPoss[posix].GamePos
@@ -209,12 +209,12 @@ func testCreatePos(
 		if game != nil {
 			testPoss := make([]*TestPos, 0, len(game.Hist.Moves))
 			isNext := true
-			winner := NoPlayer
+			winner := pos.NoPlayer
 			for isNext {
 				winner, isNext = game.ScrollForward()
-				if isNext || winner != NoPlayer {
+				if isNext || winner != pos.NoPlayer {
 					var moves []*Move
-					if winner == NoPlayer {
+					if winner == pos.NoPlayer {
 						moves = game.Pos.CalcMoves()
 					}
 					gamePos := *game.Pos
@@ -420,7 +420,7 @@ func testViews(returned [2]card.Card, gamePos *Pos, t *testing.T) {
 				}
 			}
 		}
-		testCheckView(NewViewPos(gamePos, v, NoPlayer), noExpTacs, noExpTroops, expReturned, t)
+		testCheckView(NewViewPos(gamePos, v, pos.NoPlayer), noExpTacs, noExpTroops, expReturned, t)
 	}
 }
 func getBack(cardMove card.Card) card.Card {

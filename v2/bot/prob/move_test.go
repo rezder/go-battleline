@@ -17,8 +17,8 @@ func TestMoves(t *testing.T) {
 	filePath := "_test/testdb.db2"
 	bdb := testOpenDb(filePath, t)
 	gameix := 0
-	log.InitLog(log.Debug)
-	testGameix := 830 //-1
+	log.InitLog(log.Min)
+	testGameix := -1 //-1
 	_, _, err := bdb.Search(func(hist *game.Hist) bool {
 		if testGameix == -1 || gameix == testGameix {
 			g := game.NewGame()
@@ -61,6 +61,10 @@ func TestMoves(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed searching file %v with error: %v", filePath, err)
 	}
+	err = bdb.Close()
+	if err != nil {
+		t.Errorf("Closing failed file %v with error: %v", filePath, err)
+	}
 }
 func strenght(move *game.Move) int {
 	if len(move.Moves) > 0 && card.Card(move.Moves[0].Index).IsTroop() {
@@ -99,6 +103,7 @@ func testOpenDb(filePath string, t *testing.T) (bdb *dbhist.Db) {
 	bdb = dbhist.New(dbhist.KeyPlayersTime, db, 25)
 	err = bdb.Init()
 	if err != nil {
+		bdb.Close()
 		t.Fatalf("Init database failed: %v", err)
 	}
 	return bdb

@@ -56,6 +56,26 @@ func TestAnaPhalanx(t *testing.T) {
 	combiMultiTest(t, combiNo3, combiNo4, targetRank, targetHostStr, targetBattStr, combinations, dummies)
 	//t.Error("Forced error")
 }
+func TestAnaPhalanxDrawNo(t *testing.T) {
+	flagTroops := []card.Troop{1}
+	flagMorales := []card.Morale{}
+	handTroops := []card.Troop{51}
+	dummies := make([]card.Troop, 0, 48)
+	for i := 2; i <= 50; i++ {
+		if i%10 != 1 {
+			dummies = append(dummies, card.Troop(i))
+		}
+	}
+	//dummies = append(dummies, []card.Troop{52}...)
+	targetRank := 1
+	targetHostStr := 0
+	targetBattStr := 0
+	prob := combiTestDrawNo(t, 17, flagTroops, handTroops, dummies, flagMorales, 3, targetRank, targetHostStr, targetBattStr, 1)
+	if prob > 1 {
+		t.Errorf("Prob: %v  bigger than 1", prob)
+	}
+
+}
 func TestAnaPhalanxShortStack2(t *testing.T) {
 	combi := Combinations(3)
 	goodTroops := []card.Troop{56, 18, 43, 58, 52, 21, 57, 51, 59, 5, 22, 55, 54, 30}
@@ -334,6 +354,33 @@ func combiTest(t *testing.T,
 		*combi[combiNo], flagTroops, flagMorales, handTroops, drawNo, ana)
 	allCombi := math.Comb(uint64(len(deckTroops)), uint64(drawNo))
 	ana.SetAll(allCombi)
+	if ana.Prop > 1 {
+		t.Errorf("Prob bigger than 1 got %v", ana.Prop)
+	}
+	return ana.Prop
+}
+func combiTestDrawNo(t *testing.T,
+	combiNo int,
+	flagTroops, botHandTroops, dummies []card.Troop,
+	flagMorales []card.Morale,
+	formationSize, targetRank, targetHostStr, targetBattStr, drawNo int,
+) float64 {
+
+	combi := Combinations(formationSize)
+	deckTroops, flagTroops, botHandTroops := updateDraws(flagTroops, botHandTroops, dummies)
+	botix := 0
+	drawNos := [2]int{drawNo, 0}
+	handTroops := [2][]card.Troop{botHandTroops, nil}
+	deckHandTroops := dht.NewCache(deckTroops, handTroops, drawNos)
+	fmt.Println(len(deckTroops), combi[combiNo].Formation.Name, combi[combiNo].Strength)
+	ana := Ana(combi[combiNo], flagTroops, flagMorales, deckHandTroops, botix, formationSize, false, targetRank, targetHostStr, targetBattStr)
+	t.Logf("Combi: %+v\nFlag: %v,%v\nHand: %v\nDraws: %v\nResult: %v\n",
+		*combi[combiNo], flagTroops, flagMorales, handTroops, drawNo, ana)
+	allCombi := math.Comb(uint64(len(deckTroops)), uint64(drawNo))
+	ana.SetAll(allCombi)
+	if ana.Prop > 1 {
+		t.Errorf("Prob bigger than 1 got %v", ana.Prop)
+	}
 	return ana.Prop
 }
 

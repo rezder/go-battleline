@@ -3,6 +3,7 @@ package game
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/rezder/go-battleline/v2/game/pos"
 	"testing"
 )
 
@@ -26,7 +27,7 @@ func TestJSON(t *testing.T) {
 }
 func printView(gamePos *Pos, view View, t *testing.T) {
 	buf := new(bytes.Buffer)
-	err := json.NewEncoder(buf).Encode(NewViewPos(gamePos, view, NoPlayer))
+	err := json.NewEncoder(buf).Encode(NewViewPos(gamePos, view, pos.NoPlayer))
 	if err != nil {
 		t.Errorf("Error encoding json: %v", err)
 	}

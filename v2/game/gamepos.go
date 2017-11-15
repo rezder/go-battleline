@@ -6,12 +6,6 @@ import (
 	"github.com/rezder/go-battleline/v2/game/pos"
 )
 
-const (
-	//NoPlayer is the value a player index is set to when
-	//no player exist.
-	NoPlayer = 2
-)
-
 var (
 	//ViewAll all views.
 	ViewAll ViewAllST
@@ -66,8 +60,8 @@ func NewPos() (g *Pos) {
 	for tacix := card.NOTroop + 1; tacix < card.NOTroop+card.NOTac+1; tacix++ {
 		g.CardPos[tacix] = pos.CardAll.DeckTac
 	}
-	g.PlayerReturned = NoPlayer
-	g.LastMover = NoPlayer
+	g.PlayerReturned = pos.NoPlayer
+	g.LastMover = pos.NoPlayer
 	g.LastMoveType = MoveTypeAll.None
 	g.LastMoveIx = -1
 	return g
@@ -75,7 +69,7 @@ func NewPos() (g *Pos) {
 
 //AddMove adds a move to the postion.
 func (g *Pos) AddMove(gameMove *Move) (winner int) {
-	winner = NoPlayer
+	winner = pos.NoPlayer
 	g.LastMoveIx = g.LastMoveIx + 1
 	g.LastMoveType = gameMove.MoveType
 	g.LastMover = gameMove.Mover
@@ -100,7 +94,7 @@ func (g *Pos) AddMove(gameMove *Move) (winner int) {
 	return winner
 }
 func calcWinner(conePos [10]pos.Cone) int {
-	winner := NoPlayer
+	winner := pos.NoPlayer
 	var playerTotal [2]int
 	var inARow int
 	lastWinner := -1
@@ -153,7 +147,7 @@ func (g *Pos) RemoveMove(gameMove, beforeGameMove *Move) {
 				g.CardPos[move.Index] = pos.Card(move.OldPos)
 				if gameMove.MoveType == MoveTypeAll.ScoutReturn {
 					g.CardsReturned[i] = 0
-					g.PlayerReturned = NoPlayer
+					g.PlayerReturned = pos.NoPlayer
 				}
 			} else {
 				g.ConePos[move.Index] = pos.Cone(move.OldPos)
@@ -178,8 +172,8 @@ func (g *Pos) CalcMoves() (moves []*Move) {
 
 //opp returns the opponent to a player.
 func opp(player int) (opponent int) {
-	if player == NoPlayer {
-		opponent = NoPlayer
+	if player == pos.NoPlayer {
+		opponent = pos.NoPlayer
 	} else {
 		opponent = player + 1
 		if opponent > 1 {
@@ -197,6 +191,15 @@ type ViewPos struct {
 	NoTacs   [2]int
 	NoTroops [2]int
 	Moves    []*Move
+}
+
+// Copy copys viewPos.
+func (v *ViewPos) Copy() (c *ViewPos) {
+	drv := *v
+	c = &drv
+	drp := *v.Pos
+	c.Pos = &drp
+	return c
 }
 
 // IsEqual checks if two views are equal.
@@ -232,7 +235,7 @@ func NewViewPos(gamePos *Pos, view View, winner int) (v *ViewPos) {
 	v.View = view
 	v.Winner = winner
 
-	if winner == NoPlayer {
+	if winner == pos.NoPlayer {
 		moves := gamePos.CalcMoves()
 
 		if len(moves) > 0 && view.IsViewSeePlayer(moves[0].Mover) {
@@ -292,12 +295,12 @@ func (v View) IsPlayer() bool {
 }
 
 //Playerix returns the player index if the
-//view is a player else NoPlayer.
+//view is a player else pos.NoPlayer.
 func (v View) Playerix() int {
 	if v < 2 {
 		return int(v)
 	}
-	return NoPlayer
+	return pos.NoPlayer
 }
 
 //IsViewSeePlayer return true if the viewer can see the players card.
@@ -306,7 +309,7 @@ func (v View) IsViewSeePlayer(player int) (dont bool) {
 		dont = true
 	} else if v == ViewAll.Spectator {
 		dont = false
-	} else if player == NoPlayer {
+	} else if player == pos.NoPlayer {
 		dont = false
 	} else {
 		dont = v.Playerix() == player

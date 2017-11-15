@@ -1158,7 +1158,7 @@ func deserterKillStrenght(morales []card.Morale, troop card.Troop) (desert card.
 	return desert
 }
 
-func mudTrimDish(
+func mudTrimDish( //TODO remove mudTrim... use flag.Formation when flag HasFormation instead
 	troops []card.Troop,
 	morales []card.Morale,
 	isFog bool) (dishCard card.Card) {
@@ -1180,7 +1180,7 @@ func mudTrimDish(
 				simTroops = append(simTroops, simTroop)
 			}
 		}
-		rank := fa.CalcMaxRank(simTroops, morales, deckHandTroops, playix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
+		rank, _ := fa.CalcMaxRank(simTroops, morales, deckHandTroops, playix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
 		sum := 0
 		rankTieBreaker := combi.RankTieBreaker(rank, formationSize)
 		if !rankTieBreaker.IsRank() {
@@ -1204,7 +1204,7 @@ func mudTrimDish(
 				simMorales = append(simMorales, simMorale)
 			}
 		}
-		rank := fa.CalcMaxRank(troops, simMorales, deckHandTroops, playix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
+		rank, _ := fa.CalcMaxRank(troops, simMorales, deckHandTroops, playix, formationSize, isFog, targetRank, targetHostStr, targetBattStr)
 		rankTieBreaker := combi.RankTieBreaker(rank, formationSize)
 		sum := 0
 		if !rankTieBreaker.IsRank() {

@@ -3,6 +3,7 @@ package games
 import (
 	bg "github.com/rezder/go-battleline/v2/game"
 	"github.com/rezder/go-battleline/v2/game/card"
+	dpos "github.com/rezder/go-battleline/v2/game/pos"
 	"github.com/rezder/go-error/log"
 	"math/rand"
 	"time"
@@ -44,9 +45,9 @@ func tableServe(
 	var moveix int
 	var isOpen bool
 	var mover int
-	winner := bg.NoPlayer
+	winner := dpos.NoPlayer
 
-	for winner == bg.NoPlayer {
+	for winner == dpos.NoPlayer {
 		var failedClaimedExs [9][]card.Card
 		mover = moves[0].Mover
 		log.Printf(log.DebugMsg, "Waiting for mover ix: %v id: %v", mover, ids[mover])
@@ -115,7 +116,7 @@ func initChData(
 	moveChs [2]chan int) (playingChDatas [2]*PlayingChData, watchingChData *WatchingChData, moves []*bg.Move) {
 
 	var failedClaimedExs [9][]card.Card
-	playingChDatas, watchingChData, moves = createChData(pos, ids, gameTs, bg.NoPlayer, failedClaimedExs)
+	playingChDatas, watchingChData, moves = createChData(pos, ids, gameTs, dpos.NoPlayer, failedClaimedExs)
 	for i, data := range playingChDatas {
 		data.MoveCh = moveChs[i]
 	}

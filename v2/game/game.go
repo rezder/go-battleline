@@ -41,7 +41,7 @@ func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Card) {
 				cardBack := card.Back(cardMove)
 				if cardBack.IsTac() {
 					dealCardix := 0
-					if g.Pos.PlayerReturned != NoPlayer {
+					if g.Pos.PlayerReturned != pos.NoPlayer {
 						for i := len(g.Pos.CardsReturned) - 1; i >= 0; i-- {
 							card := g.Pos.CardsReturned[i]
 							if card.IsTac() && g.Pos.CardPos[int(card)].IsInDeck() {
@@ -64,7 +64,7 @@ func (g *Game) Move(move *Move) (winner int, failedClaimsExs [9][]card.Card) {
 					}
 				} else {
 					dealCardix := 0
-					if g.Pos.PlayerReturned != NoPlayer {
+					if g.Pos.PlayerReturned != pos.NoPlayer {
 						for i := len(g.Pos.CardsReturned) - 1; i >= 0; i-- {
 							card := g.Pos.CardsReturned[i]
 							if card.IsTroop() && g.Pos.CardPos[int(card)].IsInDeck() {
@@ -151,7 +151,7 @@ func (g *Game) Resume() (ok bool) {
 		lastMove := g.Hist.LastMove()
 		g.Pos.RemovePause(lastMove.MoveType, lastMove.Mover)
 	}
-	return okForward && winner == NoPlayer
+	return okForward && winner == pos.NoPlayer
 }
 
 //IsAtBeginningOfHist checks is a game position is at
@@ -163,11 +163,11 @@ func (g *Game) IsAtBeginningOfHist() bool {
 //ScrollForward scrolls the game postion one move forward
 //using history
 func (g *Game) ScrollForward() (winner int, ok bool) {
-	winner = NoPlayer
+	winner = pos.NoPlayer
 	if g.Pos.LastMoveIx != len(g.Hist.Moves)-1 {
 		move := g.Hist.Moves[g.Pos.LastMoveIx+1]
 		winner = g.Pos.AddMove(move)
-		if winner == NoPlayer {
+		if winner == pos.NoPlayer {
 			ok = true
 		}
 	}
@@ -271,4 +271,20 @@ func (h *Hist) LastMove() (move *Move) {
 		move = h.Moves[len(h.Moves)-1]
 	}
 	return move
+}
+
+//Winner returns winner may be NoPlayer if
+//game is paused.
+func (h *Hist) Winner() (winner int) {
+	winner = pos.NoPlayer
+	lastMove := h.LastMove()
+	if !lastMove.IsPause() {
+		if lastMove.MoveType == MoveTypeAll.GiveUp {
+			winner = opp(lastMove.Mover)
+		} else {
+			winner = lastMove.Mover
+		}
+	}
+
+	return winner
 }
