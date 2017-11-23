@@ -18,7 +18,7 @@ func TestCombi3(t *testing.T) {
 	n := len(combis)
 
 	if n != 29 {
-		t.Errorf("Expected 48 got: %v", n)
+		t.Errorf("Expected 29 got: %v", n)
 	}
 
 }

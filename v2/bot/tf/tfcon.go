@@ -101,15 +101,3 @@ func (tfc *Con) ReqProba(data []byte, noMoves int) (proba []float64, err error) 
 	log.Printf(log.DebugMsg, "Zmq received %v", proba)
 	return proba, err
 }
-
-//Move select the move with the best probability
-func Move(probas []float64) (moveix int) {
-	var maxProba float64
-	for i, proba := range probas {
-		if maxProba < proba {
-			maxProba = proba
-			moveix = i
-		}
-	}
-	return moveix
-}

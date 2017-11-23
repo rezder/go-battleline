@@ -72,14 +72,14 @@ func CalcTfAnas(viewPos *game.ViewPos, move *game.Move) (tfAnas [][]*fa.TfAna, m
 			simViewPos := simulate(simMove, viewPos)
 			posCards := game.NewPosCards(simViewPos.CardPos)
 			deck := fa.NewDeck(simViewPos, posCards)
-			hands := createHands(posCards, move.Mover)
-			drawFirst := move.Mover
+			hands := createHands(posCards, simMove.Mover)
+			drawFirst := simMove.Mover
 			deckDrawNos := deck.DrawNos(drawFirst)
 			deckHandTroops := dht.NewCache(deck.Troops(), hands, deckDrawNos) //TODO be faster with dht.CopyWithOutHand
 			flags := game.FlagsCreate(posCards, simViewPos.ConePos)
 			tfFlagsAnas := make([]*fa.TfAna, 9)
 			for flagix, flag := range flags {
-				tfFlagsAnas[flagix] = fa.NewTfAnalysis(move.Mover, flag, deckHandTroops, flagix)
+				tfFlagsAnas[flagix] = fa.NewTfAnalysis(simMove.Mover, flag, deckHandTroops, flagix)
 			}
 			tfAnas = append(tfAnas, tfFlagsAnas)
 		}

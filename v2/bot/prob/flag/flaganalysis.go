@@ -593,6 +593,24 @@ func (tfa *TfAna) MachineFormat() (txt string) {
 		tfa.botRanks[0].mf(), tfa.botRanks[1].mf(), tfa.botRanks[2].mf(), tfa.botRanks[3].mf(), tfa.botRanks[4].mf())
 	return txt
 }
+func (tfa *TfAna) MachineFloats() (floats [19]float32) {
+	if tfa != nil {
+		for i, f := range mFloatConvConePos(tfa.conePos) {
+			floats[i] = f
+		}
+		floats[3] = mFloatsConvBool(tfa.oppIsNewFlag)
+		floats[4] = float32(tfa.oppMissNo)
+		floats[5] = float32(tfa.oppRank.rank)
+		floats[6] = float32(tfa.oppRank.prob)
+		floats[7] = mFloatsConvBool(tfa.botIsNewFlag)
+		floats[8] = float32(tfa.botMissNo)
+		for i, r := range tfa.botRanks {
+			floats[9+i*2] = float32(r.rank)
+			floats[10+i*2] = float32(r.prob)
+		}
+	}
+	return floats
+}
 
 //NewTfAnalysis create a tensor flow flag analysis.
 func NewTfAnalysis(
@@ -670,16 +688,31 @@ func mfConvBool(b bool) string {
 	}
 	return "0"
 }
+func mFloatsConvBool(b bool) float32 {
+	if b {
+		return 1
+	}
+	return 0
+}
 func mfConvConePos(c pos.Cone) (txt string) {
 	switch c {
 	case pos.ConeAll.Players[0]:
 		return "0,1,0"
 	case pos.ConeAll.Players[1]:
-		return "0,1,0"
+		return "0,0,1"
 	}
 	return "1,0,0"
 }
 
+func mFloatConvConePos(c pos.Cone) (floats [3]float32) {
+	switch c {
+	case pos.ConeAll.Players[0]:
+		return [3]float32{0, 1, 0}
+	case pos.ConeAll.Players[1]:
+		return [3]float32{0, 0, 1}
+	}
+	return [3]float32{1, 0, 0}
+}
 func findRank(formationValue, strenght int, combinations []*combi.Combination, targetBattStr int) (rank int) {
 	srcStr := strenght
 	if formationValue == card.FBattalion.Value || formationValue == card.FHost.Value {

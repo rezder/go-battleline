@@ -16,7 +16,7 @@ const (
 
 func main() {
 	dbFlag := flag.String("dbfile", "bdb.db2", "The database file to read game hists from.")
-	outFileFlag := flag.String("outfile", "out.txt", "Out put file, truncated if exist")
+	outFileFlag := flag.String("outfile", "out.cvs", "Out put file, truncated if exist")
 	gameLimitFlag := flag.Int("limit", 200, "The max number of games to write.")
 	flag.Parse()
 	db, err := bolt.Open(*dbFlag, 0600, nil)

@@ -25,6 +25,7 @@ func main() {
 	logFlag := flag.Int("loglevel", 0, "Log level 0 default lowest, 3 highest")
 	//TODO change rootDirFlag default to ./server/htmlroot
 	rootDirFlag := flag.String("rootdir", "/home/rho/js/batt-game-app/build/", "The server files root directory")
+	//TODO make backup server to databases
 	flag.Parse()
 	log.InitLog(*logFlag)
 	//defer profile.Start(profile.MemProfile, profile.NoShutdownHook).Stop()
