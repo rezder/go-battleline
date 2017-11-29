@@ -316,6 +316,8 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 }
 
 //backUpServe serves http backups
+// ex: curl --output testclients.db http://localhost:5555/backup/clients
+//     wget -O testgames.db http://localhost:5555/backup/games
 func backUpServe(gamesServer *games.Server, cdb *CDb, port string) {
 	http.HandleFunc("/backup/games",
 		func(resp http.ResponseWriter, req *http.Request) {
