@@ -4,6 +4,7 @@ package games
 
 import (
 	"golang.org/x/net/websocket"
+	"net/http"
 )
 
 //Server the game server structur.
@@ -61,4 +62,9 @@ func (g *Server) BootPlayer(playerID int) {
 //BootPlayerStop asks the server to stop booting a player
 func (g *Server) BootPlayerStop(playerID int) {
 	g.players.DisableCh <- &PlayersDisData{Disable: false, PlayerID: playerID}
+}
+
+//BackupHandleFunc writes the backup of saved games to the http
+func (g *Server) BackupHandleFunc(resp http.ResponseWriter, req *http.Request) {
+	g.tables.savedGamesDb.BackupHandleFunc(resp, req)
 }

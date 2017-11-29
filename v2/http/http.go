@@ -20,13 +20,15 @@ type Server struct {
 	netListener *net.TCPListener
 	clients     *Clients
 	port        string
+	backupPort  string
 	doneCh      chan struct{}
 	rootDir     string
 }
 
 //New creates a new Server.
-func New(port string, archPokePort int, archAddr, rootDir string) (s *Server, err error) {
+func New(port, backupPort string, archPokePort int, archAddr, rootDir string) (s *Server, err error) {
 	s = new(Server)
+	s.backupPort = backupPort
 	s.rootDir = rootDir
 	s.port = port
 	tcpPort := port
@@ -80,6 +82,9 @@ func (s *Server) Start() {
 	s.errServer.Start()
 	s.clients.gameServer.Start(s.errServer.Ch())
 	go start(s.errServer.Ch(), s.netListener, s.clients, s.doneCh, s.port, s.rootDir)
+	if len(s.backupPort) > 0 {
+		go backUpServe(s.clients.gameServer, s.clients.cdb, s.backupPort)
+	}
 }
 
 //Stop stops the server.
@@ -308,4 +313,21 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	}
 	err = tc.SetKeepAlivePeriod(3 * time.Minute)
 	return tc, nil
+}
+
+//backUpServe serves http backups
+func backUpServe(gamesServer *games.Server, cdb *CDb, port string) {
+	http.HandleFunc("/backup/games",
+		func(resp http.ResponseWriter, req *http.Request) {
+			gamesServer.BackupHandleFunc(resp, req)
+		})
+	http.HandleFunc("/backup/clients",
+		func(resp http.ResponseWriter, req *http.Request) {
+			cdb.BackupHandleFunc(resp, req)
+		})
+	err := http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		err = errors.Wrap(err, "Backup http server failed")
+		log.PrintErr(err)
+	}
 }

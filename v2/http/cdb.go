@@ -8,6 +8,8 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"github.com/rezder/go-error/log"
+	"net/http"
+	"strconv"
 )
 
 //CDb a client database.
@@ -122,6 +124,20 @@ func (cdb *CDb) UpdDisable(id int, isDisable bool) (name string, isUpd bool, err
 	})
 
 	return name, isUpd, err
+}
+
+//BackupHandleFunc handles http back up requests.
+func (cdb *CDb) BackupHandleFunc(w http.ResponseWriter, req *http.Request) {
+	err := cdb.db.View(func(tx *bolt.Tx) error {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", `attachment; filename="my.db"`)
+		w.Header().Set("Content-Length", strconv.Itoa(int(tx.Size())))
+		_, err := tx.WriteTo(w)
+		return err
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 //UpdInsert inserts a client if it does not allready exist.
