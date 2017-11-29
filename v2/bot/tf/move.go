@@ -24,6 +24,7 @@ func MoveHand(viewPos *game.ViewPos, tfCon *Con) (moveix int) {
 		if len(viewPos.Moves) == 1 {
 			moveix = 0
 		} else {
+			log.Printf(log.Debug, "Moves:\n%v", viewPos.Moves)
 			tfAnas, _ := CalcTfAnas(viewPos, nil)
 			bs, no := movesToBytes(tfAnas)
 			log.Printf(log.Debug, "Sending %v moves", no)
@@ -48,9 +49,10 @@ func MoveHand(viewPos *game.ViewPos, tfCon *Con) (moveix int) {
 						}
 					}
 				}
-				log.Printf(log.Debug, "Probability matrix: %v", m)
+				log.Printf(log.Debug, "Probability matrix: %.3f", m)
 				var max, sum float64
 				for i, row := range m {
+					sum = 0
 					for _, cell := range row {
 						sum = sum + cell
 					}

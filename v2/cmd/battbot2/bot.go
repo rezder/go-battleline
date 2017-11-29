@@ -124,16 +124,16 @@ func (m *mover) Move(viewPos *game.ViewPos) (moveix int) {
 		fallthrough
 	case game.MoveTypeAll.Deck:
 		moveix = prob.MoveDeck(viewPos)
-	case game.MoveTypeAll.ScoutReturn:
+	case game.MoveTypeAll.ScoutReturn: //TODO add tf support for scoutreturn change here and when create data
 		moveix = prob.MoveScoutReturn(viewPos)
 	default:
 		if m.tfCon != nil {
-			tf.MoveHand(viewPos, m.tfCon)
+			moveix = tf.MoveHand(viewPos, m.tfCon)
 		} else {
 			moveix = prob.MoveHand(viewPos)
 		}
 	}
-	log.Printf(log.Debug, "Move: %v\n\n", viewPos.Moves[moveix])
+	log.Printf(log.Debug, "Moveix: %v,Move: %v\n\n", moveix, viewPos.Moves[moveix])
 	return moveix
 }
 

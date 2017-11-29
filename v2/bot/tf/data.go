@@ -75,7 +75,7 @@ func CalcTfAnas(viewPos *game.ViewPos, move *game.Move) (tfAnas [][]*fa.TfAna, m
 			hands := createHands(posCards, simMove.Mover)
 			drawFirst := simMove.Mover
 			deckDrawNos := deck.DrawNos(drawFirst)
-			deckHandTroops := dht.NewCache(deck.Troops(), hands, deckDrawNos) //TODO be faster with dht.CopyWithOutHand
+			deckHandTroops := dht.NewCache(deck.Troops(), hands, deckDrawNos) //TODO be faster with dht.CopyWithOutHand but it can only handle one card scout return is two.
 			flags := game.FlagsCreate(posCards, simViewPos.ConePos)
 			tfFlagsAnas := make([]*fa.TfAna, 9)
 			for flagix, flag := range flags {

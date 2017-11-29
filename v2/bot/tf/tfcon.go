@@ -98,6 +98,6 @@ func (tfc *Con) ReqProba(data []byte, noMoves int) (proba []float64, err error) 
 	if err != nil {
 		err = errors.Wrap(err, "Error converting bytes to probabilities")
 	}
-	log.Printf(log.DebugMsg, "Zmq received %v", proba)
+	log.Printf(log.DebugMsg, "Zmq received %.2f", proba)
 	return proba, err
 }
