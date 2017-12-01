@@ -12,7 +12,7 @@ const (
 
 func TestClients(t *testing.T) {
 	dbClientsFILE = "_test/clients.db"
-	gameServer, err := games.New(7373)
+	gameServer, err := games.New(7373, "")
 	if err != nil {
 		t.Fatalf("Init games server failed, with error: %v", err)
 	}

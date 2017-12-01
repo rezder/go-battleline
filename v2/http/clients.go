@@ -80,11 +80,15 @@ func (c *Client) IsEqual(o *Client) (isEqual bool) {
 	return isEqual
 }
 
-func newClient(name string, pwh []byte) (client *Client) {
+func NewClient(name string, pwTxt string) (client *Client, err error) {
+	pwh, err := bcrypt.GenerateFromPassword([]byte(pwTxt), pwCOST) //TODO we need salt some day, so player with same password does not have same hash.
+	if err != nil {
+		return client, err
+	}
 	client = new(Client)
 	client.Name = name
 	client.Pw = pwh
-	return client
+	return client, err
 }
 
 //Clients the clients list.
@@ -273,12 +277,10 @@ func (clients *Clients) IsGameServerDown() bool {
 //AddNew create and log-in a new client.
 func (clients *Clients) AddNew(name string, pwTxt string) (status login.Status, sid string, err error) {
 	if checkNamePwSize(name, pwTxt) {
-		var pw []byte
-		pw, err = bcrypt.GenerateFromPassword([]byte(pwTxt), pwCOST) //TODO we need salt some day, so player with same password does not have same hash.
+		client, err := NewClient(name, pwTxt)
 		if err != nil {
 			return status, sid, err
 		}
-		client := newClient(name, pw)
 		var isUpd bool
 		client, isUpd, err = clients.cdb.UpdInsert(client)
 		if err != nil {

@@ -548,9 +548,6 @@ func rankAnalyze(
 		if formationMade && ana.Prop == 1 {
 			break
 		}
-		//TODO make prob and playables for host, and include isFog in rankAnalyze.
-		//Slight change to isWin(): == for host possible. and the isLost can reuse the rankAnalyze but
-		//it must also work without.First make without prob calc just set .5 for undesided.
 	}
 	return ranks
 }
@@ -567,11 +564,14 @@ func (rp rankProb) mf() string {
 	return fmt.Sprintf("%v,%.3f", rp.rank, rp.prob)
 }
 
-//TODO maybe add sum as batt and host get prob = 1 for opp
+//TODO maybe add strenght as batt and host get prob = 1 for opponent 2x9 fields, scale 40.
+//Maybe add number of playable tactic cards as the tactic cards is very attractive.
+//Only the bots no. should necessary as it hold all info. 1-1 2-0 0-2 1x9 fields scale 2.
+// newPlayableTacAna calculate that number.
 
 //TfAna tensor flow analysis
 type TfAna struct {
-	flagix       int
+	flagix       int // not include in machine data
 	conePos      pos.Cone
 	oppIsNewFlag bool
 	oppMissNo    int
@@ -642,7 +642,7 @@ func NewTfAnalysis(
 
 			if len(flag.Players[oppix].Troops) == 0 {
 				oppRank := calcMaxRankNewFlag(flag.Players[oppix].Morales, deckHandTroops, oppix, flag.FormationSize(), oppBattStr, flag.IsFog)
-				tfa.oppRank = rankProb{rank: oppRank, prob: 0.5} //TODO we do not have a prob what to do 0,0.5 or 1 and add field is new
+				tfa.oppRank = rankProb{rank: oppRank, prob: 0.5} //TODO we do not have a prob what to do 0,0.5 or 1
 				tfa.oppIsNewFlag = true
 			} else {
 				oppRank, oppProb := CalcMaxRank(flag.Players[oppix].Troops,
@@ -660,7 +660,7 @@ func NewTfAnalysis(
 			tfa.botMissNo = flag.FormationSize() - flag.PlayerFormationSize(playix)
 			if len(flag.Players[playix].Troops) == 0 {
 				botRank := calcMaxRankNewFlag(flag.Players[playix].Morales, deckHandTroops, playix, flag.FormationSize(), oppBattStr, flag.IsFog)
-				tfa.botRanks[0] = rankProb{rank: botRank, prob: 1} //TODO we do not have a prob what to do 0,0.5 or 1
+				tfa.botRanks[0] = rankProb{rank: botRank, prob: 1} //TODO  maybe change to the same as oppRank new flag 0.5 instead of 1
 				tfa.botIsNewFlag = true
 			} else {
 				rankAnas := rankAnalyze(flag.Players[playix].Troops, flag.Players[playix].Morales, deckHandTroops, playix,

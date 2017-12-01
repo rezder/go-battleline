@@ -2,7 +2,6 @@ package http
 
 import (
 	"github.com/boltdb/bolt"
-	"golang.org/x/crypto/bcrypt"
 	"os"
 	"testing"
 )
@@ -81,8 +80,7 @@ func testGet(cdb *CDb, clients []*Client, t *testing.T) {
 }
 func testInsert(cdb *CDb, t *testing.T) []*Client {
 	clients := make([]*Client, 0, 2)
-	pwh, _ := bcrypt.GenerateFromPassword([]byte("12345678"), pwCOST)
-	client := newClient("Rene", pwh)
+	client, _ := NewClient("Rene", "12345678")
 	inClient, isUpd, err := cdb.UpdInsert(client)
 	if err != nil {
 		_ = cdb.Close()
@@ -94,7 +92,7 @@ func testInsert(cdb *CDb, t *testing.T) []*Client {
 	}
 	t.Logf("saved player name,id: %v,%v", inClient.Name, inClient.ID)
 	clients = append(clients, inClient)
-	client2 := newClient("Peter", pwh)
+	client2, _ := NewClient("Peter", "12345678")
 	var inClient2 *Client
 	inClient2, isUpd, err = cdb.UpdInsert(client2)
 	if err != nil {
